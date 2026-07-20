@@ -82,26 +82,31 @@
     <div id="page-change-password" class="page">
       <div class="row justify-content-center mt-5">
         <div class="col-12 col-sm-8 col-md-6 col-lg-4">
-          <div class="card shadow">
+          <div class="card shadow border-warning">
             <div class="card-body p-4">
               <h4 class="text-center mb-3">🔑 Change Password</h4>
+              <p class="text-center text-muted small">Manager PIN required to change login password</p>
               
               <div id="password-alert" class="alert py-2 d-none" role="alert"></div>
 
               <form id="password-form">
                 <div class="mb-3">
+                  <label class="form-label">Manager PIN 🔒</label>
+                  <input id="pwd-manager-pin" type="password" class="form-control" placeholder="Enter Manager PIN" required autofocus>
+                </div>
+                <div class="mb-3">
                   <label class="form-label">Current Password</label>
-                  <input id="pwd-current" type="password" class="form-control" required>
+                  <input id="pwd-current" type="password" class="form-control" placeholder="Current Password" required>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">New Password</label>
-                  <input id="pwd-new" type="password" class="form-control" required>
+                  <input id="pwd-new" type="password" class="form-control" placeholder="New Password" required>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Confirm New Password</label>
-                  <input id="pwd-confirm" type="password" class="form-control" required>
+                  <input id="pwd-confirm" type="password" class="form-control" placeholder="Confirm New Password" required>
                 </div>
-                <button type="submit" class="btn btn-primary w-100 fw-bold">Update Password</button>
+                <button type="submit" class="btn btn-warning w-100 fw-bold">Update Password</button>
                 <button type="button" class="btn btn-secondary w-100 mt-2" onclick="navigateTo('dashboard')">Back to Dashboard</button>
               </form>
             </div>
@@ -327,11 +332,21 @@
 
     document.getElementById('password-form').addEventListener('submit', (e) => {
       e.preventDefault();
+      const managerPin = document.getElementById('pwd-manager-pin').value;
       const current = document.getElementById('pwd-current').value;
       const newPwd = document.getElementById('pwd-new').value;
       const confirmPwd = document.getElementById('pwd-confirm').value;
       const alertBox = document.getElementById('password-alert');
 
+      // 1. Verify Manager PIN
+      if (managerPin !== MANAGER_PIN) {
+        alertBox.className = "alert alert-danger py-2";
+        alertBox.innerText = "Invalid Manager PIN.";
+        alertBox.classList.remove('d-none');
+        return;
+      }
+
+      // 2. Verify Current Password
       if (current !== auth.password) {
         alertBox.className = "alert alert-danger py-2";
         alertBox.innerText = "Current password is incorrect.";
@@ -339,6 +354,7 @@
         return;
       }
 
+      // 3. Verify New Password Confirmation
       if (newPwd !== confirmPwd) {
         alertBox.className = "alert alert-danger py-2";
         alertBox.innerText = "New passwords do not match.";
@@ -346,6 +362,7 @@
         return;
       }
 
+      // Save New Password
       auth.password = newPwd;
       saveAuth();
 
@@ -463,74 +480,4 @@
         supplier: document.getElementById('stk-supplier').value
       });
       e.target.reset();
-      saveDB();
-    });
-
-    document.getElementById('sales-form').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const modelName = document.getElementById('sale-item').value;
-      const qty = parseInt(document.getElementById('sale-qty').value);
-      const customer = document.getElementById('sale-customer').value;
-
-      const item = db.stock.find(s => s.model === modelName);
-      if (!item || item.qty < qty) {
-        alert("Insufficient stock available!");
-        return;
-      }
-
-      item.qty -= qty;
-      db.sales.push({
-        model: modelName,
-        qty: qty,
-        cost_price: item.cost_price,
-        sell_price: item.sell_price,
-        customer: customer,
-        date: new Date().toISOString().split('T')[0]
-      });
-
-      e.target.reset();
-      saveDB();
-    });
-
-    document.getElementById('returns-form').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const saleIdx = parseInt(document.getElementById('return-sale-idx').value);
-      const qty = parseInt(document.getElementById('return-qty').value);
-      const reason = document.getElementById('return-reason').value;
-
-      const sale = db.sales[saleIdx];
-      if (!sale || qty > sale.qty) {
-        alert("Invalid return quantity!");
-        return;
-      }
-
-      const item = db.stock.find(s => s.model === sale.model);
-      if (item) item.qty += qty;
-
-      db.returns.push({
-        model: sale.model,
-        qty: qty,
-        cost_price: sale.cost_price,
-        sell_price: sale.sell_price,
-        customer: sale.customer,
-        reason: reason,
-        date: new Date().toISOString().split('T')[0]
-      });
-
-      e.target.reset();
-      saveDB();
-    });
-
-    function deleteStock(index) {
-      if (confirm("Delete this stock item?")) {
-        db.stock.splice(index, 1);
-        saveDB();
-      }
-    }
-
-    // Initial Load
-    renderAll();
-    navigateTo('login');
-  </script>
-</body>
-</html>
+      s
