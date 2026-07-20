@@ -17,21 +17,68 @@
 </head>
 <body class="bg-light">
 
-  <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4 no-print">
+  <nav id="main-nav" class="navbar navbar-expand-lg navbar-dark bg-dark mb-4 no-print" style="display: none;">
     <div class="container-fluid">
       <a class="navbar-brand fw-bold" href="#">SKY MODERNIZE</a>
       <div class="d-flex gap-2">
-        <button class="btn btn-sm btn-outline-light" onclick="showPage('dashboard')">Dashboard</button>
-        <button class="btn btn-sm btn-outline-light" onclick="showPage('stock')">Stock 🔒</button>
-        <button class="btn btn-sm btn-outline-light" onclick="showPage('sales')">Sales</button>
-        <button class="btn btn-sm btn-outline-light" onclick="showPage('returns')">Returns</button>
+        <button class="btn btn-sm btn-outline-light" onclick="navigateTo('dashboard')">Dashboard</button>
+        <button class="btn btn-sm btn-outline-light" onclick="navigateTo('stock')">Stock 🔒</button>
+        <button class="btn btn-sm btn-outline-light" onclick="navigateTo('sales')">Sales</button>
+        <button class="btn btn-sm btn-outline-light" onclick="navigateTo('returns')">Returns</button>
+        <button class="btn btn-sm btn-danger ms-3" onclick="logout()">Logout</button>
       </div>
     </div>
   </nav>
 
   <div class="container pb-5">
 
-    <div id="page-dashboard" class="page active">
+    <div id="page-login" class="page active">
+      <div class="row justify-content-center mt-5">
+        <div class="col-12 col-sm-8 col-md-6 col-lg-4">
+          <div class="card bg-dark text-white shadow-lg border-0 rounded-3">
+            <div class="card-body p-4">
+              <h3 class="text-center mb-2">SKY MODERNIZE</h3>
+              <p class="text-center text-secondary mb-4">Inventory Management System</p>
+              
+              <div id="login-alert" class="alert alert-danger py-2 d-none" role="alert"></div>
+
+              <form id="login-form">
+                <div class="mb-3">
+                  <input id="login-username" class="form-control bg-secondary text-white border-0" placeholder="Username" required>
+                </div>
+                <div class="mb-3">
+                  <input id="login-password" type="password" class="form-control bg-secondary text-white border-0" placeholder="Password" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-100 fw-bold">Login</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="page-manager-auth" class="page">
+      <div class="row justify-content-center mt-5">
+        <div class="col-12 col-sm-8 col-md-6 col-lg-4">
+          <div class="card shadow border-warning">
+            <div class="card-body p-4">
+              <h4 class="text-center mb-3">🔒 Manager Access Required</h4>
+              <p class="text-center text-muted">Enter Manager PIN to access Stock Management</p>
+              
+              <div id="manager-alert" class="alert alert-danger py-2 d-none" role="alert"></div>
+
+              <form id="manager-form">
+                <input id="manager-pin" type="password" class="form-control mb-3" placeholder="Manager PIN" required autofocus>
+                <button type="submit" class="btn btn-warning w-100 fw-bold">Unlock Stock</button>
+                <button type="button" class="btn btn-secondary w-100 mt-2" onclick="navigateTo('dashboard')">Back to Dashboard</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="page-dashboard" class="page">
       <h3 class="mb-3">Dashboard</h3>
       
       <div class="row g-3 mb-4">
@@ -64,6 +111,7 @@
     <div id="page-stock" class="page">
       <div class="d-flex justify-content-between align-items-center mb-3">
         <h3>🔒 Stock Management</h3>
+        <button class="btn btn-sm btn-outline-warning" onclick="lockStock()">Lock Stock</button>
       </div>
 
       <div class="card mb-4">
@@ -162,7 +210,15 @@
   </div>
 
   <script>
-    // --- DATABASE EMULATION (LOCALSTORAGE) ---
+    // --- CREDENTIALS ---
+    const VALID_USER = "admin";
+    const VALID_PASS = "1234";
+    const MANAGER_PIN = "2468";
+
+    // --- STATE MANAGEMENT ---
+    let isLoggedIn = false;
+    let isManagerUnlocked = false;
+
     const DB_KEY = "sky_modernize_db";
     let db = JSON.parse(localStorage.getItem(DB_KEY)) || { stock: [], sales: [], returns: [] };
 
@@ -171,13 +227,79 @@
       renderAll();
     }
 
-    // --- NAVIGATION ---
+    // --- ROUTING & ACCESS CONTROL ---
+    function navigateTo(pageId) {
+      if (!isLoggedIn && pageId !== 'login') {
+        showPage('login');
+        return;
+      }
+
+      if (pageId === 'stock' && !isManagerUnlocked) {
+        showPage('manager-auth');
+        return;
+      }
+
+      showPage(pageId);
+    }
+
     function showPage(pageId) {
       document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
       document.getElementById(`page-${pageId}`).classList.add('active');
+
+      const nav = document.getElementById('main-nav');
+      if (pageId === 'login') {
+        nav.style.display = 'none';
+      } else {
+        nav.style.display = 'flex';
+      }
     }
 
-    // --- RENDER LOGIC ---
+    // --- AUTHENTICATION HANDLERS ---
+    document.getElementById('login-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const user = document.getElementById('login-username').value;
+      const pass = document.getElementById('login-password').value;
+      const alertBox = document.getElementById('login-alert');
+
+      if (user === VALID_USER && pass === VALID_PASS) {
+        isLoggedIn = true;
+        alertBox.classList.add('d-none');
+        e.target.reset();
+        navigateTo('dashboard');
+      } else {
+        alertBox.innerText = "Invalid credentials";
+        alertBox.classList.remove('d-none');
+      }
+    });
+
+    document.getElementById('manager-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const pin = document.getElementById('manager-pin').value;
+      const alertBox = document.getElementById('manager-alert');
+
+      if (pin === MANAGER_PIN) {
+        isManagerUnlocked = true;
+        alertBox.classList.add('d-none');
+        e.target.reset();
+        navigateTo('stock');
+      } else {
+        alertBox.innerText = "Invalid Manager PIN";
+        alertBox.classList.remove('d-none');
+      }
+    });
+
+    function logout() {
+      isLoggedIn = false;
+      isManagerUnlocked = false;
+      navigateTo('login');
+    }
+
+    function lockStock() {
+      isManagerUnlocked = false;
+      navigateTo('dashboard');
+    }
+
+    // --- RENDERING FUNCTIONS ---
     function renderAll() {
       renderDashboard();
       renderStock();
@@ -201,7 +323,6 @@
       document.getElementById('dash-cac').innerText = `₦${cacFee.toLocaleString()}`;
       document.getElementById('dash-net').innerText = `₦${netProfit.toLocaleString()}`;
 
-      // Low Stock
       const lowStockList = document.getElementById('low-stock-list');
       const lowStock = db.stock.filter(s => s.qty <= 10);
       if (lowStock.length === 0) {
@@ -227,7 +348,6 @@
         </tr>
       `).join('');
 
-      // Populate Sales Dropdown
       const saleSelect = document.getElementById('sale-item');
       saleSelect.innerHTML = '<option value="">-- Select Model --</option>' + 
         db.stock.map(s => `<option value="${s.model}">${s.model} - ₦${s.sell_price.toLocaleString()} (Stock: ${s.qty})</option>`).join('');
@@ -246,7 +366,6 @@
         </tr>
       `).join('');
 
-      // Populate Returns Dropdown
       const returnSelect = document.getElementById('return-sale-idx');
       returnSelect.innerHTML = '<option value="">-- Select Sale --</option>' +
         db.sales.map((s, idx) => `<option value="${idx}">${s.date} - ${s.model} (${s.customer}) - ${s.qty} pcs</option>`).join('');
@@ -265,7 +384,7 @@
       `).join('');
     }
 
-    // --- FORM HANDLERS ---
+    // --- FORM ACTIONS ---
     document.getElementById('stock-form').addEventListener('submit', (e) => {
       e.preventDefault();
       db.stock.push({
@@ -342,8 +461,9 @@
       }
     }
 
-    // Initial load
+    // Initial Load
     renderAll();
+    navigateTo('login');
   </script>
 </body>
 </html>
