@@ -25,6 +25,7 @@
         <button class="btn btn-sm btn-outline-light" onclick="navigateTo('stock')">Stock 🔒</button>
         <button class="btn btn-sm btn-outline-light" onclick="navigateTo('sales')">Sales</button>
         <button class="btn btn-sm btn-outline-light" onclick="navigateTo('returns')">Returns</button>
+        <button class="btn btn-sm btn-outline-light" onclick="navigateTo('change-password')">Password 🔑</button>
         <button class="btn btn-sm btn-danger ms-3" onclick="logout()">Logout</button>
       </div>
     </div>
@@ -70,6 +71,37 @@
               <form id="manager-form">
                 <input id="manager-pin" type="password" class="form-control mb-3" placeholder="Manager PIN" required autofocus>
                 <button type="submit" class="btn btn-warning w-100 fw-bold">Unlock Stock</button>
+                <button type="button" class="btn btn-secondary w-100 mt-2" onclick="navigateTo('dashboard')">Back to Dashboard</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="page-change-password" class="page">
+      <div class="row justify-content-center mt-5">
+        <div class="col-12 col-sm-8 col-md-6 col-lg-4">
+          <div class="card shadow">
+            <div class="card-body p-4">
+              <h4 class="text-center mb-3">🔑 Change Password</h4>
+              
+              <div id="password-alert" class="alert py-2 d-none" role="alert"></div>
+
+              <form id="password-form">
+                <div class="mb-3">
+                  <label class="form-label">Current Password</label>
+                  <input id="pwd-current" type="password" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">New Password</label>
+                  <input id="pwd-new" type="password" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Confirm New Password</label>
+                  <input id="pwd-confirm" type="password" class="form-control" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-100 fw-bold">Update Password</button>
                 <button type="button" class="btn btn-secondary w-100 mt-2" onclick="navigateTo('dashboard')">Back to Dashboard</button>
               </form>
             </div>
@@ -210,9 +242,14 @@
   </div>
 
   <script>
-    // --- CREDENTIALS ---
-    const VALID_USER = "admin";
-    const VALID_PASS = "1234";
+    // --- CREDENTIALS (PERSISTED IN LOCALSTORAGE) ---
+    const AUTH_KEY = "sky_modernize_auth";
+    let auth = JSON.parse(localStorage.getItem(AUTH_KEY)) || { username: "admin", password: "1234" };
+
+    function saveAuth() {
+      localStorage.setItem(AUTH_KEY, JSON.stringify(auth));
+    }
+
     const MANAGER_PIN = "2468";
 
     // --- STATE MANAGEMENT ---
@@ -254,14 +291,14 @@
       }
     }
 
-    // --- AUTHENTICATION HANDLERS ---
+    // --- AUTHENTICATION & PASSWORD HANDLERS ---
     document.getElementById('login-form').addEventListener('submit', (e) => {
       e.preventDefault();
       const user = document.getElementById('login-username').value;
       const pass = document.getElementById('login-password').value;
       const alertBox = document.getElementById('login-alert');
 
-      if (user === VALID_USER && pass === VALID_PASS) {
+      if (user === auth.username && pass === auth.password) {
         isLoggedIn = true;
         alertBox.classList.add('d-none');
         e.target.reset();
@@ -286,6 +323,36 @@
         alertBox.innerText = "Invalid Manager PIN";
         alertBox.classList.remove('d-none');
       }
+    });
+
+    document.getElementById('password-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const current = document.getElementById('pwd-current').value;
+      const newPwd = document.getElementById('pwd-new').value;
+      const confirmPwd = document.getElementById('pwd-confirm').value;
+      const alertBox = document.getElementById('password-alert');
+
+      if (current !== auth.password) {
+        alertBox.className = "alert alert-danger py-2";
+        alertBox.innerText = "Current password is incorrect.";
+        alertBox.classList.remove('d-none');
+        return;
+      }
+
+      if (newPwd !== confirmPwd) {
+        alertBox.className = "alert alert-danger py-2";
+        alertBox.innerText = "New passwords do not match.";
+        alertBox.classList.remove('d-none');
+        return;
+      }
+
+      auth.password = newPwd;
+      saveAuth();
+
+      alertBox.className = "alert alert-success py-2";
+      alertBox.innerText = "Password updated successfully!";
+      alertBox.classList.remove('d-none');
+      e.target.reset();
     });
 
     function logout() {
