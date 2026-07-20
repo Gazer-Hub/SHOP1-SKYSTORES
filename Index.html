@@ -19,7 +19,9 @@
   <div id="root"></div>
 
 <script type="text/babel">
-  // REPLACE WITH YOUR SUPABASE KEYS
+  window.onerror = functions(msg, url, line){
+    document.body.innerHTML = '<div style=color:red;padding:20px;font-family:monospace;font-size:14px;"><b>ERROR at line ' + line + ':</b><br>' + msg + '</div>;
+      
   const SUPABASE_URL = 'https://puktzlekeoojrlxrkziu.supabase.co'
   const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB1a3R6bGVrZW9vanJseHJreml1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1NTI5MzAsImV4cCI6MjEwMDEyODkzMH0.uSH3tcofOW-LiBHraIb_eDi2hI3_ZUN1b9JjIJ42Z-Q'
   const MANAGER_PIN = "2468"
