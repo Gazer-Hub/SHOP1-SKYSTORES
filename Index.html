@@ -6,22 +6,20 @@
   <title>SKY MODERNIZE SAVE TECHNOLOGY LTD</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-  <script src="https://unpkg.com/babel/standalone/babel.min.js"></script>
   <style>
-   .low-stock { background: #ffebee!important; }
-   .navbar-brand { font-weight: bold; }
-    @media print {.no-print { display: none; } }
+  .low-stock { background: #ffebee!important; }
+  .navbar-brand { font-weight: bold; }
+   @media print {.no-print { display: none; } }
   </style>
 </head>
 <body>
-  <div id="root"></div>
+  <div id="app"></div>
 
-<script type="text/babel">
-  window.onerror = functions(msg, url, line){
-    document.body.innerHTML = '<div style=color:red;padding:20px;font-family:monospace;font-size:14px;"><b>ERROR at line ' + line + ':</b><br>' + msg + '</div>;
-      
+<script>
+  window.onerror = function(msg, url, line) {
+    document.body.innerHTML = '<div style="color:red;padding:20px;font-family:monospace;font-size:14px;"><b>ERROR at line ' + line + ':</b><br>' + msg + '</div>';
+  };
+
   const SUPABASE_URL = 'https://puktzlekeoojrlxrkziu.supabase.co'
   const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB1a3R6bGVrZW9vanJseHJreml1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1NTI5MzAsImV4cCI6MjEwMDEyODkzMH0.uSH3tcofOW-LiBHraIb_eDi2hI3_ZUN1b9JjIJ42Z-Q'
   const MANAGER_PIN = "2468"
@@ -540,8 +538,8 @@
     a.click()
   }
 
-  const root = ReactDOM.create(document.getElementById('root'));
-  root.render(<App />);
+  // Start the app
+  render();
 </script>
 </body>
 </html>
