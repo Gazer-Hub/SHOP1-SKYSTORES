@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SKY MODERNIZE SAVE TECHNOLOGY LTD</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+   .low-stock { background: #ffebee!important; }
+   .navbar-brand { font-weight: bold; }
+    @media print {.no-print { display: none; } }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+<script>
+  // REPLACE WITH YOUR SUPABASE KEYS
+  const SUPABASE_URL = 'YOUR_URL'
+  const SUPABASE_KEY = 'YOUR_KEY'
+  const MANAGER_PIN = "2468"
+  const CAC_RATE = 0.075
+  const COMPANY_NAME = "SKY MODERNIZE SAVE TECHNOLOGY LTD"
+
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
+
+  let state = {
+    page: 'login',
+    loggedIn: false,
+    managerUnlocked: false,
+    stock: [],
+    sales: [],
+    returns: [],
+    startDate: new Date().toISOString().split('T')[0],
+    endDate: new Date().toISOString().split('T')[0]
+  }
+
+  function render() {
+    if (!state.loggedIn) return renderLogin()
+    if (state.page === 'stock' &&!state.managerUnlocked) return renderManagerAuth()
+
+    const nav = `
+    <nav class="navbar navbar-dark bg-dark mb-4">
+      <div class="container-fluid">
+        <a href="#" onclick="nav('dashboard')" class="navbar-brand">${COMPANY_NAME}</a>
+        <div>
+          <button onclick="nav('dashboard')" class="btn btn-sm btn-outline-light">Dashboard</button>
+          <button onclick="nav('stock')" class="btn btn-sm btn-outline-light">Stock 🔒</button>
+          <button onclick="nav('sales')" class="btn btn-sm btn-outline-light">Sales</button>
+          <button onclick="nav('returns')" class="btn btn-sm btn-outline-light">Returns</button>
+          <button onclick="logout()" class="btn btn-sm btn-danger">Logout</button>
+        </div>
+      </div>
+    </nav>`
+
+    let content = ''
+    if (state.page === 'dashboard') content = renderDashboard()
+    else if (state.page === 'stock') content = renderStock()
+    else if (state.page === 'sales') content = renderSales()
+    else if (state.page === 'returns') content = renderReturns()
+
+    document.getElementById('app').innerHTML = nav + '<div class="container">' + content + '</div>'
+  }
+
+  function renderLogin() {
+    document.getElementById('app').innerHTML = `
+    <body class="bg-dark text-white min-vh-100 d-flex align-items-center justify-content-center">
+      <div class="card bg-secondary text-white" style="width: 400px;">
+        <div class="card-body p-4">
+          <h3 class="text-center mb-3">${COMPANY_NAME}</h3>
+          <p class="text-center mb-4">Inventory Management</p>
+          <div id="loginError"></div>
+          <input id="username" class="form-control bg-dark text-white mb-2" placeholder="Username">
+          <input id="password" type="password" class="form-control bg-dark text-white mb-3" placeholder="Password">
+          <button onclick="login()" class="btn btn-primary w-100">Login</button>
+          <small class="d-block text-center mt-3">Default: admin / 1234</small>
+        </div>
+      </div>
+    </body>`
+  }
+
+  function renderManagerAuth() {
+    document.getElementById('app').innerHTML = `
+    <div class="container mt-5"><div class="row justify-content-center">
+      <div class="col-md-4"><div class="card border-warning"><div class="card-body">
+        <h4 class="text-center mb-3">🔒 Manager Access Required</h4>
+        <p class="text-center text-muted">Enter Manager PIN to access Stock</p>
+        <div id="pinError"></div>
+        <input id="pin" type="password" class="form-control mb-2" placeholder="Manager PIN" autofocus>
+        <button onclick="unlockManager()" class="btn btn-warning w-100">Unlock Stock</button>
+        <button onclick="nav('dashboard')" class="btn btn-secondary w-100 mt-2">Back to Dashboard</button>
+      </div></div></div>
+    </div></div>`
+  }
+
+  function renderDashboard() {
+    const filteredSales = state.sales.filter(s => {
+      const d = s.sold_at.split('T')[0]
+      return d >= state.startDate && d <= state.endDate
+    })
+    const filteredReturns = state.returns.filter(r => {
+      const d = r.returned_at.split('T')[0]
+      return d >= state.startDate && d <= state.endDate
+    })
+
+    const totalSales = filteredSales.reduce((sum, s) => sum + s.total_price, 0)
+    const totalCost = filteredSales.reduce((sum, s) => sum + s.cost_price * s.qty_sold, 0)
+    const totalReturns = filteredReturns.reduce((sum, r) => sum + r.sell_price * r.qty, 0)
+    const grossProfit = totalSales - totalCost - totalReturns
+    const cacFee = grossProfit > 0? Math.round(grossProfit * CAC_RATE) : 0
+    const netProfit = grossProfit - cacFee
+    const margin = totalSales? ((grossProfit / totalSales) * 100).toFixed(1) : 0
+
+    const soldModels = {}
+    filteredSales.forEach(s => soldModels[s.model] = (soldModels[s.model] || 0) + s.qty_sold)
+    const topModels = Object.entries(soldModels).sort((a,b) => b[1] - a[1]).slice(0,5)
+
+    const returnedModels = {}
+    filteredReturns.forEach(r => returnedModels[r.model] = (returnedModels[r.model] || 0) + r.qty)
+    const worstModels = Object.entries(returnedModels).sort((a,b) => b[1] - a[1]).slice(0,5)
+
+    const lowStock = state.stock.filter(i => i.qty <= 10)
+
+    const sevenDaysAgo = new Date(new Date(state.startDate).getTime() - 7*86400000).toISOString().split('T')[0]
+    const thirtyDaysAgo = new Date(new Date(state.startDate).getTime() - 30*86400000).toISOString().split('T')[0]
+
+    return `
+    <div class="card mb-4"><div class="card-body">
+      <div class="row g-2 align-items-end">
+        <div class="col-md-3">
+          <label class="form-label">Start Date</label>
+          <input type="date" value="${state.startDate}" onchange="setDate('start', this.value)" class="form-control">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">End Date</label>
+          <input type="date" value="${state.endDate}" onchange="setDate('end', this.value)" class="form-control">
+        </div>
+        <div class="col-md-6">
+          <button onclick="setDate('start','${new Date().toISOString().split('T')[0]}'); setDate('end','${new Date().toISOString().split('T')[0]}')" class="btn btn-primary">Today</button>
+          <button onclick="setDate('start','${sevenDaysAgo}')" class="btn btn-outline-secondary">7 Days</button>
+          <button onclick="setDate('start','${thirtyDaysAgo}')" class="btn btn-outline-secondary">30 Days</button>
+        </div>
+      </div>
+    </div></div>
+
+    <div class="mb-3">
+      <button onclick="exportCSV('sales')" class="btn btn-success btn-sm">📥 Export Sales CSV</button>
+      <button onclick="exportCSV('stock')" class="btn btn-primary btn-sm">📥 Export Stock CSV</button>
+      <button onclick="exportCSV('returns')" class="btn btn-warning btn-sm">📥 Export Returns CSV</button>
+    </div>
+
+    <div class="row mb-4">
+      <div class="col-md-2"><div class="card text-center"><div class="card-body">
+        <h6>Sales</h6><h4 class="text-success">₦${totalSales.toLocaleString()}</h4>
+      </div></div></div>
+      <div class="col-md-2"><div class="card text-center"><div class="card-body">
+        <h6>Cost</h6><h4 class="text-warning">₦${totalCost.toLocaleString()}</h4>
+      </div></div></div>
+      <div class="col-md-2"><div class="card text-center"><div class="card-body">
+        <h6>Returns</h6><h4 class="text-danger">₦${totalReturns.toLocaleString()}</h4>
+      </div></div></div>
+      <div class="col-md-2"><div class="card text-center"><div class="card-body">
+        <h6>Gross Profit</h6><h4 class="text-info">₦${grossProfit.toLocaleString()}</h4>
+        <small>Margin: ${margin}%</small>
+      </div></div></div>
+      <div class="col-md-2"><div class="card text-center border-danger"><div class="card-body">
+        <h6>CAC 7.5%</h6><h4 class="text-danger">₦${cacFee.toLocaleString()}</h4>
+      </div></div></div>
+      <div class="col-md-2"><div class="card text-center border-success"><div class="card-body">
+        <h6>Net Profit</h6><h4 class="text-success">₦${netProfit.toLocaleString()}</h4>
+        <small>After CAC</small>
+      </div></div></div>
+    </div>
+
+    <div class="row">
+      <div class="col-md-6">
+        <div class="card mb-3"><div class="card-header bg-success text-white">🔥 Top 5 Hot Models</div>
+        <div class="card-body">
+          ${topModels.length? topModels.map(([m,c]) => `<div class="d-flex justify-content-between border-bottom py-1"><span>${m}</span><b>${c} sold</b></div>`).join('') : '<p class="text-muted">No sales yet</p>'}
+        </div></div>
+      </div>
+      <div class="col-md-6">
+        <div class="card mb-3"><div class="card-header bg-danger text-white">💀 Worst 5 Models</div>
+        <div class="card-body">
+          ${worstModels.length? worstModels.map(([m,c]) => `<div class="d-flex justify-content-between border-bottom py-1"><span>${m}</span><b>${c} returned</b></div>`).join('') : '<p class="text-muted">No returns yet</p>'}
+        </div></div>
+      </div>
+    </div>
+
+    <div class="card"><div class="card-header bg-warning">⚠️ Low Stock Alert (<=10)</div>
+      <div class="card-body">
+        ${lowStock.length? lowStock.map(i => `<span class="badge bg-danger m-1">${i.model} - ${i.qty} pcs | ${i.supplier || 'No supplier'}</span>`).join('') : '<p class="text-muted">All stock good</p>'}
+      </div>
+    </div>`
+  }
+
+  function renderStock() {
+    return `
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h3>🔒 Stock Management - Manager Only</h3>
+      <button onclick="lockManager()" class="btn btn-sm btn-outline-warning">Lock Stock</button>
+    </div>
+
+    <div class="card mb-3"><div class="card-header">Add New Stock</div><div class="card-body">
+      <div class="row g-2">
+        <div class="col-md-2"><input id="sModel" class="form-control" placeholder="Model" required></div>
+        <div class="col-md-2"><input id="sCategory" class="form-control" placeholder="Category" required></div>
+        <div class="col-md-2"><input id="sQty" type="number" class="form-control" placeholder="Qty" required></div>
+        <div class="col-md-2"><input id="sCost" type="number" class="form-control" placeholder="Cost Price" required></div>
+        <div class="col-md-2"><input id="sSell" type="number" class="form-control" placeholder="Sell Price" required></div>
+        <div class="col-md-2"><input id="sSupplier" class="form-control" placeholder="Supplier"></div>
+        <div class="col-12"><button onclick="addStock()" class="btn btn-success">Add Stock</button></div>
+      </div>
+    </div></div>
+
+    <table class="table table-striped table-hover">
+      <thead class="table-dark"><tr><th>Model</th><th>Category</th><th>Supplier</th><th>Qty</th><th>Cost</th><th>Sell</th><th>Profit/Unit</th><th>Action</th></tr></thead>
+      <tbody>
+        ${state.stock.map((item, i) => `
+          <tr class="${item.qty <= 10? 'low-stock' : ''}">
+            <td><b>${item.model}</b></td>
+            <td>${item.category}</td>
+            <td>${item.supplier || '-'}</td>
+            <td>${item.qty}</td>
+            <td>₦${item.cost_price.toLocaleString()}</td>
+            <td>₦${item.sell_price.toLocaleString()}</td>
+            <td class="text-success">₦${(item.sell_price - item.cost_price).toLocaleString()}</td>
+            <td><button onclick="deleteStock(${item.id})" class="btn btn-sm btn-danger">Del</button></td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>`
+  }
+
+  function renderSales() {
+    return `
+    <h3>Sales Management</h3>
+    <div id="saleAlert"></div>
+
+    <div class="card mb-3"><div class="card-header bg-success text-white">Record New Sale</div><div class="card-body">
+      <div class="row g-2">
+        <div class="col-md-4">
+          <label>Select Model</label>
+          <select id="saleModel" class="form-select">
+            <option value="">-- Select --</option>
+            ${state.stock.filter(i => i.qty > 0).map(i => `<option value="${i.id}">${i.model} - ₦${i.sell_price.toLocaleString()} | Stock: ${i.qty}</option>`).join('')}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label>Quantity</label>
+          <input id="saleQty" type="number" class="form-control" placeholder="Qty" min="1">
+        </div>
+        <div class="col-md-3">
+          <label>Customer Name</label>
+          <input id="saleCustomer" class="form-control" placeholder="Customer">
+        </div>
+        <div class="col-md-3">
+          <label>&nbsp;</label>
+          <button onclick="addSale()" class="btn btn-success w-100">Record Sale</button>
+        </div>
+      </div>
+    </div></div>
+
+    <h5>Recent Sales</h5>
+    <table class="table table-striped">
+      <thead class="table-dark"><tr><th>Date</th><th>Model</th><th>Customer</th><th>Qty</th><th>Unit Price</th><th>Total</th><th>Profit</th><th>Action</th></tr></thead>
+      <tbody>
+        ${state.sales.slice(-20).reverse().map(s => `
+          <tr>
+            <td>${s.sold_at.split('T')[0]}</td>
+            <td>${s.model}</td>
+            <td>${s.customer}</td>
+            <td>${s.qty_sold}</td>
+            <td>₦${s.sell_price.toLocaleString()}</td>
+            <td><b>₦${s.total_price.toLocaleString()}</b></td>
+            <td class="text-success">₦${((s.sell_price - s.cost_price) * s.qty_sold).toLocaleString()}</td>
+            <td><button onclick="printReceipt(${s.id})" class="btn btn-sm btn-primary">Print</button></td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>`
+  }
+
+  function renderReturns() {
+    return `
+    <h3>Returns Management</h3>
+    <div id="returnAlert"></div>
+
+    <div class="card mb-3"><div class="card-header bg-danger text-white">Process Return</div><div class="card-body">
+      <div class="row g-2">
+        <div class="col-md-4">
+          <label>Select Sold Item</label>
+          <select id="returnSale" class="form-select">
+            <option value="">-- Select Sale --</option>
+            ${state.sales.slice(-50).map(s => `<option value="${s.id}">${s.sold_at.split('T')[0]} - ${s.model} - ${s.customer} - ${s.qty_sold} pcs</option>`).join('')}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label>Return Qty</label>
+          <input id="returnQty" type="number" class="form-control" placeholder="Qty" min="1">
+        </div>
+        <div class="col-md-3">
+          <label>Reason</label>
+          <input id="returnReason" class="form-control" placeholder="Reason">
+        </div>
+        <div class="col-md-3">
+          <label>&nbsp;</label>
+          <button onclick="addReturn()" class="btn btn-danger w-100">Process Return</button>
+        </div>
+      </div>
+    </div></div>
+
+    <h5>Return History</h5>
+    <table class="table table-striped">
+      <thead class="table-dark"><tr><th>Date</th><th>Model</th><th>Customer</th><th>Qty</th><th>Amount</th><th>Reason</th></tr></thead>
+      <tbody>
+        ${state.returns.slice(-20).reverse().map(r => `
+          <tr>
+            <td>${r.returned_at.split('T')[0]}</td>
+            <td>${r.model}</td>
+            <td>${r.customer}</td>
+            <td>${r.qty}</td>
+            <td>₦${(r.sell_price * r.qty).toLocaleString()}</td>
+            <td>${r.reason}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>`
+  }
+
+  async function login() {
+    const u = document.getElementById('username').value
+    const p = document.getElementById('password').value
+    if (u === 'admin' && p === '1234') {
+      state.loggedIn = true
+      state.page = 'dashboard'
+      await loadData()
+      render()
+    } else {
+      document.getElementById('loginError').innerHTML = '<div class="alert alert-danger">Invalid credentials</div>'
+    }
+  }
+
+  function logout() {
+    state.loggedIn = false
+    state.managerUnlocked = false
+    state.page = 'login'
+    render()
+  }
+
+  function unlockManager() {
+    const pin = document.getElementById('pin').value
+    if (pin === MANAGER_PIN) {
+      state.managerUnlocked = true
+      render()
+    } else {
+      document.getElementById('pinError').innerHTML = '<div class="alert alert-danger">Invalid Manager PIN</div>'
+    }
+  }
+
+  function lockManager() {
+    state.managerUnlocked = false
+    nav('dashboard')
+  }
+
+  function nav(page) {
+    state.page = page
+    render()
+  }
+
+  function setDate(type, val) {
+    state[type === 'start'? 'startDate' : 'endDate'] = val
+    render()
+  }
+
+  async function loadData() {
+    const [stock, sales, returns] = await Promise.all([
+      supabase.from('inventory').select('*').order('id'),
+      supabase.from('sales').select('*').order('sold_at'),
+      supabase.from('returns').select('*').order('returned_at')
+    ])
+    state.stock = stock.data || []
+    state.sales = sales.data || []
+    state.returns = returns.data || []
+  }
+
+  async function addStock() {
+    const data = {
+      model: document.getElementById('sModel').value,
+      category: document.getElementById('sCategory').value,
+      qty: parseInt(document.getElementById('sQty').value),
+      cost_price: parseFloat(document.getElementById('sCost').value),
+      sell_price: parseFloat(document.getElementById('sSell').value),
+      supplier: document.getElementById('sSupplier').value
+    }
+    if (!data.model ||!data.category ||!data.qty ||!data.cost_price ||!data.sell_price) return alert('Fill all required fields')
+    await supabase.from('inventory').insert(data)
+    await loadData()
+    render()
+  }
+
+  async function deleteStock(id) {
+    if (!confirm('Delete this item?')) return
+    await supabase.from('inventory').delete().eq('id', id)
+    await loadData()
+    render()
+  }
+
+  async function addSale() {
+    const itemId = parseInt(document.getElementById('saleModel').value)
+    const qty = parseInt(document.getElementById('saleQty').value)
+    const customer = document.getElementById('saleCustomer').value
+
+    if (!itemId ||!qty ||!customer) return alert('Fill all fields')
+
+    const item = state.stock.find(i => i.id === itemId)
+    if (item.qty < qty) return alert(`Not enough stock. Only ${item.qty} available`)
+
+    const sale = {
+      item_id: itemId,
+      model: item.model,
+      customer: customer,
+      qty_sold: qty,
+      cost_price: item.cost_price,
+      sell_price: item.sell_price,
+      total_price: item.sell_price * qty
+    }
+
+    await supabase.from('sales').insert(sale)
+    await supabase.from('inventory').update({ qty: item.qty - qty }).eq('id', itemId)
+    await loadData()
+    render()
+  }
+
+  async function addReturn() {
+    const saleId = parseInt(document.getElementById('returnSale').value)
+    const qty = parseInt(document.getElementById('returnQty').value)
+    const reason = document.getElementById('returnReason').value
+
+    if (!saleId ||!qty ||!reason) return alert('Fill all fields')
+
+    const sale = state.sales.find(s => s.id === saleId)
+    if (qty > sale.qty_sold) return alert(`Cannot return ${qty}. Only ${sale.qty_sold} was sold`)
+
+    const ret = {
+      model: sale.model,
+      customer: sale.customer,
+      qty: qty,
+      cost_price: sale.cost_price,
+      sell_price: sale.sell_price,
+      reason: reason
+    }
+
+    await supabase.from('returns').insert(ret)
+
+    const item = state.stock.find(i => i.model === sale.model)
+    if (item) {
+      await supabase.from('inventory').update({ qty: item.qty + qty }).eq('id', item.id)
+    } else {
+      await supabase.from('inventory').insert({
+        model: sale.model, category: 'Returned', qty: qty,
+        cost_price: sale.cost_price, sell_price: sale.sell_price, supplier: 'Return'
+      })
+    }
+
+    await loadData()
+    render()
+  }
+
+  function printReceipt(id) {
+    const s = state.sales.find(x => x.id === id)
+    const w = window.open('', '', 'width=400,height=600')
+    w.document.write(`
+      <!DOCTYPE html><html><head><title>Receipt</title>
+      <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+      <style>@media print {.no-print {display:none}}</style>
+      </head><body>
+      <div class="container mt-4" style="max-width:400px;border:2px dashed #000;padding:20px;">
+        <div class="text-center mb-3">
+          <h3>${COMPANY_NAME}</h3>
+          <p class="mb-1">SALES RECEIPT</p>
+          <small>${s.sold_at.split('T')[0]} ${s.sold_at.split('T')[1].split('.')[0]}</small>
+        </div><hr>
+        <div class="mb-2"><b>Customer:</b> ${s.customer}</div>
+        <div class="mb-2"><b>Item:</b> ${s.model}</div>
+        <div class="mb-2"><b>Quantity:</b> ${s.qty_sold}</div>
+        <div class="mb-2"><b>Unit Price:</b> ₦${s.sell_price.toLocaleString()}</div>
+        <hr>
+        <div class="d-flex justify-content-between mb-2">
+          <h5>TOTAL:</h5><h5>₦${s.total_price.toLocaleString()}</h5>
+        </div><hr>
+        <div class="text-center mt-3">
+          <p><small>Thank you for your patronage!</small></p>
+          <p><small>${COMPANY_NAME}</small></p>
+        </div>
+        <div class="text-center mt-3 no-print">
+          <button onclick="window.print()" class="btn btn-primary">Print</button>
+        </div>
+      </div></body></html>
+    `)
+    w.document.close()
+  }
+
+  function exportCSV(type) {
+    let data, filename
+    if (type === 'stock') {
+      data = state.stock
+      filename = `stock_${new Date().toISOString().split('T')[0]}.csv`
+    } else if (type === 'sales') {
+      data = state.sales.filter(s => {
+        const d = s.sold_at.split('T')[0]
+        return d >= state.startDate && d <= state.endDate
+      })
+      filename = `sales_${state.startDate}_to_${state.endDate}.csv`
+    } else {
+      data = state.returns.filter(r => {
+        const d = r.returned_at.split('T')[0]
+        return d >= state.startDate && d <= state.endDate
+      })
+      filename = `returns_${state.startDate}_to_${state.endDate}.csv`
+    }
+
+    if (!data.length) return alert('No data to export')
+
+    const headers = Object.keys(data[0]).join(',')
+    const rows = data.map(r => Object.values(r).join(','))
+    const csv = [headers,...rows].join('\n')
+
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    a.click()
+  }
+
+  render()
+</script>
+</body>
+</html>
