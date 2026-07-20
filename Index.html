@@ -480,4 +480,74 @@
         supplier: document.getElementById('stk-supplier').value
       });
       e.target.reset();
-      s
+      saveDB();
+    });
+
+    document.getElementById('sales-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const modelName = document.getElementById('sale-item').value;
+      const qty = parseInt(document.getElementById('sale-qty').value);
+      const customer = document.getElementById('sale-customer').value;
+
+      const item = db.stock.find(s => s.model === modelName);
+      if (!item || item.qty < qty) {
+        alert("Insufficient stock available!");
+        return;
+      }
+
+      item.qty -= qty;
+      db.sales.push({
+        model: modelName,
+        qty: qty,
+        cost_price: item.cost_price,
+        sell_price: item.sell_price,
+        customer: customer,
+        date: new Date().toISOString().split('T')[0]
+      });
+
+      e.target.reset();
+      saveDB();
+    });
+
+    document.getElementById('returns-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const saleIdx = parseInt(document.getElementById('return-sale-idx').value);
+      const qty = parseInt(document.getElementById('return-qty').value);
+      const reason = document.getElementById('return-reason').value;
+
+      const sale = db.sales[saleIdx];
+      if (!sale || qty > sale.qty) {
+        alert("Invalid return quantity!");
+        return;
+      }
+
+      const item = db.stock.find(s => s.model === sale.model);
+      if (item) item.qty += qty;
+
+      db.returns.push({
+        model: sale.model,
+        qty: qty,
+        cost_price: sale.cost_price,
+        sell_price: sale.sell_price,
+        customer: sale.customer,
+        reason: reason,
+        date: new Date().toISOString().split('T')[0]
+      });
+
+      e.target.reset();
+      saveDB();
+    });
+
+    function deleteStock(index) {
+      if (confirm("Delete this stock item?")) {
+        db.stock.splice(index, 1);
+        saveDB();
+      }
+    }
+
+    // Initial Load
+    renderAll();
+    navigateTo('login');
+  </script>
+</body>
+</html>
