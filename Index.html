@@ -684,7 +684,6 @@
       renderSales();
       renderReturns();
       renderSupplierReturns();
-      populateQualityOptions();
     }
 
     function renderDashboard() {
@@ -726,7 +725,7 @@
                (item.supplier && item.supplier.toLowerCase().includes(q));
       });
 
-      // Calculate Total Units and Total Cost Value (Cost Price * Qty)
+      // Calculate Total Units and Total Cost Value
       const totalUnits = db.stock.reduce((sum, s) => sum + (parseInt(s.qty) || 0), 0);
       const totalCostValue = db.stock.reduce((sum, s) => sum + ((parseInt(s.qty) || 0) * (parseInt(s.cost_price) || 0)), 0);
 
@@ -764,47 +763,37 @@
         const subInfo = s.subcat ? ` [${s.subcat}]` : '';
         return `<option value="${s.model}">${s.model}${subInfo} (Stock: ${s.qty})</option>`;
       }).join('');
-
-      populateQualityOptions();
-    }
-
-    function populateQualityOptions() {
-      const qualitySelect = document.getElementById('sale-quality');
-      const qualities = new Set();
-      
-      db.stock.forEach(s => {
-        if (s.subcat && s.subcat.trim() !== '') qualities.add(s.subcat.trim());
-      });
-      qualities.add('Standard');
-
-      const currentValue = qualitySelect.value;
-      qualitySelect.innerHTML = '<option value="">-- Select Quality --</option>' +
-        Array.from(qualities).map(q => `<option value="${q}">${q}</option>`).join('');
-      
-      if (currentValue) qualitySelect.value = currentValue;
     }
 
     function autoFillSaleDetails() {
       const selectedModel = document.getElementById('sale-item').value.trim();
       const qualitySelect = document.getElementById('sale-quality');
-      
+      const priceInput = document.getElementById('sale-price');
+
       if (!selectedModel) {
-        document.getElementById('sale-price').value = '';
+        qualitySelect.innerHTML = '<option value="">-- Select Quality --</option>';
+        priceInput.value = '';
         return;
       }
 
+      // Filter stock items matching the selected model
       const matchingItems = db.stock.filter(s => s.model.toLowerCase() === selectedModel.toLowerCase());
 
       if (matchingItems.length > 0) {
-        const currentQuality = qualitySelect.value;
-        let matchedItem = matchingItems.find(s => (s.subcat || 'Standard').toLowerCase() === currentQuality.toLowerCase());
-        
-        if (!matchedItem) {
-          matchedItem = matchingItems[0];
-          qualitySelect.value = matchedItem.subcat || 'Standard';
-        }
+        // Extract unique qualities specifically available for this good
+        const availableQualities = [...new Set(matchingItems.map(s => s.subcat || 'Standard'))];
 
-        document.getElementById('sale-price').value = matchedItem.sell_price;
+        qualitySelect.innerHTML = availableQualities.map(q => `<option value="${q}">${q}</option>`).join('');
+
+        // Automatically set price for the first available quality
+        const firstQuality = availableQualities[0];
+        const matchedItem = matchingItems.find(s => (s.subcat || 'Standard') === firstQuality);
+        if (matchedItem) {
+          priceInput.value = matchedItem.sell_price;
+        }
+      } else {
+        qualitySelect.innerHTML = '<option value="">-- Select Quality --</option>';
+        priceInput.value = '';
       }
     }
 
@@ -812,7 +801,7 @@
       const selectedModel = document.getElementById('sale-item').value.trim();
       const selectedQuality = document.getElementById('sale-quality').value;
 
-      if (selectedModel) {
+      if (selectedModel && selectedQuality) {
         const matchedItem = db.stock.find(s => 
           s.model.toLowerCase() === selectedModel.toLowerCase() && 
           (s.subcat || 'Standard').toLowerCase() === selectedQuality.toLowerCase()
@@ -820,9 +809,6 @@
 
         if (matchedItem) {
           document.getElementById('sale-price').value = matchedItem.sell_price;
-        } else {
-          const fallbackItem = db.stock.find(s => s.model.toLowerCase() === selectedModel.toLowerCase());
-          if (fallbackItem) document.getElementById('sale-price').value = fallbackItem.sell_price;
         }
       }
     });
@@ -934,8 +920,9 @@
       emailBody += "-----------------------------------------------------------------------\n";
       emailBody += `Total Revenue: ₦${totalAmount.toLocaleString()}\n`;
 
-      const mailtoUrl = `mailto:?subject=${encodeURIComponent("SKY MODERNIZE - Sales History Report")}&body=${encodeURIComponent(emailBody)}`;
-      window.location.href = mailtoUrl;
+      // Direct Web Compose link for Gmail
+      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent("SKY MODERNIZE - Sales History Report")}&body=${encodeURIComponent(emailBody)}`;
+      window.open(gmailUrl, '_blank');
     }
 
     function populateReturnSaleDropdown(filterQuery = "") {
@@ -1120,6 +1107,7 @@
       });
 
       e.target.reset();
+      document.getElementById('sale-quality').innerHTML = '<option value="">-- Select Quality --</option>';
       saveDB();
     });
 
