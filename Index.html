@@ -19,7 +19,7 @@
 
   <nav id="main-nav" class="navbar navbar-expand-lg navbar-dark bg-dark mb-4 no-print" style="display: none;">
     <div class="container-fluid">
-      <a class="navbar-brand fw-bold" href="#">SKY MODERNIZE LTD</a>
+      <a class="navbar-brand fw-bold" href="#">SKY MODERNIZE</a>
       <div class="d-flex gap-2">
         <button class="btn btn-sm btn-outline-light" onclick="navigateTo('dashboard')">Dashboard</button>
         <button class="btn btn-sm btn-outline-light" onclick="navigateTo('stock')">Stock 🔒</button>
@@ -168,7 +168,7 @@
 
       <table class="table table-striped align-middle">
         <thead class="table-dark">
-          <tr><th>Model</th><th>Category</th><th>Supplier</th><th>Qty</th><th>Cost</th><th>Sell</th><th>Action</th></tr>
+          <tr><th>Model</th><th>Category</th><th>Supplier</th><th>Qty</th><th>Cost</th><th>Sell</th><th>Actions</th></tr>
         </thead>
         <tbody id="stock-table-body"></tbody>
       </table>
@@ -246,6 +246,52 @@
 
   </div>
 
+  <div class="modal fade" id="editStockModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header bg-dark text-white">
+          <h5 class="modal-title">Edit Stock Details</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form id="edit-stock-form">
+          <div class="modal-body">
+            <input type="hidden" id="edit-stk-index">
+            <div class="mb-2">
+              <label class="form-label">Model</label>
+              <input id="edit-stk-model" class="form-control" required>
+            </div>
+            <div class="mb-2">
+              <label class="form-label">Category</label>
+              <input id="edit-stk-cat" class="form-control" required>
+            </div>
+            <div class="mb-2">
+              <label class="form-label">Quantity</label>
+              <input id="edit-stk-qty" type="number" class="form-control" required>
+            </div>
+            <div class="mb-2">
+              <label class="form-label">Cost Price (₦)</label>
+              <input id="edit-stk-cost" type="number" class="form-control" required>
+            </div>
+            <div class="mb-2">
+              <label class="form-label">Selling Price (₦)</label>
+              <input id="edit-stk-sell" type="number" class="form-control" required>
+            </div>
+            <div class="mb-2">
+              <label class="form-label">Supplier</label>
+              <input id="edit-stk-supplier" class="form-control">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script>
     // --- CREDENTIALS (PERSISTED IN LOCALSTORAGE) ---
     const AUTH_KEY = "sky_modernize_auth";
@@ -338,7 +384,6 @@
       const confirmPwd = document.getElementById('pwd-confirm').value;
       const alertBox = document.getElementById('password-alert');
 
-      // 1. Verify Manager PIN
       if (managerPin !== MANAGER_PIN) {
         alertBox.className = "alert alert-danger py-2";
         alertBox.innerText = "Invalid Manager PIN.";
@@ -346,7 +391,6 @@
         return;
       }
 
-      // 2. Verify Current Password
       if (current !== auth.password) {
         alertBox.className = "alert alert-danger py-2";
         alertBox.innerText = "Current password is incorrect.";
@@ -354,7 +398,6 @@
         return;
       }
 
-      // 3. Verify New Password Confirmation
       if (newPwd !== confirmPwd) {
         alertBox.className = "alert alert-danger py-2";
         alertBox.innerText = "New passwords do not match.";
@@ -362,7 +405,6 @@
         return;
       }
 
-      // Save New Password
       auth.password = newPwd;
       saveAuth();
 
@@ -428,126 +470,6 @@
           <td>${item.qty}</td>
           <td>₦${item.cost_price.toLocaleString()}</td>
           <td>₦${item.sell_price.toLocaleString()}</td>
-          <td><button class="btn btn-sm btn-danger" onclick="deleteStock(${index})">Delete</button></td>
-        </tr>
-      `).join('');
-
-      const saleSelect = document.getElementById('sale-item');
-      saleSelect.innerHTML = '<option value="">-- Select Model --</option>' + 
-        db.stock.map(s => `<option value="${s.model}">${s.model} - ₦${s.sell_price.toLocaleString()} (Stock: ${s.qty})</option>`).join('');
-    }
-
-    function renderSales() {
-      const tbody = document.getElementById('sales-table-body');
-      tbody.innerHTML = db.sales.slice().reverse().map(sale => `
-        <tr>
-          <td>${sale.date}</td>
-          <td>${sale.model}</td>
-          <td>${sale.customer}</td>
-          <td>${sale.qty}</td>
-          <td>₦${sale.sell_price.toLocaleString()}</td>
-          <td><b>₦${(sale.sell_price * sale.qty).toLocaleString()}</b></td>
-        </tr>
-      `).join('');
-
-      const returnSelect = document.getElementById('return-sale-idx');
-      returnSelect.innerHTML = '<option value="">-- Select Sale --</option>' +
-        db.sales.map((s, idx) => `<option value="${idx}">${s.date} - ${s.model} (${s.customer}) - ${s.qty} pcs</option>`).join('');
-    }
-
-    function renderReturns() {
-      const tbody = document.getElementById('returns-table-body');
-      tbody.innerHTML = db.returns.slice().reverse().map(ret => `
-        <tr>
-          <td>${ret.date}</td>
-          <td>${ret.model}</td>
-          <td>${ret.customer}</td>
-          <td>${ret.qty}</td>
-          <td>${ret.reason}</td>
-        </tr>
-      `).join('');
-    }
-
-    // --- FORM ACTIONS ---
-    document.getElementById('stock-form').addEventListener('submit', (e) => {
-      e.preventDefault();
-      db.stock.push({
-        model: document.getElementById('stk-model').value,
-        category: document.getElementById('stk-cat').value,
-        qty: parseInt(document.getElementById('stk-qty').value),
-        cost_price: parseInt(document.getElementById('stk-cost').value),
-        sell_price: parseInt(document.getElementById('stk-sell').value),
-        supplier: document.getElementById('stk-supplier').value
-      });
-      e.target.reset();
-      saveDB();
-    });
-
-    document.getElementById('sales-form').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const modelName = document.getElementById('sale-item').value;
-      const qty = parseInt(document.getElementById('sale-qty').value);
-      const customer = document.getElementById('sale-customer').value;
-
-      const item = db.stock.find(s => s.model === modelName);
-      if (!item || item.qty < qty) {
-        alert("Insufficient stock available!");
-        return;
-      }
-
-      item.qty -= qty;
-      db.sales.push({
-        model: modelName,
-        qty: qty,
-        cost_price: item.cost_price,
-        sell_price: item.sell_price,
-        customer: customer,
-        date: new Date().toISOString().split('T')[0]
-      });
-
-      e.target.reset();
-      saveDB();
-    });
-
-    document.getElementById('returns-form').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const saleIdx = parseInt(document.getElementById('return-sale-idx').value);
-      const qty = parseInt(document.getElementById('return-qty').value);
-      const reason = document.getElementById('return-reason').value;
-
-      const sale = db.sales[saleIdx];
-      if (!sale || qty > sale.qty) {
-        alert("Invalid return quantity!");
-        return;
-      }
-
-      const item = db.stock.find(s => s.model === sale.model);
-      if (item) item.qty += qty;
-
-      db.returns.push({
-        model: sale.model,
-        qty: qty,
-        cost_price: sale.cost_price,
-        sell_price: sale.sell_price,
-        customer: sale.customer,
-        reason: reason,
-        date: new Date().toISOString().split('T')[0]
-      });
-
-      e.target.reset();
-      saveDB();
-    });
-
-    function deleteStock(index) {
-      if (confirm("Delete this stock item?")) {
-        db.stock.splice(index, 1);
-        saveDB();
-      }
-    }
-
-    // Initial Load
-    renderAll();
-    navigateTo('login');
-  </script>
-</body>
-</html>
+          <td>
+            <button class="btn btn-sm btn-primary me-1" onclick="openEditModal(${index})">Edit</button>
+            <button class="btn bt
