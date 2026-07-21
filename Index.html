@@ -8,11 +8,17 @@
   <style>
     .page { display: none; }
     .page.active { display: block; }
-    .receipt { max-width: 400px; margin: auto; border: 2px dashed #000; padding: 20px; }
+    
     @media print {
-      .no-print { display: none; }
-      body { font-size: 12pt; }
+      .no-print, nav, button, .card-header, form, .input-group, .modal { display: none !important; }
+      body { font-size: 11pt; background-color: #fff !important; }
+      .container { max-width: 100% !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
+      .card { border: none !important; shadow: none !important; }
+      .table { width: 100% !important; border-collapse: collapse !important; }
+      .table th, .table td { border: 1px solid #000 !important; padding: 6px !important; }
+      .print-title { display: block !important; text-align: center; margin-bottom: 20px; }
     }
+    .print-title { display: none; }
   </style>
 </head>
 <body class="bg-light">
@@ -39,7 +45,7 @@
         <div class="col-12 col-sm-8 col-md-6 col-lg-4">
           <div class="card bg-dark text-white shadow-lg border-0 rounded-3">
             <div class="card-body p-4">
-              <h3 class="text-center mb-2">SKY MODERNIZE LTD</h3>
+              <h3 class="text-center mb-2">SKY MODERNIZE</h3>
               <p class="text-center text-secondary mb-4">Inventory Management System</p>
               
               <div id="login-alert" class="alert alert-danger py-2 d-none" role="alert"></div>
@@ -149,10 +155,29 @@
     <div id="page-stock" class="page">
       <div class="d-flex justify-content-between align-items-center mb-3">
         <h3>🔒 Stock Management</h3>
-        <button class="btn btn-sm btn-outline-warning" onclick="lockStock()">Lock Stock</button>
+        <button class="btn btn-sm btn-outline-warning no-print" onclick="lockStock()">Lock Stock</button>
       </div>
 
-      <div class="card mb-4">
+      <div class="row g-3 mb-4">
+        <div class="col-md-6">
+          <div class="card text-center border-primary shadow-sm">
+            <div class="card-body py-2">
+              <h6 class="text-muted mb-1">Total Goods in Stock</h6>
+              <h3 class="text-primary fw-bold mb-0" id="total-stock-units">0 pcs</h3>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="card text-center border-success shadow-sm">
+            <div class="card-body py-2">
+              <h6 class="text-muted mb-1">Total Stock Selling Value</h6>
+              <h3 class="text-success fw-bold mb-0" id="total-stock-value">₦0</h3>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mb-4 no-print">
         <div class="card-header fw-bold">Add New Stock</div>
         <div class="card-body">
           <form id="stock-form" class="row g-2">
@@ -168,7 +193,7 @@
         </div>
       </div>
 
-      <div class="row mb-3 align-items-center">
+      <div class="row mb-3 align-items-center no-print">
         <div class="col-md-6 col-lg-5">
           <div class="input-group">
             <input type="text" id="stock-search-input" class="form-control" placeholder="Search stock (Model, Category, Quality, Supplier)..." onkeyup="if(event.key==='Enter') searchStock()">
@@ -180,20 +205,33 @@
 
       <table class="table table-striped align-middle">
         <thead class="table-dark">
-          <tr><th>Model</th><th>Category</th><th>Sub Category (Quality)</th><th>Supplier</th><th>Qty</th><th>Cost</th><th>Sell</th><th>Actions</th></tr>
+          <tr><th>Model</th><th>Category</th><th>Sub Category (Quality)</th><th>Supplier</th><th>Qty</th><th>Cost</th><th>Sell</th><th class="no-print">Actions</th></tr>
         </thead>
         <tbody id="stock-table-body"></tbody>
       </table>
     </div>
 
     <div id="page-sales" class="page">
-      <h3>Sales Management</h3>
-      <div class="card mb-4">
+      <div class="print-title">
+        <h2>SKY MODERNIZE SAVE TECHNOLOGY LTD</h2>
+        <h4>Sales History Report</h4>
+        <hr>
+      </div>
+
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3>Sales Management</h3>
+        <div class="no-print d-flex gap-2">
+          <button class="btn btn-outline-dark" onclick="window.print()">🖨️ Print Sales History</button>
+          <button class="btn btn-danger" onclick="sendSalesToGmail()">📧 Send to Gmail</button>
+        </div>
+      </div>
+
+      <div class="card mb-4 no-print">
         <div class="card-header bg-success text-white fw-bold">Record New Sale</div>
         <div class="card-body">
           <form id="sales-form" class="row g-2">
             <div class="col-md-4">
-              <label class="form-label">Search / Select Model</label>
+              <label class="form-label">Search / Select Model (With Quality & Price)</label>
               <input id="sale-item" class="form-control" list="sale-item-list" placeholder="Type model name to search..." required autocomplete="off">
               <datalist id="sale-item-list"></datalist>
             </div>
@@ -213,7 +251,7 @@
         </div>
       </div>
 
-      <div class="d-flex justify-content-between align-items-center mb-3">
+      <div class="d-flex justify-content-between align-items-center mb-3 no-print">
         <h5 class="mb-0">Recent Sales</h5>
         <div class="input-group" style="max-width: 400px;">
           <input type="text" id="sales-search-input" class="form-control form-control-sm" placeholder="Search sales (Model, Customer, Date)..." onkeyup="if(event.key==='Enter') searchSales()">
@@ -224,15 +262,25 @@
 
       <table class="table table-striped align-middle">
         <thead class="table-dark">
-          <tr><th>Date</th><th>Model</th><th>Customer</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr>
+          <tr><th>Date</th><th>Model</th><th>Customer</th><th>Qty</th><th>Unit Price</th><th>Total</th><th class="no-print">Action</th></tr>
         </thead>
         <tbody id="sales-table-body"></tbody>
       </table>
     </div>
 
     <div id="page-returns" class="page">
-      <h3>Customer Returns Management</h3>
-      <div class="card mb-4">
+      <div class="print-title">
+        <h2>SKY MODERNIZE SAVE TECHNOLOGY LTD</h2>
+        <h4>Customer Returns History Report</h4>
+        <hr>
+      </div>
+
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3>Customer Returns Management</h3>
+        <button class="btn btn-outline-dark no-print" onclick="window.print()">🖨️ Print Returns History</button>
+      </div>
+
+      <div class="card mb-4 no-print">
         <div class="card-header bg-danger text-white fw-bold">Process Customer Return</div>
         <div class="card-body">
           <form id="returns-form" class="row g-2">
@@ -261,7 +309,7 @@
         </div>
       </div>
 
-      <div class="d-flex justify-content-between align-items-center mb-3">
+      <div class="d-flex justify-content-between align-items-center mb-3 no-print">
         <h5 class="mb-0">Customer Return History</h5>
         <div class="input-group" style="max-width: 400px;">
           <input type="text" id="returns-search-input" class="form-control form-control-sm" placeholder="Search returns (Model, Customer, Reason)..." onkeyup="if(event.key==='Enter') searchReturns()">
@@ -280,7 +328,7 @@
 
     <div id="page-supplier-returns" class="page">
       <h3>Supplier Returns Management</h3>
-      <div class="card mb-4 border-warning">
+      <div class="card mb-4 border-warning no-print">
         <div class="card-header bg-warning text-dark fw-bold">Process Supplier Return</div>
         <div class="card-body">
           <form id="supplier-returns-form" class="row g-2">
@@ -315,7 +363,7 @@
         </div>
       </div>
 
-      <div class="d-flex justify-content-between align-items-center mb-3">
+      <div class="d-flex justify-content-between align-items-center mb-3 no-print">
         <h5 class="mb-0">Supplier Return History</h5>
         <div class="input-group" style="max-width: 400px;">
           <input type="text" id="sup-returns-search-input" class="form-control form-control-sm" placeholder="Search supplier returns (Model, Supplier, Status)..." onkeyup="if(event.key==='Enter') searchSupplierReturns()">
@@ -326,7 +374,7 @@
 
       <table class="table table-striped align-middle">
         <thead class="table-dark">
-          <tr><th>Date</th><th>Model</th><th>Supplier</th><th>Qty</th><th>Reason</th><th>Status</th><th>Action</th></tr>
+          <tr><th>Date</th><th>Model</th><th>Supplier</th><th>Qty</th><th>Reason</th><th>Status</th><th class="no-print">Action</th></tr>
         </thead>
         <tbody id="supplier-returns-table-body"></tbody>
       </table>
@@ -617,6 +665,13 @@
                (item.supplier && item.supplier.toLowerCase().includes(q));
       });
 
+      // Calculate Total Units and Total Selling Value
+      const totalUnits = db.stock.reduce((sum, s) => sum + (parseInt(s.qty) || 0), 0);
+      const totalValue = db.stock.reduce((sum, s) => sum + ((parseInt(s.qty) || 0) * (parseInt(s.sell_price) || 0)), 0);
+
+      document.getElementById('total-stock-units').innerText = `${totalUnits.toLocaleString()} pcs`;
+      document.getElementById('total-stock-value').innerText = `₦${totalValue.toLocaleString()}`;
+
       if (filteredStock.length === 0) {
         tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-3">No matching stock items found</td></tr>`;
       } else {
@@ -629,7 +684,7 @@
             <td>${item.qty}</td>
             <td>₦${item.cost_price.toLocaleString()}</td>
             <td>₦${item.sell_price.toLocaleString()}</td>
-            <td>
+            <td class="no-print">
               <button class="btn btn-sm btn-primary me-1" onclick="openEditModal(${item.originalIndex})">Edit</button>
               <button class="btn btn-sm btn-danger" onclick="deleteStock(${item.originalIndex})">Delete</button>
             </td>
@@ -637,11 +692,11 @@
         `).join('');
       }
 
-      // Populate Datalist for Sales
+      // Populate Datalist for Sales with Sub-category / Quality and Price
       const saleDatalist = document.getElementById('sale-item-list');
       saleDatalist.innerHTML = db.stock.map(s => {
-        const subInfo = s.subcat ? ` [${s.subcat}]` : '';
-        return `<option value="${s.model}">${s.model}${subInfo} - ₦${s.sell_price.toLocaleString()} (Stock: ${s.qty})</option>`;
+        const qualityStr = s.subcat ? ` | Quality: ${s.subcat}` : '';
+        return `<option value="${s.model}">${s.model}${qualityStr} | Price: ₦${s.sell_price.toLocaleString()} (Stock: ${s.qty})</option>`;
       }).join('');
 
       // Populate Datalist for Supplier Returns
@@ -663,7 +718,7 @@
     function renderSales(filterQuery = "") {
       const tbody = document.getElementById('sales-table-body');
       
-      const filteredSales = db.sales.slice().reverse().filter(sale => {
+      const filteredSales = db.sales.slice().reverse().map((sale, revIdx) => ({ ...sale, revIdx })).filter(sale => {
         if (!filterQuery) return true;
         const q = filterQuery.toLowerCase();
         return (sale.model && sale.model.toLowerCase().includes(q)) ||
@@ -672,7 +727,7 @@
       });
 
       if (filteredSales.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">No matching sales records found</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-3">No matching sales records found</td></tr>`;
       } else {
         tbody.innerHTML = filteredSales.map(sale => `
           <tr>
@@ -682,11 +737,82 @@
             <td>${sale.qty}</td>
             <td>₦${sale.sell_price.toLocaleString()}</td>
             <td><b>₦${(sale.sell_price * sale.qty).toLocaleString()}</b></td>
+            <td class="no-print">
+              <button class="btn btn-sm btn-outline-primary" onclick="printReceipt('${sale.date}', '${sale.model}', '${sale.customer}', ${sale.qty}, ${sale.sell_price})">🧾 Receipt</button>
+            </td>
           </tr>
         `).join('');
       }
 
       populateReturnSaleDropdown();
+    }
+
+    function printReceipt(date, model, customer, qty, price) {
+      const total = qty * price;
+      const receiptWindow = window.open('', '_blank', 'width=400,height=600');
+      receiptWindow.document.write(`
+        <html>
+          <head>
+            <title>Receipt - SKY MODERNIZE</title>
+            <style>
+              body { font-family: monospace; padding: 20px; font-size: 12px; }
+              .center { text-align: center; }
+              hr { border-top: 1px dashed #000; }
+              .flex { display: flex; justify-content: space-between; }
+            </style>
+          </head>
+          <body>
+            <div class="center">
+              <h3>SKY MODERNIZE SAVE TECHNOLOGY LTD</h3>
+              <p>Official Sales Receipt</p>
+            </div>
+            <hr>
+            <p><b>Date:</b> ${date}</p>
+            <p><b>Customer:</b> ${customer}</p>
+            <hr>
+            <p><b>Item:</b> ${model}</p>
+            <p><b>Qty:</b> ${qty}</p>
+            <p><b>Unit Price:</b> ₦${price.toLocaleString()}</p>
+            <hr>
+            <div class="flex">
+              <h4>Total Paid:</h4>
+              <h4>₦${total.toLocaleString()}</h4>
+            </div>
+            <hr>
+            <div class="center">
+              <p>Thank you for your business!</p>
+            </div>
+            <script>
+              window.onload = function() { window.print(); window.close(); }
+            <\/script>
+          </body>
+        </html>
+      `);
+      receiptWindow.document.close();
+    }
+
+    function sendSalesToGmail() {
+      if (db.sales.length === 0) {
+        alert("No sales records available to send!");
+        return;
+      }
+
+      let emailBody = "SKY MODERNIZE SAVE TECHNOLOGY LTD - Sales Report\n\n";
+      emailBody += "Date | Item | Customer | Qty | Total Price\n";
+      emailBody += "--------------------------------------------------------\n";
+
+      let totalAmount = 0;
+      db.sales.forEach(s => {
+        const itemTotal = s.sell_price * s.qty;
+        totalAmount += itemTotal;
+        emailBody += `${s.date} | ${s.model} | ${s.customer} | ${s.qty} pcs | ₦${itemTotal.toLocaleString()}\n`;
+      });
+
+      emailBody += "--------------------------------------------------------\n";
+      emailBody += `Total Revenue: ₦${totalAmount.toLocaleString()}\n`;
+
+      const mailtoUrl = `mailto:?subject=${encodeURIComponent("SKY MODERNIZE - Sales History Report")}&body=${encodeURIComponent(emailBody)}`;
+      window.location.href = mailtoUrl;
     }
 
     function populateReturnSaleDropdown(filterQuery = "") {
@@ -767,7 +893,7 @@
                   ${isSent ? '🚚 Sent Back' : '⏳ Pending'}
                 </span>
               </td>
-              <td>
+              <td class="no-print">
                 <button class="btn btn-sm ${isSent ? 'btn-outline-warning' : 'btn-success'}" onclick="toggleSupplierReturnStatus(${ret.originalIdx})">
                   ${isSent ? 'Mark Pending' : 'Mark Sent Back'}
                 </button>
@@ -839,9 +965,12 @@
 
     document.getElementById('sales-form').addEventListener('submit', (e) => {
       e.preventDefault();
-      const modelName = document.getElementById('sale-item').value.trim();
+      const rawInput = document.getElementById('sale-item').value.trim();
       const qty = parseInt(document.getElementById('sale-qty').value);
       const customer = document.getElementById('sale-customer').value;
+
+      // Extract model name if full datalist label was pasted
+      const modelName = rawInput.split(' | ')[0].trim();
 
       const item = db.stock.find(s => s.model.toLowerCase() === modelName.toLowerCase());
       if (!item) {
@@ -899,7 +1028,8 @@
 
     document.getElementById('supplier-returns-form').addEventListener('submit', (e) => {
       e.preventDefault();
-      const modelName = document.getElementById('sup-return-item').value.trim();
+      const rawInput = document.getElementById('sup-return-item').value.trim();
+      const modelName = rawInput.split(' [')[0].trim();
       const supplier = document.getElementById('sup-return-supplier').value;
       const qty = parseInt(document.getElementById('sup-return-qty').value);
       const status = document.getElementById('sup-return-status').value;
