@@ -157,7 +157,8 @@
           <form id="stock-form" class="row g-2">
             <div class="col-md-2"><input id="stk-model" class="form-control" placeholder="Model" required></div>
             <div class="col-md-2"><input id="stk-cat" class="form-control" placeholder="Category" required></div>
-            <div class="col-md-2"><input id="stk-qty" type="number" class="form-control" placeholder="Qty" required></div>
+            <div class="col-md-2"><input id="stk-subcat" class="form-control" placeholder="Sub Category / Quality"></div>
+            <div class="col-md-1"><input id="stk-qty" type="number" class="form-control" placeholder="Qty" required></div>
             <div class="col-md-2"><input id="stk-cost" type="number" class="form-control" placeholder="Cost Price" required></div>
             <div class="col-md-2"><input id="stk-sell" type="number" class="form-control" placeholder="Sell Price" required></div>
             <div class="col-md-2"><input id="stk-supplier" class="form-control" placeholder="Supplier"></div>
@@ -168,7 +169,7 @@
 
       <table class="table table-striped align-middle">
         <thead class="table-dark">
-          <tr><th>Model</th><th>Category</th><th>Supplier</th><th>Qty</th><th>Cost</th><th>Sell</th><th>Actions</th></tr>
+          <tr><th>Model</th><th>Category</th><th>Sub Category (Quality)</th><th>Supplier</th><th>Qty</th><th>Cost</th><th>Sell</th><th>Actions</th></tr>
         </thead>
         <tbody id="stock-table-body"></tbody>
       </table>
@@ -265,6 +266,10 @@
               <input id="edit-stk-cat" class="form-control" required>
             </div>
             <div class="mb-2">
+              <label class="form-label">Sub Category (Quality)</label>
+              <input id="edit-stk-subcat" class="form-control" placeholder="e.g. Original / Grade A">
+            </div>
+            <div class="mb-2">
               <label class="form-label">Quantity</label>
               <input id="edit-stk-qty" type="number" class="form-control" required>
             </div>
@@ -290,7 +295,6 @@
     </div>
   </div>
 
-  <script href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script>
     // --- CREDENTIALS (PERSISTED IN LOCALSTORAGE) ---
@@ -455,7 +459,7 @@
         lowStockList.innerHTML = '<p class="text-muted mb-0">All stock levels healthy!</p>';
       } else {
         lowStockList.innerHTML = lowStock.map(s => 
-          `<span class="badge bg-danger me-2 mb-2 p-2">${s.model} - ${s.qty} pcs remaining</span>`
+          `<span class="badge bg-danger me-2 mb-2 p-2">${s.model} ${s.subcat ? '(' + s.subcat + ')' : ''} - ${s.qty} pcs remaining</span>`
         ).join('');
       }
     }
@@ -466,10 +470,174 @@
         <tr class="${item.qty <= 10 ? 'table-danger' : ''}">
           <td><b>${item.model}</b></td>
           <td>${item.category}</td>
+          <td><span class="badge bg-secondary">${item.subcat || 'Standard'}</span></td>
           <td>${item.supplier || '-'}</td>
           <td>${item.qty}</td>
           <td>₦${item.cost_price.toLocaleString()}</td>
           <td>₦${item.sell_price.toLocaleString()}</td>
           <td>
             <button class="btn btn-sm btn-primary me-1" onclick="openEditModal(${index})">Edit</button>
-            <button class="btn bt
+            <button class="btn btn-sm btn-danger" onclick="deleteStock(${index})">Delete</button>
+          </td>
+        </tr>
+      `).join('');
+
+      const saleSelect = document.getElementById('sale-item');
+      saleSelect.innerHTML = '<option value="">-- Select Model --</option>' + 
+        db.stock.map(s => {
+          const subInfo = s.subcat ? ` [${s.subcat}]` : '';
+          return `<option value="${s.model}">${s.model}${subInfo} - ₦${s.sell_price.toLocaleString()} (Stock: ${s.qty})</option>`;
+        }).join('');
+    }
+
+    function renderSales() {
+      const tbody = document.getElementById('sales-table-body');
+      tbody.innerHTML = db.sales.slice().reverse().map(sale => `
+        <tr>
+          <td>${sale.date}</td>
+          <td>${sale.model}</td>
+          <td>${sale.customer}</td>
+          <td>${sale.qty}</td>
+          <td>₦${sale.sell_price.toLocaleString()}</td>
+          <td><b>₦${(sale.sell_price * sale.qty).toLocaleString()}</b></td>
+        </tr>
+      `).join('');
+
+      const returnSelect = document.getElementById('return-sale-idx');
+      returnSelect.innerHTML = '<option value="">-- Select Sale --</option>' +
+        db.sales.map((s, idx) => `<option value="${idx}">${s.date} - ${s.model} (${s.customer}) - ${s.qty} pcs</option>`).join('');
+    }
+
+    function renderReturns() {
+      const tbody = document.getElementById('returns-table-body');
+      tbody.innerHTML = db.returns.slice().reverse().map(ret => `
+        <tr>
+          <td>${ret.date}</td>
+          <td>${ret.model}</td>
+          <td>${ret.customer}</td>
+          <td>${ret.qty}</td>
+          <td>${ret.reason}</td>
+        </tr>
+      `).join('');
+    }
+
+    // --- FORM ACTIONS ---
+    document.getElementById('stock-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      db.stock.push({
+        model: document.getElementById('stk-model').value,
+        category: document.getElementById('stk-cat').value,
+        subcat: document.getElementById('stk-subcat').value,
+        qty: parseInt(document.getElementById('stk-qty').value),
+        cost_price: parseInt(document.getElementById('stk-cost').value),
+        sell_price: parseInt(document.getElementById('stk-sell').value),
+        supplier: document.getElementById('stk-supplier').value
+      });
+      e.target.reset();
+      saveDB();
+    });
+
+    // --- EDIT STOCK LOGIC ---
+    let editModalInstance = null;
+
+    function openEditModal(index) {
+      const item = db.stock[index];
+      document.getElementById('edit-stk-index').value = index;
+      document.getElementById('edit-stk-model').value = item.model;
+      document.getElementById('edit-stk-cat').value = item.category;
+      document.getElementById('edit-stk-subcat').value = item.subcat || '';
+      document.getElementById('edit-stk-qty').value = item.qty;
+      document.getElementById('edit-stk-cost').value = item.cost_price;
+      document.getElementById('edit-stk-sell').value = item.sell_price;
+      document.getElementById('edit-stk-supplier').value = item.supplier || '';
+
+      editModalInstance = new bootstrap.Modal(document.getElementById('editStockModal'));
+      editModalInstance.show();
+    }
+
+    document.getElementById('edit-stock-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const index = parseInt(document.getElementById('edit-stk-index').value);
+
+      db.stock[index] = {
+        model: document.getElementById('edit-stk-model').value,
+        category: document.getElementById('edit-stk-cat').value,
+        subcat: document.getElementById('edit-stk-subcat').value,
+        qty: parseInt(document.getElementById('edit-stk-qty').value),
+        cost_price: parseInt(document.getElementById('edit-stk-cost').value),
+        sell_price: parseInt(document.getElementById('edit-stk-sell').value),
+        supplier: document.getElementById('edit-stk-supplier').value
+      };
+
+      saveDB();
+      if (editModalInstance) editModalInstance.hide();
+    });
+
+    document.getElementById('sales-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const modelName = document.getElementById('sale-item').value;
+      const qty = parseInt(document.getElementById('sale-qty').value);
+      const customer = document.getElementById('sale-customer').value;
+
+      const item = db.stock.find(s => s.model === modelName);
+      if (!item || item.qty < qty) {
+        alert("Insufficient stock available!");
+        return;
+      }
+
+      item.qty -= qty;
+      db.sales.push({
+        model: item.subcat ? `${item.model} [${item.subcat}]` : item.model,
+        qty: qty,
+        cost_price: item.cost_price,
+        sell_price: item.sell_price,
+        customer: customer,
+        date: new Date().toISOString().split('T')[0]
+      });
+
+      e.target.reset();
+      saveDB();
+    });
+
+    document.getElementById('returns-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const saleIdx = parseInt(document.getElementById('return-sale-idx').value);
+      const qty = parseInt(document.getElementById('return-qty').value);
+      const reason = document.getElementById('return-reason').value;
+
+      const sale = db.sales[saleIdx];
+      if (!sale || qty > sale.qty) {
+        alert("Invalid return quantity!");
+        return;
+      }
+
+      const item = db.stock.find(s => sale.model.includes(s.model));
+      if (item) item.qty += qty;
+
+      db.returns.push({
+        model: sale.model,
+        qty: qty,
+        cost_price: sale.cost_price,
+        sell_price: sale.sell_price,
+        customer: sale.customer,
+        reason: reason,
+        date: new Date().toISOString().split('T')[0]
+      });
+
+      e.target.reset();
+      saveDB();
+    });
+
+    function deleteStock(index) {
+      if (confirm("Delete this stock item?")) {
+        db.stock.splice(index, 1);
+        saveDB();
+      }
+    }
+
+    // Initial Load
+    renderAll();
+    navigateTo('login');
+  </script>
+</body>
+</html>
