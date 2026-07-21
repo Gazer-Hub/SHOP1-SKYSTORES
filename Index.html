@@ -13,7 +13,7 @@
       .no-print, nav, button, .card-header, form, .input-group, .modal { display: none !important; }
       body { font-size: 11pt; background-color: #fff !important; }
       .container { max-width: 100% !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
-      .card { border: none !important; shadow: none !important; }
+      .card { border: none !important; box-shadow: none !important; }
       .table { width: 100% !important; border-collapse: collapse !important; }
       .table th, .table td { border: 1px solid #000 !important; padding: 6px !important; }
       .print-title { display: block !important; text-align: center; margin-bottom: 20px; }
@@ -178,17 +178,40 @@
       </div>
 
       <div class="card mb-4 no-print">
-        <div class="card-header fw-bold">Add New Stock</div>
+        <div class="card-header fw-bold">Add New Stock Entry</div>
         <div class="card-body">
           <form id="stock-form" class="row g-2">
-            <div class="col-md-2"><input id="stk-model" class="form-control" placeholder="Model" required></div>
-            <div class="col-md-2"><input id="stk-cat" class="form-control" placeholder="Category" required></div>
-            <div class="col-md-2"><input id="stk-subcat" class="form-control" placeholder="Sub Category / Quality"></div>
-            <div class="col-md-1"><input id="stk-qty" type="number" class="form-control" placeholder="Qty" required></div>
-            <div class="col-md-2"><input id="stk-cost" type="number" class="form-control" placeholder="Cost Price" required></div>
-            <div class="col-md-2"><input id="stk-sell" type="number" class="form-control" placeholder="Sell Price" required></div>
-            <div class="col-md-2"><input id="stk-supplier" class="form-control" placeholder="Supplier"></div>
-            <div class="col-12"><button class="btn btn-success">Add Stock</button></div>
+            <div class="col-md-2">
+              <label class="form-label small fw-bold">Model</label>
+              <input id="stk-model" class="form-control" placeholder="e.g. iPhone 13" required>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small fw-bold">Category</label>
+              <input id="stk-cat" class="form-control" placeholder="e.g. Phones" required>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small fw-bold">Quality / Sub-Cat</label>
+              <input id="stk-subcat" class="form-control" placeholder="e.g. Grade A / OLED">
+            </div>
+            <div class="col-md-1">
+              <label class="form-label small fw-bold">Qty</label>
+              <input id="stk-qty" type="number" class="form-control" placeholder="Qty" required>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small fw-bold">Cost Price (₦)</label>
+              <input id="stk-cost" type="number" class="form-control" placeholder="Cost Price" required>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small fw-bold">Sell Price (₦)</label>
+              <input id="stk-sell" type="number" class="form-control" placeholder="Sell Price" required>
+            </div>
+            <div class="col-md-1">
+              <label class="form-label small fw-bold">Supplier</label>
+              <input id="stk-supplier" class="form-control" placeholder="Supplier">
+            </div>
+            <div class="col-12 mt-3">
+              <button class="btn btn-success fw-bold w-100">Add Stock Entry</button>
+            </div>
           </form>
         </div>
       </div>
@@ -205,7 +228,16 @@
 
       <table class="table table-striped align-middle">
         <thead class="table-dark">
-          <tr><th>Model</th><th>Category</th><th>Sub Category (Quality)</th><th>Supplier</th><th>Qty</th><th>Cost</th><th>Sell</th><th class="no-print">Actions</th></tr>
+          <tr>
+            <th>Model</th>
+            <th>Category</th>
+            <th>Quality / Sub-Cat</th>
+            <th>Supplier</th>
+            <th>Qty</th>
+            <th>Cost Price</th>
+            <th>Selling Price</th>
+            <th class="no-print">Actions</th>
+          </tr>
         </thead>
         <tbody id="stock-table-body"></tbody>
       </table>
@@ -230,22 +262,29 @@
         <div class="card-header bg-success text-white fw-bold">Record New Sale</div>
         <div class="card-body">
           <form id="sales-form" class="row g-2">
-            <div class="col-md-4">
-              <label class="form-label">Search / Select Model (With Quality & Price)</label>
-              <input id="sale-item" class="form-control" list="sale-item-list" placeholder="Type model name to search..." required autocomplete="off">
+            <div class="col-md-3">
+              <label class="form-label small fw-bold">Select Model</label>
+              <input id="sale-item" class="form-control" list="sale-item-list" placeholder="Search model..." required oninput="autoFillSaleDetails()" autocomplete="off">
               <datalist id="sale-item-list"></datalist>
             </div>
             <div class="col-md-2">
-              <label class="form-label">Quantity</label>
-              <input id="sale-qty" type="number" class="form-control" min="1" required>
+              <label class="form-label small fw-bold">Quality / Sub-Cat</label>
+              <input id="sale-quality" class="form-control bg-light" placeholder="Auto-filled" readonly>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small fw-bold">Selling Price (₦)</label>
+              <input id="sale-price" type="number" class="form-control bg-light" placeholder="Auto-filled" readonly required>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small fw-bold">Quantity</label>
+              <input id="sale-qty" type="number" class="form-control" min="1" placeholder="Qty" required>
             </div>
             <div class="col-md-3">
-              <label class="form-label">Customer Name</label>
-              <input id="sale-customer" class="form-control" required>
+              <label class="form-label small fw-bold">Customer Name</label>
+              <input id="sale-customer" class="form-control" placeholder="Customer Name" required>
             </div>
-            <div class="col-md-3">
-              <label class="form-label">&nbsp;</label>
-              <button class="btn btn-success w-100">Record Sale</button>
+            <div class="col-12 mt-3">
+              <button class="btn btn-success fw-bold w-100">Record Sale</button>
             </div>
           </form>
         </div>
@@ -262,7 +301,16 @@
 
       <table class="table table-striped align-middle">
         <thead class="table-dark">
-          <tr><th>Date</th><th>Model</th><th>Customer</th><th>Qty</th><th>Unit Price</th><th>Total</th><th class="no-print">Action</th></tr>
+          <tr>
+            <th>Date</th>
+            <th>Model</th>
+            <th>Quality / Sub-Cat</th>
+            <th>Customer</th>
+            <th>Qty</th>
+            <th>Unit Price</th>
+            <th>Total Amount</th>
+            <th class="no-print">Action</th>
+          </tr>
         </thead>
         <tbody id="sales-table-body"></tbody>
       </table>
@@ -327,7 +375,17 @@
     </div>
 
     <div id="page-supplier-returns" class="page">
-      <h3>Supplier Returns Management</h3>
+      <div class="print-title">
+        <h2>SKY MODERNIZE SAVE TECHNOLOGY LTD</h2>
+        <h4>Supplier Returns History Report</h4>
+        <hr>
+      </div>
+
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3>Supplier Returns Management</h3>
+        <button class="btn btn-outline-dark no-print" onclick="window.print()">🖨️ Print Supplier Returns</button>
+      </div>
+
       <div class="card mb-4 border-warning no-print">
         <div class="card-header bg-warning text-dark fw-bold">Process Supplier Return</div>
         <div class="card-body">
@@ -681,9 +739,9 @@
             <td>${item.category}</td>
             <td><span class="badge bg-secondary">${item.subcat || 'Standard'}</span></td>
             <td>${item.supplier || '-'}</td>
-            <td>${item.qty}</td>
-            <td>₦${item.cost_price.toLocaleString()}</td>
-            <td>₦${item.sell_price.toLocaleString()}</td>
+            <td><b>${item.qty}</b></td>
+            <td class="text-warning fw-bold">₦${item.cost_price.toLocaleString()}</td>
+            <td class="text-success fw-bold">₦${item.sell_price.toLocaleString()}</td>
             <td class="no-print">
               <button class="btn btn-sm btn-primary me-1" onclick="openEditModal(${item.originalIndex})">Edit</button>
               <button class="btn btn-sm btn-danger" onclick="deleteStock(${item.originalIndex})">Delete</button>
@@ -692,11 +750,10 @@
         `).join('');
       }
 
-      // Populate Datalist for Sales with Sub-category / Quality and Price
+      // Populate Datalist for Sales interface
       const saleDatalist = document.getElementById('sale-item-list');
       saleDatalist.innerHTML = db.stock.map(s => {
-        const qualityStr = s.subcat ? ` | Quality: ${s.subcat}` : '';
-        return `<option value="${s.model}">${s.model}${qualityStr} | Price: ₦${s.sell_price.toLocaleString()} (Stock: ${s.qty})</option>`;
+        return `<option value="${s.model}">${s.model}</option>`;
       }).join('');
 
       // Populate Datalist for Supplier Returns
@@ -705,6 +762,19 @@
         const subInfo = s.subcat ? ` [${s.subcat}]` : '';
         return `<option value="${s.model}">${s.model}${subInfo} (Stock: ${s.qty})</option>`;
       }).join('');
+    }
+
+    function autoFillSaleDetails() {
+      const selectedModel = document.getElementById('sale-item').value.trim();
+      const item = db.stock.find(s => s.model.toLowerCase() === selectedModel.toLowerCase());
+
+      if (item) {
+        document.getElementById('sale-quality').value = item.subcat || 'Standard';
+        document.getElementById('sale-price').value = item.sell_price;
+      } else {
+        document.getElementById('sale-quality').value = '';
+        document.getElementById('sale-price').value = '';
+      }
     }
 
     function autoFillSupplier() {
@@ -722,23 +792,25 @@
         if (!filterQuery) return true;
         const q = filterQuery.toLowerCase();
         return (sale.model && sale.model.toLowerCase().includes(q)) ||
+               (sale.quality && sale.quality.toLowerCase().includes(q)) ||
                (sale.customer && sale.customer.toLowerCase().includes(q)) ||
                (sale.date && sale.date.includes(q));
       });
 
       if (filteredSales.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-3">No matching sales records found</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-3">No matching sales records found</td></tr>`;
       } else {
         tbody.innerHTML = filteredSales.map(sale => `
           <tr>
             <td>${sale.date}</td>
-            <td>${sale.model}</td>
+            <td><b>${sale.model}</b></td>
+            <td><span class="badge bg-secondary">${sale.quality || 'Standard'}</span></td>
             <td>${sale.customer}</td>
             <td>${sale.qty}</td>
             <td>₦${sale.sell_price.toLocaleString()}</td>
-            <td><b>₦${(sale.sell_price * sale.qty).toLocaleString()}</b></td>
+            <td><b class="text-success">₦${(sale.sell_price * sale.qty).toLocaleString()}</b></td>
             <td class="no-print">
-              <button class="btn btn-sm btn-outline-primary" onclick="printReceipt('${sale.date}', '${sale.model}', '${sale.customer}', ${sale.qty}, ${sale.sell_price})">🧾 Receipt</button>
+              <button class="btn btn-sm btn-outline-primary" onclick="printReceipt('${sale.date}', '${sale.model}', '${sale.quality || 'Standard'}', '${sale.customer}', ${sale.qty}, ${sale.sell_price})">🧾 Receipt</button>
             </td>
           </tr>
         `).join('');
@@ -747,7 +819,7 @@
       populateReturnSaleDropdown();
     }
 
-    function printReceipt(date, model, customer, qty, price) {
+    function printReceipt(date, model, quality, customer, qty, price) {
       const total = qty * price;
       const receiptWindow = window.open('', '_blank', 'width=400,height=600');
       receiptWindow.document.write(`
@@ -771,6 +843,7 @@
             <p><b>Customer:</b> ${customer}</p>
             <hr>
             <p><b>Item:</b> ${model}</p>
+            <p><b>Quality/Grade:</b> ${quality}</p>
             <p><b>Qty:</b> ${qty}</p>
             <p><b>Unit Price:</b> ₦${price.toLocaleString()}</p>
             <hr>
@@ -798,17 +871,17 @@
       }
 
       let emailBody = "SKY MODERNIZE SAVE TECHNOLOGY LTD - Sales Report\n\n";
-      emailBody += "Date | Item | Customer | Qty | Total Price\n";
-      emailBody += "--------------------------------------------------------\n";
+      emailBody += "Date | Model | Quality | Customer | Qty | Unit Price | Total Price\n";
+      emailBody += "-----------------------------------------------------------------------\n";
 
       let totalAmount = 0;
       db.sales.forEach(s => {
         const itemTotal = s.sell_price * s.qty;
         totalAmount += itemTotal;
-        emailBody += `${s.date} | ${s.model} | ${s.customer} | ${s.qty} pcs | ₦${itemTotal.toLocaleString()}\n`;
+        emailBody += `${s.date} | ${s.model} | ${s.quality || 'Standard'} | ${s.customer} | ${s.qty} pcs | ₦${s.sell_price.toLocaleString()} | ₦${itemTotal.toLocaleString()}\n`;
       });
 
-      emailBody += "--------------------------------------------------------\n";
+      emailBody += "-----------------------------------------------------------------------\n";
       emailBody += `Total Revenue: ₦${totalAmount.toLocaleString()}\n`;
 
       const mailtoUrl = `mailto:?subject=${encodeURIComponent("SKY MODERNIZE - Sales History Report")}&body=${encodeURIComponent(emailBody)}`;
@@ -831,7 +904,7 @@
       } else {
         returnSelect.innerHTML = '<option value="">-- Select Sale --</option>' +
           filteredSalesWithIdx.map(s => 
-            `<option value="${s.originalIdx}">${s.date} - ${s.model} (${s.customer}) - ${s.qty} pcs</option>`
+            `<option value="${s.originalIdx}">${s.date} - ${s.model} [${s.quality || 'Standard'}] (${s.customer}) - ${s.qty} pcs</option>`
           ).join('');
       }
     }
@@ -965,12 +1038,11 @@
 
     document.getElementById('sales-form').addEventListener('submit', (e) => {
       e.preventDefault();
-      const rawInput = document.getElementById('sale-item').value.trim();
+      const modelName = document.getElementById('sale-item').value.trim();
+      const quality = document.getElementById('sale-quality').value.trim();
+      const sellPrice = parseInt(document.getElementById('sale-price').value);
       const qty = parseInt(document.getElementById('sale-qty').value);
       const customer = document.getElementById('sale-customer').value;
-
-      // Extract model name if full datalist label was pasted
-      const modelName = rawInput.split(' | ')[0].trim();
 
       const item = db.stock.find(s => s.model.toLowerCase() === modelName.toLowerCase());
       if (!item) {
@@ -984,10 +1056,11 @@
 
       item.qty -= qty;
       db.sales.push({
-        model: item.subcat ? `${item.model} [${item.subcat}]` : item.model,
+        model: item.model,
+        quality: quality || item.subcat || 'Standard',
         qty: qty,
         cost_price: item.cost_price,
-        sell_price: item.sell_price,
+        sell_price: sellPrice || item.sell_price,
         customer: customer,
         date: new Date().toISOString().split('T')[0]
       });
@@ -1008,7 +1081,7 @@
         return;
       }
 
-      const item = db.stock.find(s => sale.model.includes(s.model));
+      const item = db.stock.find(s => sale.model.toLowerCase() === s.model.toLowerCase());
       if (item) item.qty += qty;
 
       db.returns.push({
@@ -1045,7 +1118,7 @@
         return;
       }
 
-      item.qty -= qty; // Deduct from inventory since returned to supplier
+      item.qty -= qty;
 
       db.supplierReturns.push({
         model: item.subcat ? `${item.model} [${item.subcat}]` : item.model,
