@@ -25,7 +25,7 @@
 
   <nav id="main-nav" class="navbar navbar-expand-lg navbar-dark bg-dark mb-4 no-print" style="display: none;">
     <div class="container-fluid">
-      <a class="navbar-brand fw-bold" href="#">SKY MODERNIZE</a>
+      <a class="navbar-brand fw-bold" href="#">SKY MODERNIZE SAVE TECH LTD</a>
       <div class="d-flex gap-2">
         <button class="btn btn-sm btn-outline-light" onclick="navigateTo('dashboard')">Dashboard</button>
         <button class="btn btn-sm btn-outline-light" onclick="navigateTo('stock')">Stock 🔒</button>
@@ -168,10 +168,10 @@
           </div>
         </div>
         <div class="col-md-6">
-          <div class="card text-center border-success shadow-sm">
+          <div class="card text-center border-warning shadow-sm">
             <div class="card-body py-2">
-              <h6 class="text-muted mb-1">Total Stock Selling Value</h6>
-              <h3 class="text-success fw-bold mb-0" id="total-stock-value">₦0</h3>
+              <h6 class="text-muted mb-1">Total Stock Cost Value</h6>
+              <h3 class="text-warning fw-bold mb-0" id="total-stock-value">₦0</h3>
             </div>
           </div>
         </div>
@@ -269,7 +269,9 @@
             </div>
             <div class="col-md-2">
               <label class="form-label small fw-bold">Quality / Sub-Cat</label>
-              <input id="sale-quality" class="form-control bg-light" placeholder="Auto-filled" readonly>
+              <select id="sale-quality" class="form-select" required>
+                <option value="">-- Select Quality --</option>
+              </select>
             </div>
             <div class="col-md-2">
               <label class="form-label small fw-bold">Selling Price (₦)</label>
@@ -682,6 +684,7 @@
       renderSales();
       renderReturns();
       renderSupplierReturns();
+      populateQualityOptions();
     }
 
     function renderDashboard() {
@@ -723,12 +726,12 @@
                (item.supplier && item.supplier.toLowerCase().includes(q));
       });
 
-      // Calculate Total Units and Total Selling Value
+      // Calculate Total Units and Total Cost Value (Cost Price * Qty)
       const totalUnits = db.stock.reduce((sum, s) => sum + (parseInt(s.qty) || 0), 0);
-      const totalValue = db.stock.reduce((sum, s) => sum + ((parseInt(s.qty) || 0) * (parseInt(s.sell_price) || 0)), 0);
+      const totalCostValue = db.stock.reduce((sum, s) => sum + ((parseInt(s.qty) || 0) * (parseInt(s.cost_price) || 0)), 0);
 
       document.getElementById('total-stock-units').innerText = `${totalUnits.toLocaleString()} pcs`;
-      document.getElementById('total-stock-value').innerText = `₦${totalValue.toLocaleString()}`;
+      document.getElementById('total-stock-value').innerText = `₦${totalCostValue.toLocaleString()}`;
 
       if (filteredStock.length === 0) {
         tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-3">No matching stock items found</td></tr>`;
@@ -750,11 +753,10 @@
         `).join('');
       }
 
-      // Populate Datalist for Sales interface
+      // Populate Datalist for Sales interface models
+      const uniqueModels = [...new Set(db.stock.map(s => s.model))];
       const saleDatalist = document.getElementById('sale-item-list');
-      saleDatalist.innerHTML = db.stock.map(s => {
-        return `<option value="${s.model}">${s.model}</option>`;
-      }).join('');
+      saleDatalist.innerHTML = uniqueModels.map(m => `<option value="${m}">${m}</option>`).join('');
 
       // Populate Datalist for Supplier Returns
       const supReturnDatalist = document.getElementById('sup-return-item-list');
@@ -762,20 +764,68 @@
         const subInfo = s.subcat ? ` [${s.subcat}]` : '';
         return `<option value="${s.model}">${s.model}${subInfo} (Stock: ${s.qty})</option>`;
       }).join('');
+
+      populateQualityOptions();
+    }
+
+    function populateQualityOptions() {
+      const qualitySelect = document.getElementById('sale-quality');
+      const qualities = new Set();
+      
+      db.stock.forEach(s => {
+        if (s.subcat && s.subcat.trim() !== '') qualities.add(s.subcat.trim());
+      });
+      qualities.add('Standard');
+
+      const currentValue = qualitySelect.value;
+      qualitySelect.innerHTML = '<option value="">-- Select Quality --</option>' +
+        Array.from(qualities).map(q => `<option value="${q}">${q}</option>`).join('');
+      
+      if (currentValue) qualitySelect.value = currentValue;
     }
 
     function autoFillSaleDetails() {
       const selectedModel = document.getElementById('sale-item').value.trim();
-      const item = db.stock.find(s => s.model.toLowerCase() === selectedModel.toLowerCase());
-
-      if (item) {
-        document.getElementById('sale-quality').value = item.subcat || 'Standard';
-        document.getElementById('sale-price').value = item.sell_price;
-      } else {
-        document.getElementById('sale-quality').value = '';
+      const qualitySelect = document.getElementById('sale-quality');
+      
+      if (!selectedModel) {
         document.getElementById('sale-price').value = '';
+        return;
+      }
+
+      const matchingItems = db.stock.filter(s => s.model.toLowerCase() === selectedModel.toLowerCase());
+
+      if (matchingItems.length > 0) {
+        const currentQuality = qualitySelect.value;
+        let matchedItem = matchingItems.find(s => (s.subcat || 'Standard').toLowerCase() === currentQuality.toLowerCase());
+        
+        if (!matchedItem) {
+          matchedItem = matchingItems[0];
+          qualitySelect.value = matchedItem.subcat || 'Standard';
+        }
+
+        document.getElementById('sale-price').value = matchedItem.sell_price;
       }
     }
+
+    document.getElementById('sale-quality').addEventListener('change', () => {
+      const selectedModel = document.getElementById('sale-item').value.trim();
+      const selectedQuality = document.getElementById('sale-quality').value;
+
+      if (selectedModel) {
+        const matchedItem = db.stock.find(s => 
+          s.model.toLowerCase() === selectedModel.toLowerCase() && 
+          (s.subcat || 'Standard').toLowerCase() === selectedQuality.toLowerCase()
+        );
+
+        if (matchedItem) {
+          document.getElementById('sale-price').value = matchedItem.sell_price;
+        } else {
+          const fallbackItem = db.stock.find(s => s.model.toLowerCase() === selectedModel.toLowerCase());
+          if (fallbackItem) document.getElementById('sale-price').value = fallbackItem.sell_price;
+        }
+      }
+    });
 
     function autoFillSupplier() {
       const inputValue = document.getElementById('sup-return-item').value.trim();
@@ -1039,12 +1089,16 @@
     document.getElementById('sales-form').addEventListener('submit', (e) => {
       e.preventDefault();
       const modelName = document.getElementById('sale-item').value.trim();
-      const quality = document.getElementById('sale-quality').value.trim();
+      const quality = document.getElementById('sale-quality').value;
       const sellPrice = parseInt(document.getElementById('sale-price').value);
       const qty = parseInt(document.getElementById('sale-qty').value);
       const customer = document.getElementById('sale-customer').value;
 
-      const item = db.stock.find(s => s.model.toLowerCase() === modelName.toLowerCase());
+      const item = db.stock.find(s => 
+        s.model.toLowerCase() === modelName.toLowerCase() &&
+        (s.subcat || 'Standard').toLowerCase() === (quality || 'Standard').toLowerCase()
+      ) || db.stock.find(s => s.model.toLowerCase() === modelName.toLowerCase());
+
       if (!item) {
         alert("Model not found in stock inventory!");
         return;
