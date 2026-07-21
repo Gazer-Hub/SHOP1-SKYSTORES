@@ -39,7 +39,7 @@
         <div class="col-12 col-sm-8 col-md-6 col-lg-4">
           <div class="card bg-dark text-white shadow-lg border-0 rounded-3">
             <div class="card-body p-4">
-              <h3 class="text-center mb-2">SKY MODERNIZE</h3>
+              <h3 class="text-center mb-2">SKY MODERNIZE LTD</h3>
               <p class="text-center text-secondary mb-4">Inventory Management System</p>
               
               <div id="login-alert" class="alert alert-danger py-2 d-none" role="alert"></div>
@@ -193,8 +193,9 @@
         <div class="card-body">
           <form id="sales-form" class="row g-2">
             <div class="col-md-4">
-              <label class="form-label">Select Item</label>
-              <select id="sale-item" class="form-select" required></select>
+              <label class="form-label">Search / Select Model</label>
+              <input id="sale-item" class="form-control" list="sale-item-list" placeholder="Type model name to search..." required autocomplete="off">
+              <datalist id="sale-item-list"></datalist>
             </div>
             <div class="col-md-2">
               <label class="form-label">Quantity</label>
@@ -284,8 +285,9 @@
         <div class="card-body">
           <form id="supplier-returns-form" class="row g-2">
             <div class="col-md-3">
-              <label class="form-label">Select Stock Item</label>
-              <select id="sup-return-item" class="form-select" required onchange="autoFillSupplier()"></select>
+              <label class="form-label">Search / Select Model</label>
+              <input id="sup-return-item" class="form-control" list="sup-return-item-list" placeholder="Type model name to search..." required oninput="autoFillSupplier()" autocomplete="off">
+              <datalist id="sup-return-item-list"></datalist>
             </div>
             <div class="col-md-3">
               <label class="form-label">Supplier Name</label>
@@ -635,24 +637,24 @@
         `).join('');
       }
 
-      const saleSelect = document.getElementById('sale-item');
-      saleSelect.innerHTML = '<option value="">-- Select Model --</option>' + 
-        db.stock.map(s => {
-          const subInfo = s.subcat ? ` [${s.subcat}]` : '';
-          return `<option value="${s.model}">${s.model}${subInfo} - ₦${s.sell_price.toLocaleString()} (Stock: ${s.qty})</option>`;
-        }).join('');
+      // Populate Datalist for Sales
+      const saleDatalist = document.getElementById('sale-item-list');
+      saleDatalist.innerHTML = db.stock.map(s => {
+        const subInfo = s.subcat ? ` [${s.subcat}]` : '';
+        return `<option value="${s.model}">${s.model}${subInfo} - ₦${s.sell_price.toLocaleString()} (Stock: ${s.qty})</option>`;
+      }).join('');
 
-      const supReturnSelect = document.getElementById('sup-return-item');
-      supReturnSelect.innerHTML = '<option value="">-- Select Item --</option>' + 
-        db.stock.map(s => {
-          const subInfo = s.subcat ? ` [${s.subcat}]` : '';
-          return `<option value="${s.model}">${s.model}${subInfo} (Stock: ${s.qty})</option>`;
-        }).join('');
+      // Populate Datalist for Supplier Returns
+      const supReturnDatalist = document.getElementById('sup-return-item-list');
+      supReturnDatalist.innerHTML = db.stock.map(s => {
+        const subInfo = s.subcat ? ` [${s.subcat}]` : '';
+        return `<option value="${s.model}">${s.model}${subInfo} (Stock: ${s.qty})</option>`;
+      }).join('');
     }
 
     function autoFillSupplier() {
-      const selectedModel = document.getElementById('sup-return-item').value;
-      const item = db.stock.find(s => s.model === selectedModel);
+      const inputValue = document.getElementById('sup-return-item').value.trim();
+      const item = db.stock.find(s => s.model.toLowerCase() === inputValue.toLowerCase());
       if (item && item.supplier) {
         document.getElementById('sup-return-supplier').value = item.supplier;
       }
@@ -837,12 +839,16 @@
 
     document.getElementById('sales-form').addEventListener('submit', (e) => {
       e.preventDefault();
-      const modelName = document.getElementById('sale-item').value;
+      const modelName = document.getElementById('sale-item').value.trim();
       const qty = parseInt(document.getElementById('sale-qty').value);
       const customer = document.getElementById('sale-customer').value;
 
-      const item = db.stock.find(s => s.model === modelName);
-      if (!item || item.qty < qty) {
+      const item = db.stock.find(s => s.model.toLowerCase() === modelName.toLowerCase());
+      if (!item) {
+        alert("Model not found in stock inventory!");
+        return;
+      }
+      if (item.qty < qty) {
         alert("Insufficient stock available!");
         return;
       }
@@ -893,14 +899,18 @@
 
     document.getElementById('supplier-returns-form').addEventListener('submit', (e) => {
       e.preventDefault();
-      const modelName = document.getElementById('sup-return-item').value;
+      const modelName = document.getElementById('sup-return-item').value.trim();
       const supplier = document.getElementById('sup-return-supplier').value;
       const qty = parseInt(document.getElementById('sup-return-qty').value);
       const status = document.getElementById('sup-return-status').value;
       const reason = document.getElementById('sup-return-reason').value;
 
-      const item = db.stock.find(s => s.model === modelName);
-      if (!item || item.qty < qty) {
+      const item = db.stock.find(s => s.model.toLowerCase() === modelName.toLowerCase());
+      if (!item) {
+        alert("Model not found in stock inventory!");
+        return;
+      }
+      if (item.qty < qty) {
         alert("Insufficient stock quantity available to return to supplier!");
         return;
       }
