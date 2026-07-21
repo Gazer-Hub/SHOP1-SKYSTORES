@@ -24,7 +24,8 @@
         <button class="btn btn-sm btn-outline-light" onclick="navigateTo('dashboard')">Dashboard</button>
         <button class="btn btn-sm btn-outline-light" onclick="navigateTo('stock')">Stock 🔒</button>
         <button class="btn btn-sm btn-outline-light" onclick="navigateTo('sales')">Sales</button>
-        <button class="btn btn-sm btn-outline-light" onclick="navigateTo('returns')">Returns</button>
+        <button class="btn btn-sm btn-outline-light" onclick="navigateTo('returns')">Customer Returns</button>
+        <button class="btn btn-sm btn-outline-warning" onclick="navigateTo('supplier-returns')">Supplier Returns 📦</button>
         <button class="btn btn-sm btn-outline-light" onclick="navigateTo('change-password')">Password 🔑</button>
         <button class="btn btn-sm btn-danger ms-3" onclick="logout()">Logout</button>
       </div>
@@ -167,6 +168,16 @@
         </div>
       </div>
 
+      <div class="row mb-3 align-items-center">
+        <div class="col-md-6 col-lg-5">
+          <div class="input-group">
+            <input type="text" id="stock-search-input" class="form-control" placeholder="Search stock (Model, Category, Quality, Supplier)..." onkeyup="if(event.key==='Enter') searchStock()">
+            <button class="btn btn-primary" type="button" onclick="searchStock()">🔍 Search</button>
+            <button class="btn btn-outline-secondary" type="button" onclick="clearStockSearch()">Clear</button>
+          </div>
+        </div>
+      </div>
+
       <table class="table table-striped align-middle">
         <thead class="table-dark">
           <tr><th>Model</th><th>Category</th><th>Sub Category (Quality)</th><th>Supplier</th><th>Qty</th><th>Cost</th><th>Sell</th><th>Actions</th></tr>
@@ -201,7 +212,15 @@
         </div>
       </div>
 
-      <h5>Recent Sales</h5>
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">Recent Sales</h5>
+        <div class="input-group" style="max-width: 400px;">
+          <input type="text" id="sales-search-input" class="form-control form-control-sm" placeholder="Search sales (Model, Customer, Date)..." onkeyup="if(event.key==='Enter') searchSales()">
+          <button class="btn btn-sm btn-primary" type="button" onclick="searchSales()">🔍 Search</button>
+          <button class="btn btn-sm btn-outline-secondary" type="button" onclick="clearSalesSearch()">Clear</button>
+        </div>
+      </div>
+
       <table class="table table-striped align-middle">
         <thead class="table-dark">
           <tr><th>Date</th><th>Model</th><th>Customer</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr>
@@ -211,37 +230,103 @@
     </div>
 
     <div id="page-returns" class="page">
-      <h3>Returns Management</h3>
+      <h3>Customer Returns Management</h3>
       <div class="card mb-4">
-        <div class="card-header bg-danger text-white fw-bold">Process Return</div>
+        <div class="card-header bg-danger text-white fw-bold">Process Customer Return</div>
         <div class="card-body">
           <form id="returns-form" class="row g-2">
-            <div class="col-md-4">
-              <label class="form-label">Select Sold Item</label>
+            <div class="col-md-5">
+              <label class="form-label">Search & Select Sold Item</label>
+              <div class="input-group mb-2">
+                <input type="text" id="return-sale-search-input" class="form-control form-control-sm" placeholder="Filter sale items by Model or Customer..." onkeyup="filterReturnSaleOptions()">
+                <button class="btn btn-sm btn-primary" type="button" onclick="filterReturnSaleOptions()">🔍 Search</button>
+                <button class="btn btn-sm btn-outline-secondary" type="button" onclick="clearReturnSaleSearch()">Clear</button>
+              </div>
               <select id="return-sale-idx" class="form-select" required></select>
             </div>
             <div class="col-md-2">
               <label class="form-label">Qty</label>
-              <input id="return-qty" type="number" class="form-control" min="1" required>
+              <input id="return-qty" type="number" class="form-control mt-md-4" min="1" required>
             </div>
             <div class="col-md-3">
               <label class="form-label">Reason</label>
-              <input id="return-reason" class="form-control" required>
+              <input id="return-reason" class="form-control mt-md-4" required>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
               <label class="form-label">&nbsp;</label>
-              <button class="btn btn-danger w-100">Process Return</button>
+              <button class="btn btn-danger w-100 mt-md-4">Process Return</button>
             </div>
           </form>
         </div>
       </div>
 
-      <h5>Return History</h5>
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">Customer Return History</h5>
+        <div class="input-group" style="max-width: 400px;">
+          <input type="text" id="returns-search-input" class="form-control form-control-sm" placeholder="Search returns (Model, Customer, Reason)..." onkeyup="if(event.key==='Enter') searchReturns()">
+          <button class="btn btn-sm btn-primary" type="button" onclick="searchReturns()">🔍 Search</button>
+          <button class="btn btn-sm btn-outline-secondary" type="button" onclick="clearReturnsSearch()">Clear</button>
+        </div>
+      </div>
+
       <table class="table table-striped align-middle">
         <thead class="table-dark">
           <tr><th>Date</th><th>Model</th><th>Customer</th><th>Qty</th><th>Reason</th></tr>
         </thead>
         <tbody id="returns-table-body"></tbody>
+      </table>
+    </div>
+
+    <div id="page-supplier-returns" class="page">
+      <h3>Supplier Returns Management</h3>
+      <div class="card mb-4 border-warning">
+        <div class="card-header bg-warning text-dark fw-bold">Process Supplier Return</div>
+        <div class="card-body">
+          <form id="supplier-returns-form" class="row g-2">
+            <div class="col-md-3">
+              <label class="form-label">Select Stock Item</label>
+              <select id="sup-return-item" class="form-select" required onchange="autoFillSupplier()"></select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Supplier Name</label>
+              <input id="sup-return-supplier" class="form-control" placeholder="Supplier Name" required>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label">Quantity</label>
+              <input id="sup-return-qty" type="number" class="form-control" min="1" required>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label">Status</label>
+              <select id="sup-return-status" class="form-select">
+                <option value="Pending">Pending ⏳</option>
+                <option value="Sent Back">Sent Back 🚚</option>
+              </select>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label">&nbsp;</label>
+              <button class="btn btn-warning w-100 fw-bold">Record Return</button>
+            </div>
+            <div class="col-12 mt-2">
+              <input id="sup-return-reason" class="form-control" placeholder="Reason for returning to supplier..." required>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">Supplier Return History</h5>
+        <div class="input-group" style="max-width: 400px;">
+          <input type="text" id="sup-returns-search-input" class="form-control form-control-sm" placeholder="Search supplier returns (Model, Supplier, Status)..." onkeyup="if(event.key==='Enter') searchSupplierReturns()">
+          <button class="btn btn-sm btn-primary" type="button" onclick="searchSupplierReturns()">🔍 Search</button>
+          <button class="btn btn-sm btn-outline-secondary" type="button" onclick="clearSupplierReturnsSearch()">Clear</button>
+        </div>
+      </div>
+
+      <table class="table table-striped align-middle">
+        <thead class="table-dark">
+          <tr><th>Date</th><th>Model</th><th>Supplier</th><th>Qty</th><th>Reason</th><th>Status</th><th>Action</th></tr>
+        </thead>
+        <tbody id="supplier-returns-table-body"></tbody>
       </table>
     </div>
 
@@ -312,7 +397,9 @@
     let isManagerUnlocked = false;
 
     const DB_KEY = "sky_modernize_db";
-    let db = JSON.parse(localStorage.getItem(DB_KEY)) || { stock: [], sales: [], returns: [] };
+    let db = JSON.parse(localStorage.getItem(DB_KEY)) || { stock: [], sales: [], returns: [], supplierReturns: [] };
+
+    if (!db.supplierReturns) db.supplierReturns = [];
 
     function saveDB() {
       localStorage.setItem(DB_KEY, JSON.stringify(db));
@@ -429,12 +516,64 @@
       navigateTo('dashboard');
     }
 
+    // --- SEARCH FUNCTIONS ---
+    function searchStock() {
+      const query = document.getElementById('stock-search-input').value.trim().toLowerCase();
+      renderStock(query);
+    }
+
+    function clearStockSearch() {
+      document.getElementById('stock-search-input').value = '';
+      renderStock();
+    }
+
+    function searchSales() {
+      const query = document.getElementById('sales-search-input').value.trim().toLowerCase();
+      renderSales(query);
+    }
+
+    function clearSalesSearch() {
+      document.getElementById('sales-search-input').value = '';
+      renderSales();
+    }
+
+    function filterReturnSaleOptions() {
+      const query = document.getElementById('return-sale-search-input').value.trim().toLowerCase();
+      populateReturnSaleDropdown(query);
+    }
+
+    function clearReturnSaleSearch() {
+      document.getElementById('return-sale-search-input').value = '';
+      populateReturnSaleDropdown();
+    }
+
+    function searchReturns() {
+      const query = document.getElementById('returns-search-input').value.trim().toLowerCase();
+      renderReturns(query);
+    }
+
+    function clearReturnsSearch() {
+      document.getElementById('returns-search-input').value = '';
+      renderReturns();
+    }
+
+    function searchSupplierReturns() {
+      const query = document.getElementById('sup-returns-search-input').value.trim().toLowerCase();
+      renderSupplierReturns(query);
+    }
+
+    function clearSupplierReturnsSearch() {
+      document.getElementById('sup-returns-search-input').value = '';
+      renderSupplierReturns();
+    }
+
     // --- RENDERING FUNCTIONS ---
     function renderAll() {
       renderDashboard();
       renderStock();
       renderSales();
       renderReturns();
+      renderSupplierReturns();
     }
 
     function renderDashboard() {
@@ -464,23 +603,37 @@
       }
     }
 
-    function renderStock() {
+    function renderStock(filterQuery = "") {
       const tbody = document.getElementById('stock-table-body');
-      tbody.innerHTML = db.stock.map((item, index) => `
-        <tr class="${item.qty <= 10 ? 'table-danger' : ''}">
-          <td><b>${item.model}</b></td>
-          <td>${item.category}</td>
-          <td><span class="badge bg-secondary">${item.subcat || 'Standard'}</span></td>
-          <td>${item.supplier || '-'}</td>
-          <td>${item.qty}</td>
-          <td>₦${item.cost_price.toLocaleString()}</td>
-          <td>₦${item.sell_price.toLocaleString()}</td>
-          <td>
-            <button class="btn btn-sm btn-primary me-1" onclick="openEditModal(${index})">Edit</button>
-            <button class="btn btn-sm btn-danger" onclick="deleteStock(${index})">Delete</button>
-          </td>
-        </tr>
-      `).join('');
+      
+      const filteredStock = db.stock.map((item, originalIndex) => ({ ...item, originalIndex })).filter(item => {
+        if (!filterQuery) return true;
+        const q = filterQuery.toLowerCase();
+        return (item.model && item.model.toLowerCase().includes(q)) ||
+               (item.category && item.category.toLowerCase().includes(q)) ||
+               (item.subcat && item.subcat.toLowerCase().includes(q)) ||
+               (item.supplier && item.supplier.toLowerCase().includes(q));
+      });
+
+      if (filteredStock.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-3">No matching stock items found</td></tr>`;
+      } else {
+        tbody.innerHTML = filteredStock.map(item => `
+          <tr class="${item.qty <= 10 ? 'table-danger' : ''}">
+            <td><b>${item.model}</b></td>
+            <td>${item.category}</td>
+            <td><span class="badge bg-secondary">${item.subcat || 'Standard'}</span></td>
+            <td>${item.supplier || '-'}</td>
+            <td>${item.qty}</td>
+            <td>₦${item.cost_price.toLocaleString()}</td>
+            <td>₦${item.sell_price.toLocaleString()}</td>
+            <td>
+              <button class="btn btn-sm btn-primary me-1" onclick="openEditModal(${item.originalIndex})">Edit</button>
+              <button class="btn btn-sm btn-danger" onclick="deleteStock(${item.originalIndex})">Delete</button>
+            </td>
+          </tr>
+        `).join('');
+      }
 
       const saleSelect = document.getElementById('sale-item');
       saleSelect.innerHTML = '<option value="">-- Select Model --</option>' + 
@@ -488,37 +641,146 @@
           const subInfo = s.subcat ? ` [${s.subcat}]` : '';
           return `<option value="${s.model}">${s.model}${subInfo} - ₦${s.sell_price.toLocaleString()} (Stock: ${s.qty})</option>`;
         }).join('');
+
+      const supReturnSelect = document.getElementById('sup-return-item');
+      supReturnSelect.innerHTML = '<option value="">-- Select Item --</option>' + 
+        db.stock.map(s => {
+          const subInfo = s.subcat ? ` [${s.subcat}]` : '';
+          return `<option value="${s.model}">${s.model}${subInfo} (Stock: ${s.qty})</option>`;
+        }).join('');
     }
 
-    function renderSales() {
+    function autoFillSupplier() {
+      const selectedModel = document.getElementById('sup-return-item').value;
+      const item = db.stock.find(s => s.model === selectedModel);
+      if (item && item.supplier) {
+        document.getElementById('sup-return-supplier').value = item.supplier;
+      }
+    }
+
+    function renderSales(filterQuery = "") {
       const tbody = document.getElementById('sales-table-body');
-      tbody.innerHTML = db.sales.slice().reverse().map(sale => `
-        <tr>
-          <td>${sale.date}</td>
-          <td>${sale.model}</td>
-          <td>${sale.customer}</td>
-          <td>${sale.qty}</td>
-          <td>₦${sale.sell_price.toLocaleString()}</td>
-          <td><b>₦${(sale.sell_price * sale.qty).toLocaleString()}</b></td>
-        </tr>
-      `).join('');
+      
+      const filteredSales = db.sales.slice().reverse().filter(sale => {
+        if (!filterQuery) return true;
+        const q = filterQuery.toLowerCase();
+        return (sale.model && sale.model.toLowerCase().includes(q)) ||
+               (sale.customer && sale.customer.toLowerCase().includes(q)) ||
+               (sale.date && sale.date.includes(q));
+      });
 
-      const returnSelect = document.getElementById('return-sale-idx');
-      returnSelect.innerHTML = '<option value="">-- Select Sale --</option>' +
-        db.sales.map((s, idx) => `<option value="${idx}">${s.date} - ${s.model} (${s.customer}) - ${s.qty} pcs</option>`).join('');
+      if (filteredSales.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">No matching sales records found</td></tr>`;
+      } else {
+        tbody.innerHTML = filteredSales.map(sale => `
+          <tr>
+            <td>${sale.date}</td>
+            <td>${sale.model}</td>
+            <td>${sale.customer}</td>
+            <td>${sale.qty}</td>
+            <td>₦${sale.sell_price.toLocaleString()}</td>
+            <td><b>₦${(sale.sell_price * sale.qty).toLocaleString()}</b></td>
+          </tr>
+        `).join('');
+      }
+
+      populateReturnSaleDropdown();
     }
 
-    function renderReturns() {
+    function populateReturnSaleDropdown(filterQuery = "") {
+      const returnSelect = document.getElementById('return-sale-idx');
+      
+      const filteredSalesWithIdx = db.sales.map((s, idx) => ({ ...s, originalIdx: idx })).filter(s => {
+        if (!filterQuery) return true;
+        const q = filterQuery.toLowerCase();
+        return (s.model && s.model.toLowerCase().includes(q)) ||
+               (s.customer && s.customer.toLowerCase().includes(q)) ||
+               (s.date && s.date.includes(q));
+      });
+
+      if (filteredSalesWithIdx.length === 0) {
+        returnSelect.innerHTML = '<option value="">-- No matching sales found --</option>';
+      } else {
+        returnSelect.innerHTML = '<option value="">-- Select Sale --</option>' +
+          filteredSalesWithIdx.map(s => 
+            `<option value="${s.originalIdx}">${s.date} - ${s.model} (${s.customer}) - ${s.qty} pcs</option>`
+          ).join('');
+      }
+    }
+
+    function renderReturns(filterQuery = "") {
       const tbody = document.getElementById('returns-table-body');
-      tbody.innerHTML = db.returns.slice().reverse().map(ret => `
-        <tr>
-          <td>${ret.date}</td>
-          <td>${ret.model}</td>
-          <td>${ret.customer}</td>
-          <td>${ret.qty}</td>
-          <td>${ret.reason}</td>
-        </tr>
-      `).join('');
+      
+      const filteredReturns = db.returns.slice().reverse().filter(ret => {
+        if (!filterQuery) return true;
+        const q = filterQuery.toLowerCase();
+        return (ret.model && ret.model.toLowerCase().includes(q)) ||
+               (ret.customer && ret.customer.toLowerCase().includes(q)) ||
+               (ret.reason && ret.reason.toLowerCase().includes(q)) ||
+               (ret.date && ret.date.includes(q));
+      });
+
+      if (filteredReturns.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-3">No matching return records found</td></tr>`;
+      } else {
+        tbody.innerHTML = filteredReturns.map(ret => `
+          <tr>
+            <td>${ret.date}</td>
+            <td>${ret.model}</td>
+            <td>${ret.customer}</td>
+            <td>${ret.qty}</td>
+            <td>${ret.reason}</td>
+          </tr>
+        `).join('');
+      }
+    }
+
+    function renderSupplierReturns(filterQuery = "") {
+      const tbody = document.getElementById('supplier-returns-table-body');
+      
+      const filteredReturns = db.supplierReturns.map((ret, originalIdx) => ({ ...ret, originalIdx })).slice().reverse().filter(ret => {
+        if (!filterQuery) return true;
+        const q = filterQuery.toLowerCase();
+        return (ret.model && ret.model.toLowerCase().includes(q)) ||
+               (ret.supplier && ret.supplier.toLowerCase().includes(q)) ||
+               (ret.status && ret.status.toLowerCase().includes(q)) ||
+               (ret.reason && ret.reason.toLowerCase().includes(q)) ||
+               (ret.date && ret.date.includes(q));
+      });
+
+      if (filteredReturns.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-3">No supplier return records found</td></tr>`;
+      } else {
+        tbody.innerHTML = filteredReturns.map(ret => {
+          const isSent = ret.status === 'Sent Back';
+          return `
+            <tr class="${isSent ? 'table-success' : 'table-warning'}">
+              <td>${ret.date}</td>
+              <td><b>${ret.model}</b></td>
+              <td>${ret.supplier}</td>
+              <td>${ret.qty}</td>
+              <td>${ret.reason}</td>
+              <td>
+                <span class="badge ${isSent ? 'bg-success' : 'bg-warning text-dark'} p-2">
+                  ${isSent ? '🚚 Sent Back' : '⏳ Pending'}
+                </span>
+              </td>
+              <td>
+                <button class="btn btn-sm ${isSent ? 'btn-outline-warning' : 'btn-success'}" onclick="toggleSupplierReturnStatus(${ret.originalIdx})">
+                  ${isSent ? 'Mark Pending' : 'Mark Sent Back'}
+                </button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      }
+    }
+
+    function toggleSupplierReturnStatus(idx) {
+      if (db.supplierReturns[idx]) {
+        db.supplierReturns[idx].status = db.supplierReturns[idx].status === 'Sent Back' ? 'Pending' : 'Sent Back';
+        saveDB();
+      }
     }
 
     // --- FORM ACTIONS ---
@@ -606,8 +868,8 @@
       const reason = document.getElementById('return-reason').value;
 
       const sale = db.sales[saleIdx];
-      if (!sale || qty > sale.qty) {
-        alert("Invalid return quantity!");
+      if (isNaN(saleIdx) || !sale || qty > sale.qty) {
+        alert("Invalid return quantity or no sold item selected!");
         return;
       }
 
@@ -621,6 +883,36 @@
         sell_price: sale.sell_price,
         customer: sale.customer,
         reason: reason,
+        date: new Date().toISOString().split('T')[0]
+      });
+
+      e.target.reset();
+      clearReturnSaleSearch();
+      saveDB();
+    });
+
+    document.getElementById('supplier-returns-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const modelName = document.getElementById('sup-return-item').value;
+      const supplier = document.getElementById('sup-return-supplier').value;
+      const qty = parseInt(document.getElementById('sup-return-qty').value);
+      const status = document.getElementById('sup-return-status').value;
+      const reason = document.getElementById('sup-return-reason').value;
+
+      const item = db.stock.find(s => s.model === modelName);
+      if (!item || item.qty < qty) {
+        alert("Insufficient stock quantity available to return to supplier!");
+        return;
+      }
+
+      item.qty -= qty; // Deduct from inventory since returned to supplier
+
+      db.supplierReturns.push({
+        model: item.subcat ? `${item.model} [${item.subcat}]` : item.model,
+        supplier: supplier,
+        qty: qty,
+        reason: reason,
+        status: status,
         date: new Date().toISOString().split('T')[0]
       });
 
