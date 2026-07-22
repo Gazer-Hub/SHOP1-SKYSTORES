@@ -25,7 +25,7 @@
 
   <nav id="main-nav" class="navbar navbar-expand-lg navbar-dark bg-dark mb-4 no-print" style="display: none;">
     <div class="container-fluid">
-      <a class="navbar-brand fw-bold" href="#">SKY MODERNIZE SAVE TECH LTD</a>
+      <a class="navbar-brand fw-bold" href="#">SKY MODERNIZE SAVE TECHNOLOGY LTD</a>
       <div class="d-flex gap-2">
         <button class="btn btn-sm btn-outline-light" onclick="navigateTo('dashboard')">Dashboard</button>
         <button class="btn btn-sm btn-outline-light" onclick="navigateTo('stock')">Stock 🔒</button>
@@ -130,6 +130,7 @@
           <select id="dash-date-filter" class="form-select form-select-sm" style="width: auto;" onchange="handleDashboardFilterChange()">
             <option value="today" selected>Today</option>
             <option value="yesterday">Yesterday</option>
+            <option value="this-week">This Week</option>
             <option value="this-month">This Month</option>
             <option value="all-time">All Time</option>
             <option value="custom">Custom Specific Date...</option>
@@ -303,6 +304,7 @@
           <select id="sales-period-filter" class="form-select form-select-sm" style="width: auto;" onchange="handleSalesFilterChange()">
             <option value="today">Today</option>
             <option value="yesterday">Yesterday</option>
+            <option value="this-week">This Week</option>
             <option value="this-month">This Month</option>
             <option value="all-time" selected>All Time History</option>
             <option value="custom">Custom Date...</option>
@@ -853,6 +855,14 @@
         filteredSales = db.sales.filter(s => s.date === yestStr);
         filteredReturns = db.returns.filter(r => r.date === yestStr);
 
+      } else if (filterType === 'this-week') {
+        const current = new Date(now);
+        const firstDay = current.getDate() - current.getDay();
+        const startOfWeek = new Date(current.setDate(firstDay)).toISOString().split('T')[0];
+        periodLabel = `This Week (${startOfWeek} to ${todayStr})`;
+        filteredSales = db.sales.filter(s => s.date && s.date >= startOfWeek && s.date <= todayStr);
+        filteredReturns = db.returns.filter(r => r.date && r.date >= startOfWeek && r.date <= todayStr);
+
       } else if (filterType === 'this-month') {
         const currentYearMonth = todayStr.substring(0, 7);
         periodLabel = `This Month (${currentYearMonth})`;
@@ -1066,6 +1076,13 @@
         const yestStr = yest.toISOString().split('T')[0];
         periodLabel = `Yesterday (${yestStr})`;
         salesData = db.sales.filter(s => s.date === yestStr);
+
+      } else if (filterType === 'this-week') {
+        const current = new Date(now);
+        const firstDay = current.getDate() - current.getDay();
+        const startOfWeek = new Date(current.setDate(firstDay)).toISOString().split('T')[0];
+        periodLabel = `This Week (${startOfWeek} to ${todayStr})`;
+        salesData = db.sales.filter(s => s.date && s.date >= startOfWeek && s.date <= todayStr);
 
       } else if (filterType === 'this-month') {
         const currentYearMonth = todayStr.substring(0, 7);
