@@ -45,7 +45,7 @@
         <div class="col-12 col-sm-8 col-md-6 col-lg-4">
           <div class="card bg-dark text-white shadow-lg border-0 rounded-3">
             <div class="card-body p-4">
-              <h3 class="text-center mb-2">SKY MODERNIZE</h3>
+              <h3 class="text-center mb-2">SKY MODERNIZE SAVE TECH LTD</h3>
               <p class="text-center text-secondary mb-4">Inventory Management System</p>
               
               <div id="login-alert" class="alert alert-danger py-2 d-none" role="alert"></div>
@@ -123,20 +123,31 @@
     </div>
 
     <div id="page-dashboard" class="page">
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3>Dashboard</h3>
-        <span class="badge bg-primary fs-6" id="dash-date-badge">Today</span>
+      <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <h3>Dashboard Summary</h3>
+        <div class="d-flex align-items-center gap-2">
+          <label class="fw-bold text-secondary mb-0">Period:</label>
+          <select id="dash-date-filter" class="form-select form-select-sm" style="width: auto;" onchange="handleDashboardFilterChange()">
+            <option value="today" selected>Today</option>
+            <option value="yesterday">Yesterday</option>
+            <option value="this-month">This Month</option>
+            <option value="all-time">All Time</option>
+            <option value="custom">Custom Specific Date...</option>
+          </select>
+          <input type="date" id="dash-custom-date" class="form-control form-control-sm d-none" style="width: auto;" onchange="renderDashboard()">
+          <span class="badge bg-primary fs-6" id="dash-date-badge">Today</span>
+        </div>
       </div>
       
       <div class="row g-3 mb-4">
         <div class="col-md-2">
-          <div class="card text-center"><div class="card-body"><h6 class="text-muted">Today's Sales</h6><h4 class="text-success" id="dash-sales">₦0</h4></div></div>
+          <div class="card text-center"><div class="card-body"><h6 class="text-muted" id="lbl-dash-sales">Sales Revenue</h6><h4 class="text-success" id="dash-sales">₦0</h4></div></div>
         </div>
         <div class="col-md-2">
-          <div class="card text-center"><div class="card-body"><h6 class="text-muted">Today's Cost</h6><h4 class="text-warning" id="dash-cost">₦0</h4></div></div>
+          <div class="card text-center"><div class="card-body"><h6 class="text-muted" id="lbl-dash-cost">Cost Price</h6><h4 class="text-warning" id="dash-cost">₦0</h4></div></div>
         </div>
         <div class="col-md-2">
-          <div class="card text-center"><div class="card-body"><h6 class="text-muted">Today's Returns</h6><h4 class="text-danger" id="dash-returns">₦0</h4></div></div>
+          <div class="card text-center"><div class="card-body"><h6 class="text-muted" id="lbl-dash-returns">Refund Returns</h6><h4 class="text-danger" id="dash-returns">₦0</h4></div></div>
         </div>
         <div class="col-md-2">
           <div class="card text-center"><div class="card-body"><h6 class="text-muted">Gross Profit</h6><h4 class="text-info" id="dash-gross">₦0</h4></div></div>
@@ -799,20 +810,70 @@
       renderSupplierReturns();
     }
 
-    function renderDashboard() {
-      // Get Today's Date in YYYY-MM-DD
-      const today = new Date().toISOString().split('T')[0];
+    function handleDashboardFilterChange() {
+      const filterType = document.getElementById('dash-date-filter').value;
+      const customPicker = document.getElementById('dash-custom-date');
       
+      if (filterType === 'custom') {
+        customPicker.classList.remove('d-none');
+      } else {
+        customPicker.classList.add('d-none');
+        renderDashboard();
+      }
+    }
+
+    function renderDashboard() {
+      const filterType = document.getElementById('dash-date-filter').value;
       const badge = document.getElementById('dash-date-badge');
-      if (badge) badge.innerText = `Today (${today})`;
+      const now = new Date();
+      const todayStr = now.toISOString().split('T')[0];
 
-      // Filter sales and returns recorded today
-      const todaySales = db.sales.filter(s => s.date === today);
-      const todayReturns = db.returns.filter(r => r.date === today);
+      let filteredSales = [];
+      let filteredReturns = [];
+      let periodLabel = "Today";
 
-      let totalSales = todaySales.reduce((sum, s) => sum + (s.sell_price * s.qty), 0);
-      let totalCost = todaySales.reduce((sum, s) => sum + (s.cost_price * s.qty), 0);
-      let totalReturns = todayReturns.reduce((sum, r) => sum + (r.sell_price * r.qty), 0);
+      if (filterType === 'today') {
+        periodLabel = `Today (${todayStr})`;
+        filteredSales = db.sales.filter(s => s.date === todayStr);
+        filteredReturns = db.returns.filter(r => r.date === todayStr);
+
+      } else if (filterType === 'yesterday') {
+        const yest = new Date(now);
+        yest.setDate(yest.getDate() - 1);
+        const yestStr = yest.toISOString().split('T')[0];
+        periodLabel = `Yesterday (${yestStr})`;
+        filteredSales = db.sales.filter(s => s.date === yestStr);
+        filteredReturns = db.returns.filter(r => r.date === yestStr);
+
+      } else if (filterType === 'this-month') {
+        const currentYearMonth = todayStr.substring(0, 7); // e.g. "2026-07"
+        periodLabel = `This Month (${currentYearMonth})`;
+        filteredSales = db.sales.filter(s => s.date && s.date.startsWith(currentYearMonth));
+        filteredReturns = db.returns.filter(r => r.date && r.date.startsWith(currentYearMonth));
+
+      } else if (filterType === 'all-time') {
+        periodLabel = "All Time History";
+        filteredSales = db.sales;
+        filteredReturns = db.returns;
+
+      } else if (filterType === 'custom') {
+        const customDate = document.getElementById('dash-custom-date').value;
+        if (customDate) {
+          periodLabel = `Date: ${customDate}`;
+          filteredSales = db.sales.filter(s => s.date === customDate);
+          filteredReturns = db.returns.filter(r => r.date === customDate);
+        } else {
+          periodLabel = "Select Date...";
+          filteredSales = [];
+          filteredReturns = [];
+        }
+      }
+
+      if (badge) badge.innerText = periodLabel;
+
+      let totalSales = filteredSales.reduce((sum, s) => sum + (s.sell_price * s.qty), 0);
+      let totalCost = filteredSales.reduce((sum, s) => sum + (s.cost_price * s.qty), 0);
+      let totalReturns = filteredReturns.reduce((sum, r) => sum + (r.sell_price * r.qty), 0);
 
       let grossProfit = totalSales - totalCost - totalReturns;
       let cacFee = grossProfit > 0 ? Math.floor(grossProfit * 0.075) : 0;
@@ -825,7 +886,6 @@
       document.getElementById('dash-cac').innerText = `₦${cacFee.toLocaleString()}`;
       document.getElementById('dash-net').innerText = `₦${netProfit.toLocaleString()}`;
 
-      // Re-run Dashboard Goods Search if active
       searchDashboardGoods();
 
       const lowStockList = document.getElementById('low-stock-list');
@@ -834,7 +894,6 @@
       if (lowStock.length === 0) {
         lowStockList.innerHTML = '<p class="text-muted mb-0">All stock levels healthy!</p>';
       } else {
-        // Group low stock items by Quality / Sub-Category
         const groupedLowStock = {};
         lowStock.forEach(s => {
           const key = s.subcat ? s.subcat.trim() : 'Standard';
@@ -873,11 +932,9 @@
                (item.supplier && item.supplier.toLowerCase().includes(q));
       });
 
-      // Calculate Total Units and Total Cost Value
       const totalUnits = db.stock.reduce((sum, s) => sum + (parseInt(s.qty) || 0), 0);
       const totalCostValue = db.stock.reduce((sum, s) => sum + ((parseInt(s.qty) || 0) * (parseInt(s.cost_price) || 0)), 0);
 
-      // Mask/Unmask totals based on toggle state
       if (isStockTotalsVisible) {
         document.getElementById('total-stock-units').innerText = `${totalUnits.toLocaleString()} pcs`;
         document.getElementById('total-stock-value').innerText = `₦${totalCostValue.toLocaleString()}`;
@@ -906,12 +963,10 @@
         `).join('');
       }
 
-      // Populate Datalist for Sales interface models
       const uniqueModels = [...new Set(db.stock.map(s => s.model))];
       const saleDatalist = document.getElementById('sale-item-list');
       saleDatalist.innerHTML = uniqueModels.map(m => `<option value="${m}">${m}</option>`).join('');
 
-      // Populate Datalist for Supplier Returns
       const supReturnDatalist = document.getElementById('sup-return-item-list');
       supReturnDatalist.innerHTML = db.stock.map(s => {
         const subInfo = s.subcat ? ` [${s.subcat}]` : '';
@@ -930,16 +985,13 @@
         return;
       }
 
-      // Filter stock items matching the selected model
       const matchingItems = db.stock.filter(s => s.model.toLowerCase() === selectedModel.toLowerCase());
 
       if (matchingItems.length > 0) {
-        // Extract unique qualities specifically available for this good
         const availableQualities = [...new Set(matchingItems.map(s => s.subcat || 'Standard'))];
 
         qualitySelect.innerHTML = availableQualities.map(q => `<option value="${q}">${q}</option>`).join('');
 
-        // Automatically set price for the first available quality
         const firstQuality = availableQualities[0];
         const matchedItem = matchingItems.find(s => (s.subcat || 'Standard') === firstQuality);
         if (matchedItem) {
@@ -1075,25 +1127,25 @@
       emailBody += "-----------------------------------------------------------------------\n";
       emailBody += `Total Sales Revenue: ₦${totalAmount.toLocaleString()}\n\n`;
 
-      if (db.returns.length > 0) {
-        emailBody += "--- RETURNED GOODS ---\n";
-        emailBody += "Date | Model | Customer | Qty | Returned Amount | Reason | Exchange Status\n";
+      const nonExchangedReturns = db.returns.filter(r => !r.isExchanged);
+
+      if (nonExchangedReturns.length > 0) {
+        emailBody += "--- RETURNED GOODS (REFUNDS / CREDITS) ---\n";
+        emailBody += "Date | Model | Customer | Qty | Returned Amount | Reason\n";
         emailBody += "-----------------------------------------------------------------------\n";
 
         let totalReturnAmount = 0;
-        db.returns.forEach(r => {
+        nonExchangedReturns.forEach(r => {
           const retTotal = (r.sell_price || 0) * r.qty;
           totalReturnAmount += retTotal;
-          const statusText = r.isExchanged ? "Exchanged (Replacement Issued)" : "Refund / Credit";
-          emailBody += `${r.date} | [RETURNED] ${r.model} | ${r.customer} | ${r.qty} pcs | ₦${retTotal.toLocaleString()} | ${r.reason} | ${statusText}\n`;
+          emailBody += `${r.date} | [RETURNED] ${r.model} | ${r.customer} | ${r.qty} pcs | ₦${retTotal.toLocaleString()} | ${r.reason}\n`;
         });
 
         emailBody += "-----------------------------------------------------------------------\n";
-        emailBody += `Total Returns Amount: ₦${totalReturnAmount.toLocaleString()}\n`;
+        emailBody += `Total Refunded Amount: ₦${totalReturnAmount.toLocaleString()}\n`;
         emailBody += `NET REVENUE AFTER RETURNS: ₦${(totalAmount - totalReturnAmount).toLocaleString()}\n`;
       }
 
-      // Direct Web Compose link for Gmail
       const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent("SKY MODERNIZE - Sales & Returns Report")}&body=${encodeURIComponent(emailBody)}`;
       window.open(gmailUrl, '_blank');
     }
@@ -1290,7 +1342,6 @@
       saveDB();
     });
 
-    // --- EDIT STOCK LOGIC ---
     let editModalInstance = null;
 
     function openEditModal(index) {
