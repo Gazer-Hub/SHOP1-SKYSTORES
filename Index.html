@@ -310,7 +310,7 @@
             <option value="custom">Custom Date...</option>
           </select>
           <input type="date" id="sales-custom-date" class="form-control form-control-sm d-none" style="width: auto;" onchange="renderSales()">
-          <button class="btn btn-outline-dark btn-sm" onclick="printFilteredSales()">🖨️ Print Sales</button>
+          <button class="btn btn-outline-dark btn-sm" onclick="printFilteredSales()">🖨️ Print Sales Report</button>
           <button class="btn btn-danger btn-sm" onclick="sendSalesToGmail()">📧 Send to Gmail</button>
         </div>
       </div>
@@ -466,24 +466,24 @@
     <div id="page-supplier-returns" class="page">
       <div class="print-title">
         <h2>SKY MODERNIZE SAVE TECHNOLOGY LTD</h2>
-        <h4 id="sup-returns-print-subtitle">Supplier Returns History Report</h4>
+        <h4 id="sup-returns-print-subtitle">Supplier Returns Bulk Report</h4>
         <hr>
       </div>
 
       <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <h3>Supplier Returns Management</h3>
         <div class="no-print d-flex align-items-center gap-2 flex-wrap sup-filter-container">
-          <label class="fw-bold text-secondary mb-0">Period:</label>
+          <label class="fw-bold text-secondary mb-0">Period Filter:</label>
           <select id="sup-returns-period-filter" class="form-select form-select-sm" style="width: auto;" onchange="handleSupplierReturnsFilterChange()">
+            <option value="this-month" selected>This Month</option>
             <option value="today">Today</option>
             <option value="yesterday">Yesterday</option>
             <option value="this-week">This Week</option>
-            <option value="this-month">This Month</option>
-            <option value="all-time" selected>All Time History</option>
-            <option value="custom">Custom Date...</option>
+            <option value="all-time">All Time History</option>
+            <option value="custom">Custom Date / Month...</option>
           </select>
           <input type="date" id="sup-returns-custom-date" class="form-control form-control-sm d-none" style="width: auto;" onchange="renderSupplierReturns()">
-          <button class="btn btn-outline-dark btn-sm" onclick="printFilteredSupplierReturns()">🖨️ Print Supplier Returns</button>
+          <button class="btn btn-outline-dark btn-sm fw-bold" onclick="printFilteredSupplierReturns()">🖨️ Print Bulk Report</button>
           <button class="btn btn-danger btn-sm" onclick="sendSupplierReturnsToGmail()">📧 Send to Gmail</button>
         </div>
       </div>
@@ -524,7 +524,7 @@
       </div>
 
       <div class="d-flex justify-content-between align-items-center mb-3 no-print">
-        <h5 class="mb-0">Supplier Return History (<span id="sup-returns-badge-period" class="text-primary fw-bold">All Time History</span>)</h5>
+        <h5 class="mb-0">Supplier Returns Batch List (<span id="sup-returns-badge-period" class="text-primary fw-bold">This Month</span>)</h5>
         <div class="input-group" style="max-width: 400px;">
           <input type="text" id="sup-returns-search-input" class="form-control form-control-sm" placeholder="Search supplier returns (Model, Supplier, Status)..." onkeyup="if(event.key==='Enter') searchSupplierReturns()">
           <button class="btn btn-sm btn-primary" type="button" onclick="searchSupplierReturns()">🔍 Search</button>
@@ -1238,7 +1238,7 @@
             </div>
             <hr>
             <div class="center">
-              <p>Thanks for your patronage!!!</p>
+              <p>Thank you for your business!</p>
             </div>
             <script>
               window.onload = function() { window.print(); window.close(); }
@@ -1427,7 +1427,7 @@
       }
     }
 
-    // --- SUPPLIER RETURNS FILTER & PERIOD LOGIC ---
+    // --- SUPPLIER RETURNS MONTHLY BULK FILTER & PRINT LOGIC ---
     function handleSupplierReturnsFilterChange() {
       const filterType = document.getElementById('sup-returns-period-filter').value;
       const customPicker = document.getElementById('sup-returns-custom-date');
@@ -1446,9 +1446,14 @@
       const todayStr = now.toISOString().split('T')[0];
 
       let supReturnsData = [];
-      let periodLabel = "All Time History";
+      let periodLabel = "This Month";
 
-      if (filterType === 'today') {
+      if (filterType === 'this-month') {
+        const currentYearMonth = todayStr.substring(0, 7);
+        periodLabel = `This Month (${currentYearMonth})`;
+        supReturnsData = db.supplierReturns.filter(r => r.date && r.date.startsWith(currentYearMonth));
+
+      } else if (filterType === 'today') {
         periodLabel = `Today (${todayStr})`;
         supReturnsData = db.supplierReturns.filter(r => r.date === todayStr);
 
@@ -1466,11 +1471,6 @@
         periodLabel = `This Week (${startOfWeek} to ${todayStr})`;
         supReturnsData = db.supplierReturns.filter(r => r.date && r.date >= startOfWeek && r.date <= todayStr);
 
-      } else if (filterType === 'this-month') {
-        const currentYearMonth = todayStr.substring(0, 7);
-        periodLabel = `This Month (${currentYearMonth})`;
-        supReturnsData = db.supplierReturns.filter(r => r.date && r.date.startsWith(currentYearMonth));
-
       } else if (filterType === 'all-time') {
         periodLabel = "All Time History";
         supReturnsData = db.supplierReturns;
@@ -1478,8 +1478,9 @@
       } else if (filterType === 'custom') {
         const customDate = document.getElementById('sup-returns-custom-date').value;
         if (customDate) {
-          periodLabel = `Date: ${customDate}`;
-          supReturnsData = db.supplierReturns.filter(r => r.date === customDate);
+          const monthPrefix = customDate.substring(0, 7);
+          periodLabel = `Filtered Period (${customDate})`;
+          supReturnsData = db.supplierReturns.filter(r => r.date === customDate || r.date.startsWith(monthPrefix));
         } else {
           periodLabel = "Select Date...";
           supReturnsData = [];
@@ -1506,7 +1507,7 @@
       });
 
       if (filteredReturns.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-3">No supplier return records found for this period</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-3">No supplier return records found for this monthly filter</td></tr>`;
       } else {
         tbody.innerHTML = filteredReturns.map(ret => {
           let statusBadge = '';
@@ -1544,9 +1545,16 @@
       }
     }
 
+    // BULK PRINT FUNCTION FOR SUPPLIER RETURNS (FILTERED MONTHLY OR BY SELECTED PERIOD)
     function printFilteredSupplierReturns() {
-      const { periodLabel } = getFilteredSupplierReturnsData();
-      document.getElementById('sup-returns-print-subtitle').innerText = `Supplier Returns History Report - ${periodLabel}`;
+      const { supReturnsData, periodLabel } = getFilteredSupplierReturnsData();
+
+      if (supReturnsData.length === 0) {
+        alert(`No supplier return records found for "${periodLabel}" to print!`);
+        return;
+      }
+
+      document.getElementById('sup-returns-print-subtitle').innerText = `Supplier Returns Bulk Summary Report - ${periodLabel}`;
       window.print();
     }
 
@@ -1560,7 +1568,7 @@
 
       let emailBody = `SKY MODERNIZE SAVE TECHNOLOGY LTD - Supplier Returns Report\n`;
       emailBody += `Report Period: ${periodLabel}\n\n`;
-      emailBody += `--- SUPPLIER RETURNS ---\n`;
+      emailBody += `--- SUPPLIER RETURNS BULK LIST ---\n`;
       emailBody += `Date | Model | Supplier | Qty | Reason | Status\n`;
       emailBody += `-----------------------------------------------------------------------\n`;
 
@@ -1568,7 +1576,7 @@
         emailBody += `${r.date} | ${r.model} | ${r.supplier} | ${r.qty} pcs | ${r.reason} | ${r.status}\n`;
       });
 
-      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(`SKY MODERNIZE - Supplier Returns Report (${periodLabel})`)}&body=${encodeURIComponent(emailBody)}`;
+      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(`SKY MODERNIZE - Supplier Returns Bulk Report (${periodLabel})`)}&body=${encodeURIComponent(emailBody)}`;
       window.open(gmailUrl, '_blank');
     }
 
