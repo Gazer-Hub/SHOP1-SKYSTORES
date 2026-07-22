@@ -197,9 +197,13 @@
     </div>
 
     <div id="page-stock" class="page">
-      <div class="d-flex justify-content-between align-items-center mb-3">
+      <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <h3>🔒 Stock Management</h3>
-        <div class="no-print d-flex gap-2">
+        <div class="no-print d-flex gap-2 flex-wrap">
+          <button class="btn btn-sm btn-outline-primary" onclick="exportStockToCSV()">📥 Export Stock CSV</button>
+          <button class="btn btn-sm btn-outline-info" onclick="exportBackupJSON()">💾 Backup Data (JSON)</button>
+          <button class="btn btn-sm btn-outline-success" onclick="document.getElementById('import-file-input').click()">📤 Restore Backup</button>
+          <input type="file" id="import-file-input" accept=".json" class="d-none" onchange="importBackupJSON(event)">
           <button id="btn-toggle-stock-totals" class="btn btn-sm btn-outline-secondary" onclick="toggleStockTotals()">👁️ Hide Totals</button>
           <button class="btn btn-sm btn-outline-warning" onclick="lockStock()">Lock Stock</button>
         </div>
@@ -242,15 +246,15 @@
             </div>
             <div class="col-md-1">
               <label class="form-label small fw-bold">Qty</label>
-              <input id="stk-qty" type="number" class="form-control" placeholder="Qty" required>
+              <input id="stk-qty" type="number" min="1" class="form-control" placeholder="Qty" required>
             </div>
             <div class="col-md-2">
               <label class="form-label small fw-bold">Cost Price (₦)</label>
-              <input id="stk-cost" type="number" class="form-control" placeholder="Cost Price" required>
+              <input id="stk-cost" type="number" min="0" class="form-control" placeholder="Cost Price" required>
             </div>
             <div class="col-md-2">
               <label class="form-label small fw-bold">Sell Price (₦)</label>
-              <input id="stk-sell" type="number" class="form-control" placeholder="Sell Price" required>
+              <input id="stk-sell" type="number" min="0" class="form-control" placeholder="Sell Price" required>
             </div>
             <div class="col-md-1">
               <label class="form-label small fw-bold">Supplier</label>
@@ -266,7 +270,7 @@
       <div class="row mb-3 align-items-center no-print">
         <div class="col-md-6 col-lg-5">
           <div class="input-group">
-            <input type="text" id="stock-search-input" class="form-control" placeholder="Search stock (Model, Category, Quality, Supplier)..." onkeyup="if(event.key==='Enter') searchStock()">
+            <input type="text" id="stock-search-input" class="form-control" placeholder="Search stock..." onkeyup="if(event.key==='Enter') searchStock()">
             <button class="btn btn-primary" type="button" onclick="searchStock()">🔍 Search</button>
             <button class="btn btn-outline-secondary" type="button" onclick="clearStockSearch()">Clear</button>
           </div>
@@ -310,6 +314,7 @@
             <option value="custom">Custom Date...</option>
           </select>
           <input type="date" id="sales-custom-date" class="form-control form-control-sm d-none" style="width: auto;" onchange="renderSales()">
+          <button class="btn btn-outline-primary btn-sm" onclick="exportSalesToCSV()">📥 Export Sales CSV</button>
           <button class="btn btn-outline-dark btn-sm" onclick="printFilteredSales()">🖨️ Print Sales Report</button>
           <button class="btn btn-danger btn-sm" onclick="sendSalesToGmail()">📧 Send to Gmail</button>
         </div>
@@ -335,7 +340,7 @@
             </div>
             <div class="col-md-2">
               <label class="form-label small fw-bold">Selling Price (₦)</label>
-              <input id="sale-price" type="number" class="form-control bg-light" placeholder="Auto-filled" readonly required>
+              <input id="sale-price" type="number" min="1" class="form-control bg-light" placeholder="Auto-filled" readonly required>
             </div>
             <div class="col-md-2">
               <label class="form-label small fw-bold">Quantity</label>
@@ -355,7 +360,7 @@
       <div class="d-flex justify-content-between align-items-center mb-3 no-print">
         <h5 class="mb-0">Sales History (<span id="sales-badge-period" class="text-primary fw-bold">All Time History</span>)</h5>
         <div class="input-group" style="max-width: 400px;">
-          <input type="text" id="sales-search-input" class="form-control form-control-sm" placeholder="Search sales (Model, Customer, Date)..." onkeyup="if(event.key==='Enter') searchSales()">
+          <input type="text" id="sales-search-input" class="form-control form-control-sm" placeholder="Search sales..." onkeyup="if(event.key==='Enter') searchSales()">
           <button class="btn btn-sm btn-primary" type="button" onclick="searchSales()">🔍 Search</button>
           <button class="btn btn-sm btn-outline-secondary" type="button" onclick="clearSalesSearch()">Clear</button>
         </div>
@@ -398,6 +403,7 @@
             <option value="custom">Custom Date...</option>
           </select>
           <input type="date" id="returns-custom-date" class="form-control form-control-sm d-none" style="width: auto;" onchange="renderReturns()">
+          <button class="btn btn-outline-primary btn-sm" onclick="exportReturnsToCSV()">📥 Export Returns CSV</button>
           <button class="btn btn-outline-dark btn-sm" onclick="printFilteredReturns()">🖨️ Print Customer Returns</button>
           <button class="btn btn-danger btn-sm" onclick="sendReturnsToGmail()">📧 Send to Gmail</button>
         </div>
@@ -441,7 +447,7 @@
       <div class="d-flex justify-content-between align-items-center mb-3 no-print">
         <h5 class="mb-0">Customer Return History (<span id="returns-badge-period" class="text-primary fw-bold">All Time History</span>)</h5>
         <div class="input-group" style="max-width: 400px;">
-          <input type="text" id="returns-search-input" class="form-control form-control-sm" placeholder="Search returns (Model, Customer, Reason)..." onkeyup="if(event.key==='Enter') searchReturns()">
+          <input type="text" id="returns-search-input" class="form-control form-control-sm" placeholder="Search returns..." onkeyup="if(event.key==='Enter') searchReturns()">
           <button class="btn btn-sm btn-primary" type="button" onclick="searchReturns()">🔍 Search</button>
           <button class="btn btn-sm btn-outline-secondary" type="button" onclick="clearReturnsSearch()">Clear</button>
         </div>
@@ -483,6 +489,7 @@
             <option value="custom">Custom Date / Month...</option>
           </select>
           <input type="date" id="sup-returns-custom-date" class="form-control form-control-sm d-none" style="width: auto;" onchange="renderSupplierReturns()">
+          <button class="btn btn-outline-primary btn-sm" onclick="exportSupplierReturnsToCSV()">📥 Export Supplier Returns CSV</button>
           <button class="btn btn-outline-dark btn-sm fw-bold" onclick="printFilteredSupplierReturns()">🖨️ Print Bulk Report</button>
           <button class="btn btn-danger btn-sm" onclick="sendSupplierReturnsToGmail()">📧 Send to Gmail</button>
         </div>
@@ -494,7 +501,7 @@
           <form id="supplier-returns-form" class="row g-2">
             <div class="col-md-3">
               <label class="form-label small fw-bold">Search / Select Model</label>
-              <input id="sup-return-item" class="form-control" list="sup-return-item-list" placeholder="Type model name to search..." required oninput="autoFillSupplier()" autocomplete="off">
+              <input id="sup-return-item" class="form-control" list="sup-return-item-list" placeholder="Type model name..." required oninput="autoFillSupplier()" autocomplete="off">
               <datalist id="sup-return-item-list"></datalist>
             </div>
             <div class="col-md-3">
@@ -526,7 +533,7 @@
       <div class="d-flex justify-content-between align-items-center mb-3 no-print">
         <h5 class="mb-0">Supplier Returns Batch List (<span id="sup-returns-badge-period" class="text-primary fw-bold">This Month</span>)</h5>
         <div class="input-group" style="max-width: 400px;">
-          <input type="text" id="sup-returns-search-input" class="form-control form-control-sm" placeholder="Search supplier returns (Model, Supplier, Status)..." onkeyup="if(event.key==='Enter') searchSupplierReturns()">
+          <input type="text" id="sup-returns-search-input" class="form-control form-control-sm" placeholder="Search supplier returns..." onkeyup="if(event.key==='Enter') searchSupplierReturns()">
           <button class="btn btn-sm btn-primary" type="button" onclick="searchSupplierReturns()">🔍 Search</button>
           <button class="btn btn-sm btn-outline-secondary" type="button" onclick="clearSupplierReturnsSearch()">Clear</button>
         </div>
@@ -562,19 +569,19 @@
             </div>
             <div class="mb-2">
               <label class="form-label">Sub Category (Quality)</label>
-              <input id="edit-stk-subcat" class="form-control" placeholder="e.g. Original / Grade A">
+              <input id="edit-stk-subcat" class="form-control">
             </div>
             <div class="mb-2">
               <label class="form-label">Quantity</label>
-              <input id="edit-stk-qty" type="number" class="form-control" required>
+              <input id="edit-stk-qty" type="number" min="1" class="form-control" required>
             </div>
             <div class="mb-2">
               <label class="form-label">Cost Price (₦)</label>
-              <input id="edit-stk-cost" type="number" class="form-control" required>
+              <input id="edit-stk-cost" type="number" min="0" class="form-control" required>
             </div>
             <div class="mb-2">
               <label class="form-label">Selling Price (₦)</label>
-              <input id="edit-stk-sell" type="number" class="form-control" required>
+              <input id="edit-stk-sell" type="number" min="0" class="form-control" required>
             </div>
             <div class="mb-2">
               <label class="form-label">Supplier</label>
@@ -592,7 +599,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    // --- CREDENTIALS ---
+    // --- AUTHENTICATION ---
     const AUTH_KEY = "sky_modernize_auth";
     let auth = JSON.parse(localStorage.getItem(AUTH_KEY)) || { username: "admin", password: "1234" };
 
@@ -615,6 +622,109 @@
     function saveDB() {
       localStorage.setItem(DB_KEY, JSON.stringify(db));
       renderAll();
+    }
+
+    // --- CSV EXPORT UTILITY ---
+    function downloadCSV(csvContent, filename) {
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute("download", filename);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    function exportStockToCSV() {
+      if (db.stock.length === 0) return alert("No stock data available to export.");
+      let csv = "Model,Category,Quality/Sub-Cat,Supplier,Quantity,Cost Price (NGN),Selling Price (NGN)\n";
+      db.stock.forEach(s => {
+        csv += `"${s.model}","${s.category}","${s.subcat || ''}","${s.supplier || ''}",${s.qty},${s.cost_price},${s.sell_price}\n`;
+      });
+      downloadCSV(csv, `Stock_Inventory_${new Date().toISOString().split('T')[0]}.csv`);
+    }
+
+    function exportSalesToCSV() {
+      const { salesData, periodLabel } = getFilteredSalesData();
+      if (salesData.length === 0) return alert("No sales records available to export for this period.");
+      let csv = "Date,Model,Quality,Customer,Quantity,Unit Price (NGN),Total Amount (NGN)\n";
+      salesData.forEach(s => {
+        csv += `"${s.date}","${s.model}","${s.quality || ''}","${s.customer}",${s.qty},${s.sell_price},${s.sell_price * s.qty}\n`;
+      });
+      downloadCSV(csv, `Sales_Report_${periodLabel.replace(/[^a-zA-Z0-9]/g, '_')}.csv`);
+    }
+
+    function exportReturnsToCSV() {
+      const { returnsData, periodLabel } = getFilteredReturnsData();
+      if (returnsData.length === 0) return alert("No customer return records available to export for this period.");
+      let csv = "Date,Model,Customer,Quantity,Reason,Status\n";
+      returnsData.forEach(r => {
+        csv += `"${r.date}","${r.model}","${r.customer}",${r.qty},"${r.reason}","${r.isExchanged ? 'Replacement Issued' : 'Refund'}"\n`;
+      });
+      downloadCSV(csv, `Customer_Returns_${periodLabel.replace(/[^a-zA-Z0-9]/g, '_')}.csv`);
+    }
+
+    function exportSupplierReturnsToCSV() {
+      const { supReturnsData, periodLabel } = getFilteredSupplierReturnsData();
+      if (supReturnsData.length === 0) return alert("No supplier return records available to export for this period.");
+      let csv = "Date,Model,Supplier,Quantity,Reason,Status\n";
+      supReturnsData.forEach(r => {
+        csv += `"${r.date}","${r.model}","${r.supplier}",${r.qty},"${r.reason}","${r.status}"\n`;
+      });
+      downloadCSV(csv, `Supplier_Returns_${periodLabel.replace(/[^a-zA-Z0-9]/g, '_')}.csv`);
+    }
+
+    // --- JSON BACKUP & IMPORT RESTORE ---
+    function exportBackupJSON() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `SKY_MODERNIZE_BACKUP_${new Date().toISOString().split('T')[0]}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    }
+
+    function importBackupJSON(event) {
+      const fileReader = new FileReader();
+      fileReader.onload = function(e) {
+        try {
+          const importedDB = JSON.parse(e.target.result);
+          if (importedDB && typeof importedDB === 'object' && Array.isArray(importedDB.stock)) {
+            if (confirm("Restoring from backup will overwrite current system data. Continue?")) {
+              db = importedDB;
+              saveDB();
+              alert("System successfully restored from backup!");
+            }
+          } else {
+            alert("Invalid backup file format!");
+          }
+        } catch (err) {
+          alert("Error parsing backup file: " + err.message);
+        }
+      };
+      if (event.target.files[0]) {
+        fileReader.readAsText(event.target.files[0]);
+      }
+    }
+
+    // --- DUPLICATE ENTRY HANDLER ---
+    function duplicateStockEntry(index) {
+      const item = db.stock[index];
+      if (!item) return;
+
+      document.getElementById('stk-model').value = item.model;
+      document.getElementById('stk-cat').value = item.category;
+      document.getElementById('stk-subcat').value = item.subcat || '';
+      document.getElementById('stk-qty').value = item.qty;
+      document.getElementById('stk-cost').value = item.cost_price;
+      document.getElementById('stk-sell').value = item.sell_price;
+      document.getElementById('stk-supplier').value = item.supplier || '';
+
+      document.getElementById('stk-model').focus();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     // --- ROUTING & ACCESS CONTROL ---
@@ -1001,6 +1111,7 @@
             <td class="text-success fw-bold">₦${item.sell_price.toLocaleString()}</td>
             <td class="no-print">
               <button class="btn btn-sm btn-primary me-1" onclick="openEditModal(${item.originalIndex})">Edit</button>
+              <button class="btn btn-sm btn-outline-secondary me-1" onclick="duplicateStockEntry(${item.originalIndex})" title="Duplicate details to create new stock">📋 Duplicate</button>
               <button class="btn btn-sm btn-danger" onclick="deleteStock(${item.originalIndex})">Delete</button>
             </td>
           </tr>
@@ -1545,7 +1656,6 @@
       }
     }
 
-    // BULK PRINT FUNCTION FOR SUPPLIER RETURNS (FILTERED MONTHLY OR BY SELECTED PERIOD)
     function printFilteredSupplierReturns() {
       const { supReturnsData, periodLabel } = getFilteredSupplierReturnsData();
 
@@ -1620,16 +1730,24 @@
       }
     }
 
-    // --- FORM ACTIONS ---
+    // --- FORM ACTIONS WITH DATA VALIDATION ---
     document.getElementById('stock-form').addEventListener('submit', (e) => {
       e.preventDefault();
+      const qty = parseInt(document.getElementById('stk-qty').value);
+      const cost = parseInt(document.getElementById('stk-cost').value);
+      const sell = parseInt(document.getElementById('stk-sell').value);
+
+      if (isNaN(qty) || qty <= 0) return alert("❌ Validation Error: Stock Quantity must be greater than 0!");
+      if (isNaN(cost) || cost < 0) return alert("❌ Validation Error: Cost Price cannot be negative!");
+      if (isNaN(sell) || sell < 0) return alert("❌ Validation Error: Selling Price cannot be negative!");
+
       db.stock.push({
         model: document.getElementById('stk-model').value,
         category: document.getElementById('stk-cat').value,
         subcat: document.getElementById('stk-subcat').value,
-        qty: parseInt(document.getElementById('stk-qty').value),
-        cost_price: parseInt(document.getElementById('stk-cost').value),
-        sell_price: parseInt(document.getElementById('stk-sell').value),
+        qty: qty,
+        cost_price: cost,
+        sell_price: sell,
         supplier: document.getElementById('stk-supplier').value
       });
       e.target.reset();
@@ -1656,14 +1774,21 @@
     document.getElementById('edit-stock-form').addEventListener('submit', (e) => {
       e.preventDefault();
       const index = parseInt(document.getElementById('edit-stk-index').value);
+      const qty = parseInt(document.getElementById('edit-stk-qty').value);
+      const cost = parseInt(document.getElementById('edit-stk-cost').value);
+      const sell = parseInt(document.getElementById('edit-stk-sell').value);
+
+      if (isNaN(qty) || qty <= 0) return alert("❌ Validation Error: Quantity must be greater than 0!");
+      if (isNaN(cost) || cost < 0) return alert("❌ Validation Error: Cost Price cannot be negative!");
+      if (isNaN(sell) || sell < 0) return alert("❌ Validation Error: Selling Price cannot be negative!");
 
       db.stock[index] = {
         model: document.getElementById('edit-stk-model').value,
         category: document.getElementById('edit-stk-cat').value,
         subcat: document.getElementById('edit-stk-subcat').value,
-        qty: parseInt(document.getElementById('edit-stk-qty').value),
-        cost_price: parseInt(document.getElementById('edit-stk-cost').value),
-        sell_price: parseInt(document.getElementById('edit-stk-sell').value),
+        qty: qty,
+        cost_price: cost,
+        sell_price: sell,
         supplier: document.getElementById('edit-stk-supplier').value
       };
 
@@ -1679,17 +1804,19 @@
       const qty = parseInt(document.getElementById('sale-qty').value);
       const customer = document.getElementById('sale-customer').value;
 
+      if (isNaN(qty) || qty <= 0) return alert("❌ Validation Error: Sale Quantity must be at least 1!");
+
       const item = db.stock.find(s => 
         s.model.toLowerCase() === modelName.toLowerCase() &&
         (s.subcat || 'Standard').toLowerCase() === (quality || 'Standard').toLowerCase()
       ) || db.stock.find(s => s.model.toLowerCase() === modelName.toLowerCase());
 
       if (!item) {
-        alert("Model not found in stock inventory!");
+        alert("❌ Error: Model not found in stock inventory!");
         return;
       }
       if (item.qty < qty) {
-        alert("Insufficient stock available!");
+        alert(`❌ Error: Insufficient stock available! (${item.qty} pcs in stock)`);
         return;
       }
 
@@ -1716,9 +1843,11 @@
       const reason = document.getElementById('return-reason').value;
       const isExchanged = document.getElementById('return-is-exchanged').checked;
 
+      if (isNaN(qty) || qty <= 0) return alert("❌ Validation Error: Return quantity must be at least 1!");
+
       const sale = db.sales[saleIdx];
       if (isNaN(saleIdx) || !sale || qty > sale.qty) {
-        alert("Invalid return quantity or no sold item selected!");
+        alert("❌ Error: Invalid return quantity or no sold item selected!");
         return;
       }
 
@@ -1726,7 +1855,7 @@
 
       if (isExchanged) {
         if (item && item.qty < qty) {
-          alert("Insufficient stock available to issue a replacement unit!");
+          alert("❌ Error: Insufficient stock available to issue a replacement unit!");
           return;
         }
       } else {
@@ -1758,15 +1887,17 @@
       const status = document.getElementById('sup-return-status').value;
       const reason = document.getElementById('sup-return-reason').value;
 
+      if (isNaN(qty) || qty <= 0) return alert("❌ Validation Error: Quantity must be at least 1!");
+
       const item = db.stock.find(s => s.model.toLowerCase() === modelName.toLowerCase());
       if (!item) {
-        alert("Model not found in stock inventory!");
+        alert("❌ Error: Model not found in stock inventory!");
         return;
       }
 
       if (status !== 'Replaced / Received') {
         if (item.qty < qty) {
-          alert("Insufficient stock quantity available to return to supplier!");
+          alert("❌ Error: Insufficient stock quantity available to return to supplier!");
           return;
         }
         item.qty -= qty;
