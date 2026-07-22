@@ -10,7 +10,7 @@
     .page.active { display: block; }
     
     @media print {
-      .no-print, nav, button, .card-header, form, .input-group, .modal { display: none !important; }
+      .no-print, nav, button, .card-header, form, .input-group, .modal, .sales-filter-container { display: none !important; }
       body { font-size: 11pt; background-color: #fff !important; }
       .container { max-width: 100% !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
       .card { border: none !important; box-shadow: none !important; }
@@ -292,15 +292,24 @@
     <div id="page-sales" class="page">
       <div class="print-title">
         <h2>SKY MODERNIZE SAVE TECHNOLOGY LTD</h2>
-        <h4>Sales History Report</h4>
+        <h4 id="sales-print-subtitle">Sales History Report</h4>
         <hr>
       </div>
 
-      <div class="d-flex justify-content-between align-items-center mb-3">
+      <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <h3>Sales Management</h3>
-        <div class="no-print d-flex gap-2">
-          <button class="btn btn-outline-dark" onclick="window.print()">🖨️ Print Sales History</button>
-          <button class="btn btn-danger" onclick="sendSalesToGmail()">📧 Send to Gmail</button>
+        <div class="no-print d-flex align-items-center gap-2 flex-wrap sales-filter-container">
+          <label class="fw-bold text-secondary mb-0">Period:</label>
+          <select id="sales-period-filter" class="form-select form-select-sm" style="width: auto;" onchange="handleSalesFilterChange()">
+            <option value="today">Today</option>
+            <option value="yesterday">Yesterday</option>
+            <option value="this-month">This Month</option>
+            <option value="all-time" selected>All Time History</option>
+            <option value="custom">Custom Date...</option>
+          </select>
+          <input type="date" id="sales-custom-date" class="form-control form-control-sm d-none" style="width: auto;" onchange="renderSales()">
+          <button class="btn btn-outline-dark btn-sm" onclick="printFilteredSales()">🖨️ Print Sales</button>
+          <button class="btn btn-danger btn-sm" onclick="sendSalesToGmail()">📧 Send to Gmail</button>
         </div>
       </div>
 
@@ -342,7 +351,7 @@
       </div>
 
       <div class="d-flex justify-content-between align-items-center mb-3 no-print">
-        <h5 class="mb-0">Recent Sales</h5>
+        <h5 class="mb-0">Sales History (<span id="sales-badge-period" class="text-primary fw-bold">All Time History</span>)</h5>
         <div class="input-group" style="max-width: 400px;">
           <input type="text" id="sales-search-input" class="form-control form-control-sm" placeholder="Search sales (Model, Customer, Date)..." onkeyup="if(event.key==='Enter') searchSales()">
           <button class="btn btn-sm btn-primary" type="button" onclick="searchSales()">🔍 Search</button>
@@ -555,7 +564,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    // --- CREDENTIALS (PERSISTED IN LOCALSTORAGE) ---
+    // --- CREDENTIALS ---
     const AUTH_KEY = "sky_modernize_auth";
     let auth = JSON.parse(localStorage.getItem(AUTH_KEY)) || { username: "admin", password: "1234" };
 
@@ -607,7 +616,7 @@
       }
     }
 
-    // --- AUTHENTICATION & PASSWORD HANDLERS ---
+    // --- AUTHENTICATION HANDLERS ---
     document.getElementById('login-form').addEventListener('submit', (e) => {
       e.preventDefault();
       const user = document.getElementById('login-username').value;
@@ -706,7 +715,6 @@
       renderStock();
     }
 
-    // --- CLEAR MODEL FIELD IN SALES ---
     function clearSaleModelInput() {
       const modelInput = document.getElementById('sale-item');
       modelInput.value = '';
@@ -765,7 +773,7 @@
       renderSupplierReturns();
     }
 
-    // --- DASHBOARD AVAILABLE GOODS SEARCH ---
+    // --- DASHBOARD SEARCH GOODS ---
     function searchDashboardGoods() {
       const query = document.getElementById('dash-goods-search-input').value.trim().toLowerCase();
       const resultsContainer = document.getElementById('dash-goods-search-results');
@@ -846,7 +854,7 @@
         filteredReturns = db.returns.filter(r => r.date === yestStr);
 
       } else if (filterType === 'this-month') {
-        const currentYearMonth = todayStr.substring(0, 7); // e.g. "2026-07"
+        const currentYearMonth = todayStr.substring(0, 7);
         periodLabel = `This Month (${currentYearMonth})`;
         filteredSales = db.sales.filter(s => s.date && s.date.startsWith(currentYearMonth));
         filteredReturns = db.returns.filter(r => r.date && r.date.startsWith(currentYearMonth));
@@ -1027,12 +1035,70 @@
       }
     }
 
-    function renderSales(filterQuery = "") {
+    // --- SALES PERIOD FILTER HANDLERS ---
+    function handleSalesFilterChange() {
+      const filterType = document.getElementById('sales-period-filter').value;
+      const customPicker = document.getElementById('sales-custom-date');
+
+      if (filterType === 'custom') {
+        customPicker.classList.remove('d-none');
+      } else {
+        customPicker.classList.add('d-none');
+        renderSales();
+      }
+    }
+
+    function getFilteredSalesData() {
+      const filterType = document.getElementById('sales-period-filter').value;
+      const now = new Date();
+      const todayStr = now.toISOString().split('T')[0];
+
+      let salesData = [];
+      let periodLabel = "All Time History";
+
+      if (filterType === 'today') {
+        periodLabel = `Today (${todayStr})`;
+        salesData = db.sales.filter(s => s.date === todayStr);
+
+      } else if (filterType === 'yesterday') {
+        const yest = new Date(now);
+        yest.setDate(yest.getDate() - 1);
+        const yestStr = yest.toISOString().split('T')[0];
+        periodLabel = `Yesterday (${yestStr})`;
+        salesData = db.sales.filter(s => s.date === yestStr);
+
+      } else if (filterType === 'this-month') {
+        const currentYearMonth = todayStr.substring(0, 7);
+        periodLabel = `This Month (${currentYearMonth})`;
+        salesData = db.sales.filter(s => s.date && s.date.startsWith(currentYearMonth));
+
+      } else if (filterType === 'all-time') {
+        periodLabel = "All Time History";
+        salesData = db.sales;
+
+      } else if (filterType === 'custom') {
+        const customDate = document.getElementById('sales-custom-date').value;
+        if (customDate) {
+          periodLabel = `Date: ${customDate}`;
+          salesData = db.sales.filter(s => s.date === customDate);
+        } else {
+          periodLabel = "Select Date...";
+          salesData = [];
+        }
+      }
+
+      return { salesData, periodLabel };
+    }
+
+    function renderSales(searchQuery = "") {
       const tbody = document.getElementById('sales-table-body');
-      
-      const filteredSales = db.sales.slice().reverse().map((sale, revIdx) => ({ ...sale, revIdx })).filter(sale => {
-        if (!filterQuery) return true;
-        const q = filterQuery.toLowerCase();
+      const { salesData, periodLabel } = getFilteredSalesData();
+
+      document.getElementById('sales-badge-period').innerText = periodLabel;
+
+      let filteredSales = salesData.slice().reverse().filter(sale => {
+        if (!searchQuery) return true;
+        const q = searchQuery.toLowerCase();
         return (sale.model && sale.model.toLowerCase().includes(q)) ||
                (sale.quality && sale.quality.toLowerCase().includes(q)) ||
                (sale.customer && sale.customer.toLowerCase().includes(q)) ||
@@ -1040,7 +1106,7 @@
       });
 
       if (filteredSales.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-3">No matching sales records found</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-3">No matching sales records found for this period</td></tr>`;
       } else {
         tbody.innerHTML = filteredSales.map(sale => `
           <tr>
@@ -1059,6 +1125,40 @@
       }
 
       populateReturnSaleDropdown();
+    }
+
+    function printFilteredSales() {
+      const { periodLabel } = getFilteredSalesData();
+      document.getElementById('sales-print-subtitle').innerText = `Sales History Report - ${periodLabel}`;
+      window.print();
+    }
+
+    function sendSalesToGmail() {
+      const { salesData, periodLabel } = getFilteredSalesData();
+
+      if (salesData.length === 0) {
+        alert(`No sales records available for "${periodLabel}" to send!`);
+        return;
+      }
+
+      let emailBody = `SKY MODERNIZE SAVE TECHNOLOGY LTD - Sales Report\n`;
+      emailBody += `Report Period: ${periodLabel}\n\n`;
+      emailBody += `--- COMPLETED SALES ---\n`;
+      emailBody += `Date | Model | Quality | Customer | Qty | Unit Price | Total Price\n`;
+      emailBody += `-----------------------------------------------------------------------\n`;
+
+      let totalAmount = 0;
+      salesData.forEach(s => {
+        const itemTotal = s.sell_price * s.qty;
+        totalAmount += itemTotal;
+        emailBody += `${s.date} | ${s.model} | ${s.quality || 'Standard'} | ${s.customer} | ${s.qty} pcs | ₦${s.sell_price.toLocaleString()} | ₦${itemTotal.toLocaleString()}\n`;
+      });
+
+      emailBody += `-----------------------------------------------------------------------\n`;
+      emailBody += `Total Sales Revenue (${periodLabel}): ₦${totalAmount.toLocaleString()}\n\n`;
+
+      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(`SKY MODERNIZE - Sales Report (${periodLabel})`)}&body=${encodeURIComponent(emailBody)}`;
+      window.open(gmailUrl, '_blank');
     }
 
     function printReceipt(date, model, quality, customer, qty, price) {
@@ -1104,50 +1204,6 @@
         </html>
       `);
       receiptWindow.document.close();
-    }
-
-    function sendSalesToGmail() {
-      if (db.sales.length === 0 && db.returns.length === 0) {
-        alert("No sales or returns records available to send!");
-        return;
-      }
-
-      let emailBody = "SKY MODERNIZE SAVE TECHNOLOGY LTD - Sales & Returns Report\n\n";
-      emailBody += "--- COMPLETED SALES ---\n";
-      emailBody += "Date | Model | Quality | Customer | Qty | Unit Price | Total Price\n";
-      emailBody += "-----------------------------------------------------------------------\n";
-
-      let totalAmount = 0;
-      db.sales.forEach(s => {
-        const itemTotal = s.sell_price * s.qty;
-        totalAmount += itemTotal;
-        emailBody += `${s.date} | ${s.model} | ${s.quality || 'Standard'} | ${s.customer} | ${s.qty} pcs | ₦${s.sell_price.toLocaleString()} | ₦${itemTotal.toLocaleString()}\n`;
-      });
-
-      emailBody += "-----------------------------------------------------------------------\n";
-      emailBody += `Total Sales Revenue: ₦${totalAmount.toLocaleString()}\n\n`;
-
-      const nonExchangedReturns = db.returns.filter(r => !r.isExchanged);
-
-      if (nonExchangedReturns.length > 0) {
-        emailBody += "--- RETURNED GOODS (REFUNDS / CREDITS) ---\n";
-        emailBody += "Date | Model | Customer | Qty | Returned Amount | Reason\n";
-        emailBody += "-----------------------------------------------------------------------\n";
-
-        let totalReturnAmount = 0;
-        nonExchangedReturns.forEach(r => {
-          const retTotal = (r.sell_price || 0) * r.qty;
-          totalReturnAmount += retTotal;
-          emailBody += `${r.date} | [RETURNED] ${r.model} | ${r.customer} | ${r.qty} pcs | ₦${retTotal.toLocaleString()} | ${r.reason}\n`;
-        });
-
-        emailBody += "-----------------------------------------------------------------------\n";
-        emailBody += `Total Refunded Amount: ₦${totalReturnAmount.toLocaleString()}\n`;
-        emailBody += `NET REVENUE AFTER RETURNS: ₦${(totalAmount - totalReturnAmount).toLocaleString()}\n`;
-      }
-
-      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent("SKY MODERNIZE - Sales & Returns Report")}&body=${encodeURIComponent(emailBody)}`;
-      window.open(gmailUrl, '_blank');
     }
 
     function populateReturnSaleDropdown(filterQuery = "") {
