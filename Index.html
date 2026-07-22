@@ -45,7 +45,7 @@
         <div class="col-12 col-sm-8 col-md-6 col-lg-4">
           <div class="card bg-dark text-white shadow-lg border-0 rounded-3">
             <div class="card-body p-4">
-              <h3 class="text-center mb-2">SKY MODERNIZE SAVE TECH LTD</h3>
+              <h3 class="text-center mb-2">SKY MODERNIZE</h3>
               <p class="text-center text-secondary mb-4">Inventory Management System</p>
               
               <div id="login-alert" class="alert alert-danger py-2 d-none" role="alert"></div>
@@ -155,7 +155,10 @@
     <div id="page-stock" class="page">
       <div class="d-flex justify-content-between align-items-center mb-3">
         <h3>🔒 Stock Management</h3>
-        <button class="btn btn-sm btn-outline-warning no-print" onclick="lockStock()">Lock Stock</button>
+        <div class="no-print d-flex gap-2">
+          <button id="btn-toggle-stock-totals" class="btn btn-sm btn-outline-secondary" onclick="toggleStockTotals()">👁️ Hide Totals</button>
+          <button class="btn btn-sm btn-outline-warning" onclick="lockStock()">Lock Stock</button>
+        </div>
       </div>
 
       <div class="row g-3 mb-4">
@@ -334,26 +337,32 @@
         <div class="card-header bg-danger text-white fw-bold">Process Customer Return</div>
         <div class="card-body">
           <form id="returns-form" class="row g-2">
-            <div class="col-md-5">
-              <label class="form-label">Search & Select Sold Item</label>
+            <div class="col-md-4">
+              <label class="form-label small fw-bold">Search & Select Sold Item</label>
               <div class="input-group mb-2">
-                <input type="text" id="return-sale-search-input" class="form-control form-control-sm" placeholder="Filter sale items by Model or Customer..." onkeyup="filterReturnSaleOptions()">
+                <input type="text" id="return-sale-search-input" class="form-control form-control-sm" placeholder="Filter sale items..." onkeyup="filterReturnSaleOptions()">
                 <button class="btn btn-sm btn-primary" type="button" onclick="filterReturnSaleOptions()">🔍 Search</button>
                 <button class="btn btn-sm btn-outline-secondary" type="button" onclick="clearReturnSaleSearch()">Clear</button>
               </div>
               <select id="return-sale-idx" class="form-select" required></select>
             </div>
-            <div class="col-md-2">
-              <label class="form-label">Qty</label>
-              <input id="return-qty" type="number" class="form-control mt-md-4" min="1" required>
+            <div class="col-md-1 col-sm-6">
+              <label class="form-label small fw-bold">Qty</label>
+              <input id="return-qty" type="number" class="form-control" min="1" required>
             </div>
-            <div class="col-md-3">
-              <label class="form-label">Reason</label>
-              <input id="return-reason" class="form-control mt-md-4" required>
+            <div class="col-md-3 col-sm-6">
+              <label class="form-label small fw-bold">Reason</label>
+              <input id="return-reason" class="form-control" placeholder="Reason for return" required>
             </div>
-            <div class="col-md-2">
-              <label class="form-label">&nbsp;</label>
-              <button class="btn btn-danger w-100 mt-md-4">Process Return</button>
+            <div class="col-md-4">
+              <label class="form-label small fw-bold text-primary">Item Replacement / Exchange</label>
+              <div class="form-check mt-1">
+                <input class="form-check-input" type="checkbox" id="return-is-exchanged">
+                <label class="form-check-label fw-bold text-danger" for="return-is-exchanged">
+                  Customer given replacement 🔄 (Auto-deduct stock)
+                </label>
+              </div>
+              <button class="btn btn-danger w-100 mt-2 fw-bold">Process Return</button>
             </div>
           </form>
         </div>
@@ -370,7 +379,15 @@
 
       <table class="table table-striped align-middle">
         <thead class="table-dark">
-          <tr><th>Date</th><th>Model</th><th>Customer</th><th>Qty</th><th>Reason</th></tr>
+          <tr>
+            <th>Date</th>
+            <th>Model</th>
+            <th>Customer</th>
+            <th>Qty</th>
+            <th>Reason</th>
+            <th>Exchange Status</th>
+            <th class="no-print">Actions</th>
+          </tr>
         </thead>
         <tbody id="returns-table-body"></tbody>
       </table>
@@ -393,31 +410,31 @@
         <div class="card-body">
           <form id="supplier-returns-form" class="row g-2">
             <div class="col-md-3">
-              <label class="form-label">Search / Select Model</label>
+              <label class="form-label small fw-bold">Search / Select Model</label>
               <input id="sup-return-item" class="form-control" list="sup-return-item-list" placeholder="Type model name to search..." required oninput="autoFillSupplier()" autocomplete="off">
               <datalist id="sup-return-item-list"></datalist>
             </div>
             <div class="col-md-3">
-              <label class="form-label">Supplier Name</label>
+              <label class="form-label small fw-bold">Supplier Name</label>
               <input id="sup-return-supplier" class="form-control" placeholder="Supplier Name" required>
             </div>
             <div class="col-md-2">
-              <label class="form-label">Quantity</label>
+              <label class="form-label small fw-bold">Quantity</label>
               <input id="sup-return-qty" type="number" class="form-control" min="1" required>
             </div>
-            <div class="col-md-2">
-              <label class="form-label">Status</label>
+            <div class="col-md-4">
+              <label class="form-label small fw-bold">Supplier Custody / Status</label>
               <select id="sup-return-status" class="form-select">
-                <option value="Pending">Pending ⏳</option>
-                <option value="Sent Back">Sent Back 🚚</option>
+                <option value="Pending">Pending Custody ⏳</option>
+                <option value="Sent Back">Sent to Supplier 🚚</option>
+                <option value="Replaced / Received">Replaced / Received Back 🔄 (Restock)</option>
               </select>
-            </div>
-            <div class="col-md-2">
-              <label class="form-label">&nbsp;</label>
-              <button class="btn btn-warning w-100 fw-bold">Record Return</button>
             </div>
             <div class="col-12 mt-2">
               <input id="sup-return-reason" class="form-control" placeholder="Reason for returning to supplier..." required>
+            </div>
+            <div class="col-12 mt-2">
+              <button class="btn btn-warning w-100 fw-bold">Record Supplier Return</button>
             </div>
           </form>
         </div>
@@ -434,7 +451,7 @@
 
       <table class="table table-striped align-middle">
         <thead class="table-dark">
-          <tr><th>Date</th><th>Model</th><th>Supplier</th><th>Qty</th><th>Reason</th><th>Status</th><th class="no-print">Action</th></tr>
+          <tr><th>Date</th><th>Model</th><th>Supplier</th><th>Qty</th><th>Reason</th><th>Status / Custody</th><th class="no-print">Action</th></tr>
         </thead>
         <tbody id="supplier-returns-table-body"></tbody>
       </table>
@@ -505,6 +522,7 @@
     // --- STATE MANAGEMENT ---
     let isLoggedIn = false;
     let isManagerUnlocked = false;
+    let isStockTotalsVisible = true;
 
     const DB_KEY = "sky_modernize_db";
     let db = JSON.parse(localStorage.getItem(DB_KEY)) || { stock: [], sales: [], returns: [], supplierReturns: [] };
@@ -626,6 +644,22 @@
       navigateTo('dashboard');
     }
 
+    // --- TOGGLE TOTALS VISIBILITY ---
+    function toggleStockTotals() {
+      isStockTotalsVisible = !isStockTotalsVisible;
+      const btn = document.getElementById('btn-toggle-stock-totals');
+
+      if (isStockTotalsVisible) {
+        btn.innerHTML = "👁️ Hide Totals";
+        btn.classList.replace('btn-secondary', 'btn-outline-secondary');
+      } else {
+        btn.innerHTML = "👁️ Show Totals";
+        btn.classList.replace('btn-outline-secondary', 'btn-secondary');
+      }
+
+      renderStock();
+    }
+
     // --- SEARCH FUNCTIONS ---
     function searchStock() {
       const query = document.getElementById('stock-search-input').value.trim().toLowerCase();
@@ -729,8 +763,14 @@
       const totalUnits = db.stock.reduce((sum, s) => sum + (parseInt(s.qty) || 0), 0);
       const totalCostValue = db.stock.reduce((sum, s) => sum + ((parseInt(s.qty) || 0) * (parseInt(s.cost_price) || 0)), 0);
 
-      document.getElementById('total-stock-units').innerText = `${totalUnits.toLocaleString()} pcs`;
-      document.getElementById('total-stock-value').innerText = `₦${totalCostValue.toLocaleString()}`;
+      // Mask/Unmask totals based on toggle state
+      if (isStockTotalsVisible) {
+        document.getElementById('total-stock-units').innerText = `${totalUnits.toLocaleString()} pcs`;
+        document.getElementById('total-stock-value').innerText = `₦${totalCostValue.toLocaleString()}`;
+      } else {
+        document.getElementById('total-stock-units').innerText = `••••••`;
+        document.getElementById('total-stock-value').innerText = `••••••`;
+      }
 
       if (filteredStock.length === 0) {
         tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-3">No matching stock items found</td></tr>`;
@@ -949,7 +989,7 @@
     function renderReturns(filterQuery = "") {
       const tbody = document.getElementById('returns-table-body');
       
-      const filteredReturns = db.returns.slice().reverse().filter(ret => {
+      const filteredReturns = db.returns.map((ret, originalIdx) => ({ ...ret, originalIdx })).slice().reverse().filter(ret => {
         if (!filterQuery) return true;
         const q = filterQuery.toLowerCase();
         return (ret.model && ret.model.toLowerCase().includes(q)) ||
@@ -959,17 +999,53 @@
       });
 
       if (filteredReturns.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-3">No matching return records found</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-3">No matching return records found</td></tr>`;
       } else {
-        tbody.innerHTML = filteredReturns.map(ret => `
-          <tr>
-            <td>${ret.date}</td>
-            <td>${ret.model}</td>
-            <td>${ret.customer}</td>
-            <td>${ret.qty}</td>
-            <td>${ret.reason}</td>
-          </tr>
-        `).join('');
+        tbody.innerHTML = filteredReturns.map(ret => {
+          const isExchanged = ret.isExchanged || false;
+          return `
+            <tr>
+              <td>${ret.date}</td>
+              <td><b>${ret.model}</b></td>
+              <td>${ret.customer}</td>
+              <td>${ret.qty}</td>
+              <td>${ret.reason}</td>
+              <td>
+                <span class="badge ${isExchanged ? 'bg-primary' : 'bg-secondary'} p-2">
+                  ${isExchanged ? '🔄 Exchanged (Stock Deducted)' : '💵 Refund / Credit'}
+                </span>
+              </td>
+              <td class="no-print">
+                ${!isExchanged ? 
+                  `<button class="btn btn-sm btn-outline-danger" onclick="deductExchangeStock(${ret.originalIdx})">🔄 Deduct Replacement</button>` : 
+                  `<button class="btn btn-sm btn-outline-secondary" disabled>✅ Replacement Handed Out</button>`
+                }
+              </td>
+            </tr>
+          `;
+        }).join('');
+      }
+    }
+
+    function deductExchangeStock(returnIdx) {
+      const ret = db.returns[returnIdx];
+      if (!ret) return;
+
+      const item = db.stock.find(s => s.model.toLowerCase() === ret.model.toLowerCase());
+      if (!item) {
+        alert("Stock item model not found in stock inventory!");
+        return;
+      }
+      if (item.qty < ret.qty) {
+        alert("Insufficient stock available to issue replacement!");
+        return;
+      }
+
+      if (confirm(`Deduct ${ret.qty} unit(s) of "${ret.model}" from stock for customer exchange?`)) {
+        item.qty -= ret.qty;
+        ret.isExchanged = true;
+        saveDB();
+        alert(`Successfully deducted ${ret.qty} pc(s) from stock for replacement exchange.`);
       }
     }
 
@@ -990,23 +1066,34 @@
         tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-3">No supplier return records found</td></tr>`;
       } else {
         tbody.innerHTML = filteredReturns.map(ret => {
-          const isSent = ret.status === 'Sent Back';
+          let statusBadge = '';
+          let rowClass = '';
+
+          if (ret.status === 'Replaced / Received') {
+            statusBadge = '<span class="badge bg-success p-2">🔄 Received Back & Restocked</span>';
+            rowClass = 'table-success';
+          } else if (ret.status === 'Sent Back') {
+            statusBadge = '<span class="badge bg-primary p-2">🚚 Sent to Supplier</span>';
+            rowClass = 'table-primary';
+          } else {
+            statusBadge = '<span class="badge bg-warning text-dark p-2">⏳ Pending Custody</span>';
+            rowClass = 'table-warning';
+          }
+
           return `
-            <tr class="${isSent ? 'table-success' : 'table-warning'}">
+            <tr class="${rowClass}">
               <td>${ret.date}</td>
               <td><b>${ret.model}</b></td>
               <td>${ret.supplier}</td>
               <td>${ret.qty}</td>
               <td>${ret.reason}</td>
-              <td>
-                <span class="badge ${isSent ? 'bg-success' : 'bg-warning text-dark'} p-2">
-                  ${isSent ? '🚚 Sent Back' : '⏳ Pending'}
-                </span>
-              </td>
+              <td>${statusBadge}</td>
               <td class="no-print">
-                <button class="btn btn-sm ${isSent ? 'btn-outline-warning' : 'btn-success'}" onclick="toggleSupplierReturnStatus(${ret.originalIdx})">
-                  ${isSent ? 'Mark Pending' : 'Mark Sent Back'}
-                </button>
+                ${ret.status !== 'Replaced / Received' ? 
+                  `<button class="btn btn-sm btn-success me-1" onclick="markSupplierReturnReceived(${ret.originalIdx})">✅ Mark Received Back</button>
+                   <button class="btn btn-sm btn-outline-secondary" onclick="cycleSupplierStatus(${ret.originalIdx})">🔄 Switch Status</button>` :
+                  `<button class="btn btn-sm btn-outline-success" disabled>✅ Restocked in Stock</button>`
+                }
               </td>
             </tr>
           `;
@@ -1014,9 +1101,43 @@
       }
     }
 
-    function toggleSupplierReturnStatus(idx) {
+    function markSupplierReturnReceived(idx) {
+      const ret = db.supplierReturns[idx];
+      if (!ret) return;
+
+      if (confirm(`Has supplier "${ret.supplier}" provided replacement for ${ret.qty} pc(s) of ${ret.model}? This will add them back to your active stock inventory.`)) {
+        const rawModelName = ret.model.split(' [')[0].trim();
+        const item = db.stock.find(s => s.model.toLowerCase() === rawModelName.toLowerCase());
+
+        if (item) {
+          item.qty += ret.qty;
+        } else {
+          // If model was deleted from stock, re-create it
+          db.stock.push({
+            model: rawModelName,
+            category: "General",
+            subcat: "",
+            qty: ret.qty,
+            cost_price: 0,
+            sell_price: 0,
+            supplier: ret.supplier
+          });
+        }
+
+        ret.status = 'Replaced / Received';
+        saveDB();
+        alert(`Successfully received ${ret.qty} unit(s) back from ${ret.supplier} and restocked into inventory!`);
+      }
+    }
+
+    function cycleSupplierStatus(idx) {
       if (db.supplierReturns[idx]) {
-        db.supplierReturns[idx].status = db.supplierReturns[idx].status === 'Sent Back' ? 'Pending' : 'Sent Back';
+        const current = db.supplierReturns[idx].status;
+        if (current === 'Pending') {
+          db.supplierReturns[idx].status = 'Sent Back';
+        } else if (current === 'Sent Back') {
+          db.supplierReturns[idx].status = 'Pending';
+        }
         saveDB();
       }
     }
@@ -1116,6 +1237,7 @@
       const saleIdx = parseInt(document.getElementById('return-sale-idx').value);
       const qty = parseInt(document.getElementById('return-qty').value);
       const reason = document.getElementById('return-reason').value;
+      const isExchanged = document.getElementById('return-is-exchanged').checked;
 
       const sale = db.sales[saleIdx];
       if (isNaN(saleIdx) || !sale || qty > sale.qty) {
@@ -1124,7 +1246,15 @@
       }
 
       const item = db.stock.find(s => sale.model.toLowerCase() === s.model.toLowerCase());
-      if (item) item.qty += qty;
+
+      if (isExchanged) {
+        if (item && item.qty < qty) {
+          alert("Insufficient stock available to issue a replacement unit!");
+          return;
+        }
+      } else {
+        if (item) item.qty += qty;
+      }
 
       db.returns.push({
         model: sale.model,
@@ -1133,6 +1263,7 @@
         sell_price: sale.sell_price,
         customer: sale.customer,
         reason: reason,
+        isExchanged: isExchanged,
         date: new Date().toISOString().split('T')[0]
       });
 
@@ -1155,12 +1286,16 @@
         alert("Model not found in stock inventory!");
         return;
       }
-      if (item.qty < qty) {
-        alert("Insufficient stock quantity available to return to supplier!");
-        return;
-      }
 
-      item.qty -= qty;
+      // If status is "Replaced / Received Back", no stock deduction occurs because supplier supplied replacements.
+      // Otherwise, deduct from current stock as goods leave custody.
+      if (status !== 'Replaced / Received') {
+        if (item.qty < qty) {
+          alert("Insufficient stock quantity available to return to supplier!");
+          return;
+        }
+        item.qty -= qty;
+      }
 
       db.supplierReturns.push({
         model: item.subcat ? `${item.model} [${item.subcat}]` : item.model,
