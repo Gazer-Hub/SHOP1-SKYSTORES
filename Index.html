@@ -25,7 +25,7 @@
 
   <nav id="main-nav" class="navbar navbar-expand-lg navbar-dark bg-dark mb-4 no-print" style="display: none;">
     <div class="container-fluid">
-      <a class="navbar-brand fw-bold" href="#">SKY MODERNIZE</a>
+      <a class="navbar-brand fw-bold" href="#">SKY MODERNIZE SAVE TECH LTD</a>
       <div class="d-flex gap-2">
         <button class="btn btn-sm btn-outline-light" onclick="navigateTo('dashboard')">Dashboard</button>
         <button class="btn btn-sm btn-outline-light" onclick="navigateTo('stock')">Stock 🔒</button>
@@ -267,7 +267,10 @@
           <form id="sales-form" class="row g-2">
             <div class="col-md-3">
               <label class="form-label small fw-bold">Select Model</label>
-              <input id="sale-item" class="form-control" list="sale-item-list" placeholder="Search model..." required oninput="autoFillSaleDetails()" autocomplete="off">
+              <div class="input-group">
+                <input id="sale-item" class="form-control" list="sale-item-list" placeholder="Search model..." required oninput="autoFillSaleDetails()" autocomplete="off">
+                <button class="btn btn-outline-secondary" type="button" onclick="clearSaleModelInput()" title="Clear model input">✖</button>
+              </div>
               <datalist id="sale-item-list"></datalist>
             </div>
             <div class="col-md-2">
@@ -658,6 +661,14 @@
       }
 
       renderStock();
+    }
+
+    // --- CLEAR MODEL FIELD IN SALES ---
+    function clearSaleModelInput() {
+      const modelInput = document.getElementById('sale-item');
+      modelInput.value = '';
+      autoFillSaleDetails();
+      modelInput.focus();
     }
 
     // --- SEARCH FUNCTIONS ---
@@ -1112,7 +1123,6 @@
         if (item) {
           item.qty += ret.qty;
         } else {
-          // If model was deleted from stock, re-create it
           db.stock.push({
             model: rawModelName,
             category: "General",
@@ -1287,8 +1297,6 @@
         return;
       }
 
-      // If status is "Replaced / Received Back", no stock deduction occurs because supplier supplied replacements.
-      // Otherwise, deduct from current stock as goods leave custody.
       if (status !== 'Replaced / Received') {
         if (item.qty < qty) {
           alert("Insufficient stock quantity available to return to supplier!");
