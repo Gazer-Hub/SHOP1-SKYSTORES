@@ -25,7 +25,7 @@
 
   <nav id="main-nav" class="navbar navbar-expand-lg navbar-dark bg-dark mb-4 no-print" style="display: none;">
     <div class="container-fluid">
-      <a class="navbar-brand fw-bold" href="#">SKY MODERNIZE SAVE TECH LTD</a>
+      <a class="navbar-brand fw-bold" href="#">SKY MODERNIZE</a>
       <div class="d-flex gap-2">
         <button class="btn btn-sm btn-outline-light" onclick="navigateTo('dashboard')">Dashboard</button>
         <button class="btn btn-sm btn-outline-light" onclick="navigateTo('stock')">Stock 🔒</button>
@@ -123,31 +123,34 @@
     </div>
 
     <div id="page-dashboard" class="page">
-      <h3 class="mb-3">Dashboard</h3>
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3>Dashboard</h3>
+        <span class="badge bg-primary fs-6" id="dash-date-badge">Today</span>
+      </div>
       
       <div class="row g-3 mb-4">
         <div class="col-md-2">
-          <div class="card text-center"><div class="card-body"><h6>Sales</h6><h4 class="text-success" id="dash-sales">₦0</h4></div></div>
+          <div class="card text-center"><div class="card-body"><h6 class="text-muted">Today's Sales</h6><h4 class="text-success" id="dash-sales">₦0</h4></div></div>
         </div>
         <div class="col-md-2">
-          <div class="card text-center"><div class="card-body"><h6>Cost</h6><h4 class="text-warning" id="dash-cost">₦0</h4></div></div>
+          <div class="card text-center"><div class="card-body"><h6 class="text-muted">Today's Cost</h6><h4 class="text-warning" id="dash-cost">₦0</h4></div></div>
         </div>
         <div class="col-md-2">
-          <div class="card text-center"><div class="card-body"><h6>Returns</h6><h4 class="text-danger" id="dash-returns">₦0</h4></div></div>
+          <div class="card text-center"><div class="card-body"><h6 class="text-muted">Today's Returns</h6><h4 class="text-danger" id="dash-returns">₦0</h4></div></div>
         </div>
         <div class="col-md-2">
-          <div class="card text-center"><div class="card-body"><h6>Gross Profit</h6><h4 class="text-info" id="dash-gross">₦0</h4></div></div>
+          <div class="card text-center"><div class="card-body"><h6 class="text-muted">Gross Profit</h6><h4 class="text-info" id="dash-gross">₦0</h4></div></div>
         </div>
         <div class="col-md-2">
-          <div class="card text-center border-danger"><div class="card-body"><h6>CAC (7.5%)</h6><h4 class="text-danger" id="dash-cac">₦0</h4></div></div>
+          <div class="card text-center border-danger"><div class="card-body"><h6 class="text-muted">CAC (7.5%)</h6><h4 class="text-danger" id="dash-cac">₦0</h4></div></div>
         </div>
         <div class="col-md-2">
-          <div class="card text-center border-success"><div class="card-body"><h6>Net Profit</h6><h4 class="text-success" id="dash-net">₦0</h4></div></div>
+          <div class="card text-center border-success"><div class="card-body"><h6 class="text-muted">Net Profit</h6><h4 class="text-success" id="dash-net">₦0</h4></div></div>
         </div>
       </div>
 
       <div class="card mb-4">
-        <div class="card-header bg-warning fw-bold">⚠️ Low Stock Alert (<= 10 pcs)</div>
+        <div class="card-header bg-warning fw-bold">⚠️ Low Stock Alert (<= 10 pcs) - Grouped by Quality / Sub-Cat</div>
         <div class="card-body" id="low-stock-list"></div>
       </div>
     </div>
@@ -732,9 +735,19 @@
     }
 
     function renderDashboard() {
-      let totalSales = db.sales.reduce((sum, s) => sum + (s.sell_price * s.qty), 0);
-      let totalCost = db.sales.reduce((sum, s) => sum + (s.cost_price * s.qty), 0);
-      let totalReturns = db.returns.reduce((sum, r) => sum + (r.sell_price * r.qty), 0);
+      // Get Today's Date in YYYY-MM-DD
+      const today = new Date().toISOString().split('T')[0];
+      
+      const badge = document.getElementById('dash-date-badge');
+      if (badge) badge.innerText = `Today (${today})`;
+
+      // Filter sales and returns recorded today
+      const todaySales = db.sales.filter(s => s.date === today);
+      const todayReturns = db.returns.filter(r => r.date === today);
+
+      let totalSales = todaySales.reduce((sum, s) => sum + (s.sell_price * s.qty), 0);
+      let totalCost = todaySales.reduce((sum, s) => sum + (s.cost_price * s.qty), 0);
+      let totalReturns = todayReturns.reduce((sum, r) => sum + (r.sell_price * r.qty), 0);
 
       let grossProfit = totalSales - totalCost - totalReturns;
       let cacFee = grossProfit > 0 ? Math.floor(grossProfit * 0.075) : 0;
@@ -749,12 +762,34 @@
 
       const lowStockList = document.getElementById('low-stock-list');
       const lowStock = db.stock.filter(s => s.qty <= 10);
+
       if (lowStock.length === 0) {
         lowStockList.innerHTML = '<p class="text-muted mb-0">All stock levels healthy!</p>';
       } else {
-        lowStockList.innerHTML = lowStock.map(s => 
-          `<span class="badge bg-danger me-2 mb-2 p-2">${s.model} ${s.subcat ? '(' + s.subcat + ')' : ''} - ${s.qty} pcs remaining</span>`
-        ).join('');
+        // Group low stock items by Quality / Sub-Category
+        const groupedLowStock = {};
+        lowStock.forEach(s => {
+          const key = s.subcat ? s.subcat.trim() : 'Standard';
+          if (!groupedLowStock[key]) groupedLowStock[key] = [];
+          groupedLowStock[key].push(s);
+        });
+
+        let html = '';
+        for (const [quality, items] of Object.entries(groupedLowStock)) {
+          html += `
+            <div class="mb-3">
+              <h6 class="fw-bold text-dark border-bottom pb-1 mb-2">🏷️ Quality / Sub-Cat: <span class="badge bg-secondary">${quality}</span></h6>
+              <div class="d-flex flex-wrap gap-2">
+                ${items.map(s => `
+                  <span class="badge bg-danger p-2 fs-6">
+                    ${s.model} - <b>${s.qty} pcs remaining</b>
+                  </span>
+                `).join('')}
+              </div>
+            </div>
+          `;
+        }
+        lowStockList.innerHTML = html;
       }
     }
 
