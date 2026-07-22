@@ -25,7 +25,7 @@
 
   <nav id="main-nav" class="navbar navbar-expand-lg navbar-dark bg-dark mb-4 no-print" style="display: none;">
     <div class="container-fluid">
-      <a class="navbar-brand fw-bold" href="#">SKY MODERNIZE</a>
+      <a class="navbar-brand fw-bold" href="#">SKY MODERNIZE SAVE TECH LTD</a>
       <div class="d-flex gap-2">
         <button class="btn btn-sm btn-outline-light" onclick="navigateTo('dashboard')">Dashboard</button>
         <button class="btn btn-sm btn-outline-light" onclick="navigateTo('stock')">Stock 🔒</button>
@@ -146,6 +146,35 @@
         </div>
         <div class="col-md-2">
           <div class="card text-center border-success"><div class="card-body"><h6 class="text-muted">Net Profit</h6><h4 class="text-success" id="dash-net">₦0</h4></div></div>
+        </div>
+      </div>
+
+      <div class="card mb-4 border-info shadow-sm">
+        <div class="card-header bg-info text-white fw-bold d-flex justify-content-between align-items-center">
+          <span>🔍 Quick Search Available Goods</span>
+          <span class="small text-white-50">Instant lookup for price, quality & available stock</span>
+        </div>
+        <div class="card-body">
+          <div class="input-group mb-3">
+            <input type="text" id="dash-goods-search-input" class="form-control" placeholder="Type Model Name, Quality, or Category to search available goods..." onkeyup="searchDashboardGoods()">
+            <button class="btn btn-outline-secondary" type="button" onclick="clearDashboardGoodsSearch()">Clear Search</button>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table table-hover table-bordered align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Model</th>
+                  <th>Quality / Sub-Cat</th>
+                  <th>Price (₦)</th>
+                  <th>Stock Available</th>
+                </tr>
+              </thead>
+              <tbody id="dash-goods-search-results">
+                <tr><td colspan="4" class="text-center text-muted">Type in the search bar above to query active inventory</td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -725,6 +754,42 @@
       renderSupplierReturns();
     }
 
+    // --- DASHBOARD AVAILABLE GOODS SEARCH ---
+    function searchDashboardGoods() {
+      const query = document.getElementById('dash-goods-search-input').value.trim().toLowerCase();
+      const resultsContainer = document.getElementById('dash-goods-search-results');
+
+      if (!query) {
+        resultsContainer.innerHTML = `<tr><td colspan="4" class="text-center text-muted">Type in the search bar above to query active inventory</td></tr>`;
+        return;
+      }
+
+      const matchingGoods = db.stock.filter(s => 
+        (s.model && s.model.toLowerCase().includes(query)) ||
+        (s.category && s.category.toLowerCase().includes(query)) ||
+        (s.subcat && s.subcat.toLowerCase().includes(query))
+      );
+
+      if (matchingGoods.length === 0) {
+        resultsContainer.innerHTML = `<tr><td colspan="4" class="text-center text-danger">No available goods match your search query</td></tr>`;
+        return;
+      }
+
+      resultsContainer.innerHTML = matchingGoods.map(g => `
+        <tr>
+          <td><b>${g.model}</b></td>
+          <td><span class="badge bg-secondary">${g.subcat || 'Standard'}</span></td>
+          <td class="text-success fw-bold">₦${(g.sell_price || 0).toLocaleString()}</td>
+          <td><span class="badge ${g.qty > 10 ? 'bg-success' : 'bg-danger'}">${g.qty} pcs available</span></td>
+        </tr>
+      `).join('');
+    }
+
+    function clearDashboardGoodsSearch() {
+      document.getElementById('dash-goods-search-input').value = '';
+      searchDashboardGoods();
+    }
+
     // --- RENDERING FUNCTIONS ---
     function renderAll() {
       renderDashboard();
@@ -759,6 +824,9 @@
       document.getElementById('dash-gross').innerText = `₦${grossProfit.toLocaleString()}`;
       document.getElementById('dash-cac').innerText = `₦${cacFee.toLocaleString()}`;
       document.getElementById('dash-net').innerText = `₦${netProfit.toLocaleString()}`;
+
+      // Re-run Dashboard Goods Search if active
+      searchDashboardGoods();
 
       const lowStockList = document.getElementById('low-stock-list');
       const lowStock = db.stock.filter(s => s.qty <= 10);
@@ -987,12 +1055,13 @@
     }
 
     function sendSalesToGmail() {
-      if (db.sales.length === 0) {
-        alert("No sales records available to send!");
+      if (db.sales.length === 0 && db.returns.length === 0) {
+        alert("No sales or returns records available to send!");
         return;
       }
 
-      let emailBody = "SKY MODERNIZE SAVE TECHNOLOGY LTD - Sales Report\n\n";
+      let emailBody = "SKY MODERNIZE SAVE TECHNOLOGY LTD - Sales & Returns Report\n\n";
+      emailBody += "--- COMPLETED SALES ---\n";
       emailBody += "Date | Model | Quality | Customer | Qty | Unit Price | Total Price\n";
       emailBody += "-----------------------------------------------------------------------\n";
 
@@ -1004,10 +1073,28 @@
       });
 
       emailBody += "-----------------------------------------------------------------------\n";
-      emailBody += `Total Revenue: ₦${totalAmount.toLocaleString()}\n`;
+      emailBody += `Total Sales Revenue: ₦${totalAmount.toLocaleString()}\n\n`;
+
+      if (db.returns.length > 0) {
+        emailBody += "--- RETURNED GOODS ---\n";
+        emailBody += "Date | Model | Customer | Qty | Returned Amount | Reason | Exchange Status\n";
+        emailBody += "-----------------------------------------------------------------------\n";
+
+        let totalReturnAmount = 0;
+        db.returns.forEach(r => {
+          const retTotal = (r.sell_price || 0) * r.qty;
+          totalReturnAmount += retTotal;
+          const statusText = r.isExchanged ? "Exchanged (Replacement Issued)" : "Refund / Credit";
+          emailBody += `${r.date} | [RETURNED] ${r.model} | ${r.customer} | ${r.qty} pcs | ₦${retTotal.toLocaleString()} | ${r.reason} | ${statusText}\n`;
+        });
+
+        emailBody += "-----------------------------------------------------------------------\n";
+        emailBody += `Total Returns Amount: ₦${totalReturnAmount.toLocaleString()}\n`;
+        emailBody += `NET REVENUE AFTER RETURNS: ₦${(totalAmount - totalReturnAmount).toLocaleString()}\n`;
+      }
 
       // Direct Web Compose link for Gmail
-      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent("SKY MODERNIZE - Sales History Report")}&body=${encodeURIComponent(emailBody)}`;
+      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent("SKY MODERNIZE - Sales & Returns Report")}&body=${encodeURIComponent(emailBody)}`;
       window.open(gmailUrl, '_blank');
     }
 
