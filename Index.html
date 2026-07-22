@@ -10,7 +10,7 @@
     .page.active { display: block; }
     
     @media print {
-      .no-print, nav, button, .card-header, form, .input-group, .modal, .sales-filter-container { display: none !important; }
+      .no-print, nav, button, .card-header, form, .input-group, .modal, .sales-filter-container, .returns-filter-container, .sup-filter-container { display: none !important; }
       body { font-size: 11pt; background-color: #fff !important; }
       .container { max-width: 100% !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
       .card { border: none !important; box-shadow: none !important; }
@@ -381,13 +381,26 @@
     <div id="page-returns" class="page">
       <div class="print-title">
         <h2>SKY MODERNIZE SAVE TECHNOLOGY LTD</h2>
-        <h4>Customer Returns History Report</h4>
+        <h4 id="returns-print-subtitle">Customer Returns History Report</h4>
         <hr>
       </div>
 
-      <div class="d-flex justify-content-between align-items-center mb-3">
+      <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <h3>Customer Returns Management</h3>
-        <button class="btn btn-outline-dark no-print" onclick="window.print()">🖨️ Print Returns History</button>
+        <div class="no-print d-flex align-items-center gap-2 flex-wrap returns-filter-container">
+          <label class="fw-bold text-secondary mb-0">Period:</label>
+          <select id="returns-period-filter" class="form-select form-select-sm" style="width: auto;" onchange="handleReturnsFilterChange()">
+            <option value="today">Today</option>
+            <option value="yesterday">Yesterday</option>
+            <option value="this-week">This Week</option>
+            <option value="this-month">This Month</option>
+            <option value="all-time" selected>All Time History</option>
+            <option value="custom">Custom Date...</option>
+          </select>
+          <input type="date" id="returns-custom-date" class="form-control form-control-sm d-none" style="width: auto;" onchange="renderReturns()">
+          <button class="btn btn-outline-dark btn-sm" onclick="printFilteredReturns()">🖨️ Print Customer Returns</button>
+          <button class="btn btn-danger btn-sm" onclick="sendReturnsToGmail()">📧 Send to Gmail</button>
+        </div>
       </div>
 
       <div class="card mb-4 no-print">
@@ -426,7 +439,7 @@
       </div>
 
       <div class="d-flex justify-content-between align-items-center mb-3 no-print">
-        <h5 class="mb-0">Customer Return History</h5>
+        <h5 class="mb-0">Customer Return History (<span id="returns-badge-period" class="text-primary fw-bold">All Time History</span>)</h5>
         <div class="input-group" style="max-width: 400px;">
           <input type="text" id="returns-search-input" class="form-control form-control-sm" placeholder="Search returns (Model, Customer, Reason)..." onkeyup="if(event.key==='Enter') searchReturns()">
           <button class="btn btn-sm btn-primary" type="button" onclick="searchReturns()">🔍 Search</button>
@@ -453,13 +466,26 @@
     <div id="page-supplier-returns" class="page">
       <div class="print-title">
         <h2>SKY MODERNIZE SAVE TECHNOLOGY LTD</h2>
-        <h4>Supplier Returns History Report</h4>
+        <h4 id="sup-returns-print-subtitle">Supplier Returns History Report</h4>
         <hr>
       </div>
 
-      <div class="d-flex justify-content-between align-items-center mb-3">
+      <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <h3>Supplier Returns Management</h3>
-        <button class="btn btn-outline-dark no-print" onclick="window.print()">🖨️ Print Supplier Returns</button>
+        <div class="no-print d-flex align-items-center gap-2 flex-wrap sup-filter-container">
+          <label class="fw-bold text-secondary mb-0">Period:</label>
+          <select id="sup-returns-period-filter" class="form-select form-select-sm" style="width: auto;" onchange="handleSupplierReturnsFilterChange()">
+            <option value="today">Today</option>
+            <option value="yesterday">Yesterday</option>
+            <option value="this-week">This Week</option>
+            <option value="this-month">This Month</option>
+            <option value="all-time" selected>All Time History</option>
+            <option value="custom">Custom Date...</option>
+          </select>
+          <input type="date" id="sup-returns-custom-date" class="form-control form-control-sm d-none" style="width: auto;" onchange="renderSupplierReturns()">
+          <button class="btn btn-outline-dark btn-sm" onclick="printFilteredSupplierReturns()">🖨️ Print Supplier Returns</button>
+          <button class="btn btn-danger btn-sm" onclick="sendSupplierReturnsToGmail()">📧 Send to Gmail</button>
+        </div>
       </div>
 
       <div class="card mb-4 border-warning no-print">
@@ -498,7 +524,7 @@
       </div>
 
       <div class="d-flex justify-content-between align-items-center mb-3 no-print">
-        <h5 class="mb-0">Supplier Return History</h5>
+        <h5 class="mb-0">Supplier Return History (<span id="sup-returns-badge-period" class="text-primary fw-bold">All Time History</span>)</h5>
         <div class="input-group" style="max-width: 400px;">
           <input type="text" id="sup-returns-search-input" class="form-control form-control-sm" placeholder="Search supplier returns (Model, Supplier, Status)..." onkeyup="if(event.key==='Enter') searchSupplierReturns()">
           <button class="btn btn-sm btn-primary" type="button" onclick="searchSupplierReturns()">🔍 Search</button>
@@ -1244,10 +1270,75 @@
       }
     }
 
+    // --- CUSTOMER RETURNS FILTER & PERIOD LOGIC ---
+    function handleReturnsFilterChange() {
+      const filterType = document.getElementById('returns-period-filter').value;
+      const customPicker = document.getElementById('returns-custom-date');
+
+      if (filterType === 'custom') {
+        customPicker.classList.remove('d-none');
+      } else {
+        customPicker.classList.add('d-none');
+        renderReturns();
+      }
+    }
+
+    function getFilteredReturnsData() {
+      const filterType = document.getElementById('returns-period-filter').value;
+      const now = new Date();
+      const todayStr = now.toISOString().split('T')[0];
+
+      let returnsData = [];
+      let periodLabel = "All Time History";
+
+      if (filterType === 'today') {
+        periodLabel = `Today (${todayStr})`;
+        returnsData = db.returns.filter(r => r.date === todayStr);
+
+      } else if (filterType === 'yesterday') {
+        const yest = new Date(now);
+        yest.setDate(yest.getDate() - 1);
+        const yestStr = yest.toISOString().split('T')[0];
+        periodLabel = `Yesterday (${yestStr})`;
+        returnsData = db.returns.filter(r => r.date === yestStr);
+
+      } else if (filterType === 'this-week') {
+        const current = new Date(now);
+        const firstDay = current.getDate() - current.getDay();
+        const startOfWeek = new Date(current.setDate(firstDay)).toISOString().split('T')[0];
+        periodLabel = `This Week (${startOfWeek} to ${todayStr})`;
+        returnsData = db.returns.filter(r => r.date && r.date >= startOfWeek && r.date <= todayStr);
+
+      } else if (filterType === 'this-month') {
+        const currentYearMonth = todayStr.substring(0, 7);
+        periodLabel = `This Month (${currentYearMonth})`;
+        returnsData = db.returns.filter(r => r.date && r.date.startsWith(currentYearMonth));
+
+      } else if (filterType === 'all-time') {
+        periodLabel = "All Time History";
+        returnsData = db.returns;
+
+      } else if (filterType === 'custom') {
+        const customDate = document.getElementById('returns-custom-date').value;
+        if (customDate) {
+          periodLabel = `Date: ${customDate}`;
+          returnsData = db.returns.filter(r => r.date === customDate);
+        } else {
+          periodLabel = "Select Date...";
+          returnsData = [];
+        }
+      }
+
+      return { returnsData, periodLabel };
+    }
+
     function renderReturns(filterQuery = "") {
       const tbody = document.getElementById('returns-table-body');
-      
-      const filteredReturns = db.returns.map((ret, originalIdx) => ({ ...ret, originalIdx })).slice().reverse().filter(ret => {
+      const { returnsData, periodLabel } = getFilteredReturnsData();
+
+      document.getElementById('returns-badge-period').innerText = periodLabel;
+
+      const filteredReturns = returnsData.map((ret, originalIdx) => ({ ...ret, originalIdx })).slice().reverse().filter(ret => {
         if (!filterQuery) return true;
         const q = filterQuery.toLowerCase();
         return (ret.model && ret.model.toLowerCase().includes(q)) ||
@@ -1257,7 +1348,7 @@
       });
 
       if (filteredReturns.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-3">No matching return records found</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-3">No matching return records found for this period</td></tr>`;
       } else {
         tbody.innerHTML = filteredReturns.map(ret => {
           const isExchanged = ret.isExchanged || false;
@@ -1285,6 +1376,35 @@
       }
     }
 
+    function printFilteredReturns() {
+      const { periodLabel } = getFilteredReturnsData();
+      document.getElementById('returns-print-subtitle').innerText = `Customer Returns History Report - ${periodLabel}`;
+      window.print();
+    }
+
+    function sendReturnsToGmail() {
+      const { returnsData, periodLabel } = getFilteredReturnsData();
+
+      if (returnsData.length === 0) {
+        alert(`No customer return records available for "${periodLabel}" to send!`);
+        return;
+      }
+
+      let emailBody = `SKY MODERNIZE SAVE TECHNOLOGY LTD - Customer Returns Report\n`;
+      emailBody += `Report Period: ${periodLabel}\n\n`;
+      emailBody += `--- CUSTOMER RETURNS ---\n`;
+      emailBody += `Date | Model | Customer | Qty | Reason | Type\n`;
+      emailBody += `-----------------------------------------------------------------------\n`;
+
+      returnsData.forEach(r => {
+        const exchangeText = r.isExchanged ? 'Replacement Issued' : 'Refund / Credit';
+        emailBody += `${r.date} | ${r.model} | ${r.customer} | ${r.qty} pcs | ${r.reason} | ${exchangeText}\n`;
+      });
+
+      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(`SKY MODERNIZE - Customer Returns Report (${periodLabel})`)}&body=${encodeURIComponent(emailBody)}`;
+      window.open(gmailUrl, '_blank');
+    }
+
     function deductExchangeStock(returnIdx) {
       const ret = db.returns[returnIdx];
       if (!ret) return;
@@ -1307,10 +1427,75 @@
       }
     }
 
+    // --- SUPPLIER RETURNS FILTER & PERIOD LOGIC ---
+    function handleSupplierReturnsFilterChange() {
+      const filterType = document.getElementById('sup-returns-period-filter').value;
+      const customPicker = document.getElementById('sup-returns-custom-date');
+
+      if (filterType === 'custom') {
+        customPicker.classList.remove('d-none');
+      } else {
+        customPicker.classList.add('d-none');
+        renderSupplierReturns();
+      }
+    }
+
+    function getFilteredSupplierReturnsData() {
+      const filterType = document.getElementById('sup-returns-period-filter').value;
+      const now = new Date();
+      const todayStr = now.toISOString().split('T')[0];
+
+      let supReturnsData = [];
+      let periodLabel = "All Time History";
+
+      if (filterType === 'today') {
+        periodLabel = `Today (${todayStr})`;
+        supReturnsData = db.supplierReturns.filter(r => r.date === todayStr);
+
+      } else if (filterType === 'yesterday') {
+        const yest = new Date(now);
+        yest.setDate(yest.getDate() - 1);
+        const yestStr = yest.toISOString().split('T')[0];
+        periodLabel = `Yesterday (${yestStr})`;
+        supReturnsData = db.supplierReturns.filter(r => r.date === yestStr);
+
+      } else if (filterType === 'this-week') {
+        const current = new Date(now);
+        const firstDay = current.getDate() - current.getDay();
+        const startOfWeek = new Date(current.setDate(firstDay)).toISOString().split('T')[0];
+        periodLabel = `This Week (${startOfWeek} to ${todayStr})`;
+        supReturnsData = db.supplierReturns.filter(r => r.date && r.date >= startOfWeek && r.date <= todayStr);
+
+      } else if (filterType === 'this-month') {
+        const currentYearMonth = todayStr.substring(0, 7);
+        periodLabel = `This Month (${currentYearMonth})`;
+        supReturnsData = db.supplierReturns.filter(r => r.date && r.date.startsWith(currentYearMonth));
+
+      } else if (filterType === 'all-time') {
+        periodLabel = "All Time History";
+        supReturnsData = db.supplierReturns;
+
+      } else if (filterType === 'custom') {
+        const customDate = document.getElementById('sup-returns-custom-date').value;
+        if (customDate) {
+          periodLabel = `Date: ${customDate}`;
+          supReturnsData = db.supplierReturns.filter(r => r.date === customDate);
+        } else {
+          periodLabel = "Select Date...";
+          supReturnsData = [];
+        }
+      }
+
+      return { supReturnsData, periodLabel };
+    }
+
     function renderSupplierReturns(filterQuery = "") {
       const tbody = document.getElementById('supplier-returns-table-body');
-      
-      const filteredReturns = db.supplierReturns.map((ret, originalIdx) => ({ ...ret, originalIdx })).slice().reverse().filter(ret => {
+      const { supReturnsData, periodLabel } = getFilteredSupplierReturnsData();
+
+      document.getElementById('sup-returns-badge-period').innerText = periodLabel;
+
+      const filteredReturns = supReturnsData.map((ret, originalIdx) => ({ ...ret, originalIdx })).slice().reverse().filter(ret => {
         if (!filterQuery) return true;
         const q = filterQuery.toLowerCase();
         return (ret.model && ret.model.toLowerCase().includes(q)) ||
@@ -1321,7 +1506,7 @@
       });
 
       if (filteredReturns.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-3">No supplier return records found</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-3">No supplier return records found for this period</td></tr>`;
       } else {
         tbody.innerHTML = filteredReturns.map(ret => {
           let statusBadge = '';
@@ -1357,6 +1542,34 @@
           `;
         }).join('');
       }
+    }
+
+    function printFilteredSupplierReturns() {
+      const { periodLabel } = getFilteredSupplierReturnsData();
+      document.getElementById('sup-returns-print-subtitle').innerText = `Supplier Returns History Report - ${periodLabel}`;
+      window.print();
+    }
+
+    function sendSupplierReturnsToGmail() {
+      const { supReturnsData, periodLabel } = getFilteredSupplierReturnsData();
+
+      if (supReturnsData.length === 0) {
+        alert(`No supplier return records available for "${periodLabel}" to send!`);
+        return;
+      }
+
+      let emailBody = `SKY MODERNIZE SAVE TECHNOLOGY LTD - Supplier Returns Report\n`;
+      emailBody += `Report Period: ${periodLabel}\n\n`;
+      emailBody += `--- SUPPLIER RETURNS ---\n`;
+      emailBody += `Date | Model | Supplier | Qty | Reason | Status\n`;
+      emailBody += `-----------------------------------------------------------------------\n`;
+
+      supReturnsData.forEach(r => {
+        emailBody += `${r.date} | ${r.model} | ${r.supplier} | ${r.qty} pcs | ${r.reason} | ${r.status}\n`;
+      });
+
+      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(`SKY MODERNIZE - Supplier Returns Report (${periodLabel})`)}&body=${encodeURIComponent(emailBody)}`;
+      window.open(gmailUrl, '_blank');
     }
 
     function markSupplierReturnReceived(idx) {
