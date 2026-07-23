@@ -192,8 +192,11 @@
         </div>
       </div>
 
-      <div class="card mb-4">
-        <div class="card-header bg-warning fw-bold">⚠️ Low Stock Alert (<= 10 pcs) - Grouped by Quality / Sub-Cat</div>
+      <div class="card mb-4 border-warning">
+        <div class="card-header bg-warning fw-bold d-flex justify-content-between align-items-center">
+          <span>⚠️ Low Stock Alert (<= 10 pcs) - Grouped by Quality / Sub-Cat</span>
+          <button class="btn btn-sm btn-dark" onclick="requestBulkLowStockRequisition()">📋 Request Selected Stock in Bulk</button>
+        </div>
         <div class="card-body" id="low-stock-list"></div>
       </div>
     </div>
@@ -322,38 +325,67 @@
         </div>
       </div>
 
-      <div class="card mb-4 no-print">
-        <div class="card-header bg-success text-white fw-bold">Record New Sale</div>
+      <div class="card mb-4 no-print border-success">
+        <div class="card-header bg-success text-white fw-bold">Record Sale (Supports Multi-Item Shopping Cart)</div>
         <div class="card-body">
-          <form id="sales-form" class="row g-2">
+          <div class="row g-2 align-items-end mb-3">
             <div class="col-md-3">
               <label class="form-label small fw-bold">Select Model</label>
               <div class="input-group">
-                <input id="sale-item" class="form-control" list="sale-item-list" placeholder="Search model..." required oninput="autoFillSaleDetails()" autocomplete="off">
+                <input id="sale-item" class="form-control" list="sale-item-list" placeholder="Search model..." oninput="autoFillSaleDetails()" autocomplete="off">
                 <button class="btn btn-outline-secondary" type="button" onclick="clearSaleModelInput()" title="Clear model input">✖</button>
               </div>
               <datalist id="sale-item-list"></datalist>
             </div>
             <div class="col-md-2">
               <label class="form-label small fw-bold">Quality / Sub-Cat</label>
-              <select id="sale-quality" class="form-select" required>
+              <select id="sale-quality" class="form-select">
                 <option value="">-- Select Quality --</option>
               </select>
             </div>
             <div class="col-md-2">
               <label class="form-label small fw-bold">Selling Price (₦)</label>
-              <input id="sale-price" type="number" min="1" class="form-control bg-light" placeholder="Auto-filled" readonly required>
+              <input id="sale-price" type="number" min="1" class="form-control bg-light" placeholder="Auto-filled" readonly>
             </div>
             <div class="col-md-2">
               <label class="form-label small fw-bold">Quantity</label>
-              <input id="sale-qty" type="number" class="form-control" min="1" placeholder="Qty" required>
+              <input id="sale-qty" type="number" class="form-control" min="1" value="1" placeholder="Qty">
             </div>
             <div class="col-md-3">
-              <label class="form-label small fw-bold">Customer Name</label>
-              <input id="sale-customer" class="form-control" placeholder="Customer Name" required>
+              <button type="button" class="btn btn-outline-success fw-bold w-100" onclick="addItemToSalesCart()">🛒 Add Item to Sale Cart</button>
             </div>
-            <div class="col-12 mt-3">
-              <button class="btn btn-success fw-bold w-100">Record Sale</button>
+          </div>
+
+          <div id="sales-cart-container" class="d-none border rounded p-3 bg-light mb-3">
+            <h6 class="fw-bold text-success mb-2">🛒 Customer Multi-Item Cart</h6>
+            <div class="table-responsive">
+              <table class="table table-sm table-bordered bg-white mb-2">
+                <thead>
+                  <tr class="table-secondary">
+                    <th>Model</th>
+                    <th>Quality</th>
+                    <th>Qty</th>
+                    <th>Unit Price</th>
+                    <th>Subtotal</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="sales-cart-tbody"></tbody>
+              </table>
+            </div>
+            <div class="d-flex justify-content-between align-items-center">
+              <h5 class="mb-0">Total: <span id="sales-cart-total" class="text-success fw-bold">₦0</span></h5>
+              <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearSalesCart()">Clear Cart</button>
+            </div>
+          </div>
+
+          <form id="sales-form" class="row g-2 border-top pt-2">
+            <div class="col-md-8">
+              <label class="form-label small fw-bold">Customer Name</label>
+              <input id="sale-customer" class="form-control" placeholder="Enter Customer Name" required>
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+              <button type="submit" class="btn btn-success fw-bold w-100">Complete & Record Sale</button>
             </div>
           </form>
         </div>
@@ -696,6 +728,7 @@
     let isLoggedIn = false;
     let isManagerUnlocked = false;
     let isStockTotalsVisible = true;
+    let salesCart = [];
 
     const DB_KEY = "sky_modernize_db";
     let db = JSON.parse(localStorage.getItem(DB_KEY)) || { 
@@ -842,22 +875,36 @@
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    // --- QUICK REQUISITION FROM DASHBOARD ---
-    function requestLowStockRequisition(index) {
-      const item = db.stock[index];
-      if (!item) return;
+    // --- BULK LOW STOCK REQUISITION FEATURE ---
+    function requestBulkLowStockRequisition() {
+      const checkboxes = document.querySelectorAll('.low-stock-checkbox:checked');
+      if (checkboxes.length === 0) {
+        return alert("Please check at least one low stock item to request in bulk!");
+      }
 
-      navigateTo('purchase-requisition');
+      let addedCount = 0;
+      checkboxes.forEach(cb => {
+        const idx = parseInt(cb.value);
+        const item = db.stock[idx];
+        if (item) {
+          const reqId = "REQ-" + Math.floor(1000 + Math.random() * 9000);
+          db.requisitions.push({
+            id: reqId,
+            item: item.model,
+            category: item.subcat ? `${item.category} / ${item.subcat}` : item.category,
+            qty: Math.max(10, 20 - item.qty),
+            cost: item.cost_price || 0,
+            supplier: item.supplier || '',
+            notes: `Bulk Low Stock Requisition: Only ${item.qty} pcs remaining in stock.`,
+            status: "Pending",
+            date: new Date().toISOString().split('T')[0]
+          });
+          addedCount++;
+        }
+      });
 
-      document.getElementById('req-item').value = item.model;
-      document.getElementById('req-cat').value = item.subcat ? `${item.category} / ${item.subcat}` : item.category;
-      document.getElementById('req-qty').value = Math.max(10, 20 - item.qty);
-      document.getElementById('req-cost').value = item.cost_price || 0;
-      document.getElementById('req-supplier').value = item.supplier || '';
-      document.getElementById('req-notes').value = `Low Stock Alert: Only ${item.qty} pcs left in inventory.`;
-
-      document.getElementById('req-qty').focus();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      saveDB();
+      alert(`📋 ${addedCount} Purchase Requisitions successfully created in bulk! View them in the Purchase Requisition tab.`);
     }
 
     // --- ROUTING & ACCESS CONTROL ---
@@ -1207,8 +1254,8 @@
               <div class="d-flex flex-wrap gap-2">
                 ${items.map(s => `
                   <div class="badge bg-danger p-2 fs-6 d-inline-flex align-items-center gap-2">
+                    <input type="checkbox" class="form-check-input low-stock-checkbox" value="${s.originalIndex}">
                     <span>${s.model} - <b>${s.qty} pcs remaining</b></span>
-                    <button class="btn btn-xs btn-light text-dark fw-bold py-0 px-2" style="font-size: 0.75rem;" onclick="requestLowStockRequisition(${s.originalIndex})">📋 Request Stock</button>
                   </div>
                 `).join('')}
               </div>
@@ -1325,6 +1372,90 @@
       if (item && item.supplier) {
         document.getElementById('sup-return-supplier').value = item.supplier;
       }
+    }
+
+    // --- MULTI-ITEM SALES CART LOGIC ---
+    function addItemToSalesCart() {
+      const modelName = document.getElementById('sale-item').value.trim();
+      const quality = document.getElementById('sale-quality').value || 'Standard';
+      const sellPrice = parseInt(document.getElementById('sale-price').value);
+      const qty = parseInt(document.getElementById('sale-qty').value);
+
+      if (!modelName) return alert("Please select or type a model!");
+      if (isNaN(qty) || qty <= 0) return alert("Quantity must be at least 1!");
+
+      const item = db.stock.find(s => 
+        s.model.toLowerCase() === modelName.toLowerCase() &&
+        (s.subcat || 'Standard').toLowerCase() === quality.toLowerCase()
+      ) || db.stock.find(s => s.model.toLowerCase() === modelName.toLowerCase());
+
+      if (!item) return alert("Selected model is not in stock!");
+
+      // Check current cart quantity plus requested quantity against available stock
+      const cartQtyAlready = salesCart
+        .filter(c => c.stockIndex === db.stock.indexOf(item))
+        .reduce((sum, c) => sum + c.qty, 0);
+
+      if (item.qty < (cartQtyAlready + qty)) {
+        return alert(`Insufficient stock! You only have ${item.qty} pcs available (already added ${cartQtyAlready} to cart).`);
+      }
+
+      salesCart.push({
+        stockIndex: db.stock.indexOf(item),
+        model: item.model,
+        quality: quality,
+        qty: qty,
+        cost_price: item.cost_price,
+        sell_price: sellPrice || item.sell_price
+      });
+
+      document.getElementById('sale-item').value = '';
+      document.getElementById('sale-quality').innerHTML = '<option value="">-- Select Quality --</option>';
+      document.getElementById('sale-price').value = '';
+      document.getElementById('sale-qty').value = 1;
+
+      renderSalesCart();
+    }
+
+    function renderSalesCart() {
+      const container = document.getElementById('sales-cart-container');
+      const tbody = document.getElementById('sales-cart-tbody');
+      const totalDisplay = document.getElementById('sales-cart-total');
+
+      if (salesCart.length === 0) {
+        container.classList.add('d-none');
+        return;
+      }
+
+      container.classList.remove('d-none');
+      let grandTotal = 0;
+
+      tbody.innerHTML = salesCart.map((item, idx) => {
+        const subtotal = item.sell_price * item.qty;
+        grandTotal += subtotal;
+        return `
+          <tr>
+            <td><b>${item.model}</b></td>
+            <td><span class="badge bg-secondary">${item.quality}</span></td>
+            <td>${item.qty}</td>
+            <td>₦${item.sell_price.toLocaleString()}</td>
+            <td class="fw-bold text-success">₦${subtotal.toLocaleString()}</td>
+            <td><button class="btn btn-xs btn-danger py-0 px-2" onclick="removeFromSalesCart(${idx})">✖</button></td>
+          </tr>
+        `;
+      }).join('');
+
+      totalDisplay.innerText = `₦${grandTotal.toLocaleString()}`;
+    }
+
+    function removeFromSalesCart(index) {
+      salesCart.splice(index, 1);
+      renderSalesCart();
+    }
+
+    function clearSalesCart() {
+      salesCart = [];
+      renderSalesCart();
     }
 
     // --- SALES PERIOD FILTER HANDLERS ---
@@ -2075,42 +2206,63 @@
 
     document.getElementById('sales-form').addEventListener('submit', (e) => {
       e.preventDefault();
-      const modelName = document.getElementById('sale-item').value.trim();
-      const quality = document.getElementById('sale-quality').value;
-      const sellPrice = parseInt(document.getElementById('sale-price').value);
-      const qty = parseInt(document.getElementById('sale-qty').value);
-      const customer = document.getElementById('sale-customer').value;
+      const customer = document.getElementById('sale-customer').value.trim();
 
-      if (isNaN(qty) || qty <= 0) return alert("❌ Validation Error: Sale Quantity must be at least 1!");
+      if (!customer) return alert("Please enter Customer Name!");
 
-      const item = db.stock.find(s => 
-        s.model.toLowerCase() === modelName.toLowerCase() &&
-        (s.subcat || 'Standard').toLowerCase() === (quality || 'Standard').toLowerCase()
-      ) || db.stock.find(s => s.model.toLowerCase() === modelName.toLowerCase());
+      // If cart is empty, try recording direct single item
+      if (salesCart.length === 0) {
+        const modelName = document.getElementById('sale-item').value.trim();
+        const quality = document.getElementById('sale-quality').value;
+        const sellPrice = parseInt(document.getElementById('sale-price').value);
+        const qty = parseInt(document.getElementById('sale-qty').value);
 
-      if (!item) {
-        alert("❌ Error: Model not found in stock inventory!");
-        return;
+        if (!modelName) return alert("❌ Error: Add items to cart or select a single item first!");
+        if (isNaN(qty) || qty <= 0) return alert("❌ Validation Error: Sale Quantity must be at least 1!");
+
+        const item = db.stock.find(s => 
+          s.model.toLowerCase() === modelName.toLowerCase() &&
+          (s.subcat || 'Standard').toLowerCase() === (quality || 'Standard').toLowerCase()
+        ) || db.stock.find(s => s.model.toLowerCase() === modelName.toLowerCase());
+
+        if (!item) return alert("❌ Error: Model not found in stock inventory!");
+        if (item.qty < qty) return alert(`❌ Error: Insufficient stock available! (${item.qty} pcs in stock)`);
+
+        item.qty -= qty;
+        db.sales.push({
+          model: item.model,
+          quality: quality || item.subcat || 'Standard',
+          qty: qty,
+          cost_price: item.cost_price,
+          sell_price: sellPrice || item.sell_price,
+          customer: customer,
+          date: new Date().toISOString().split('T')[0]
+        });
+      } else {
+        // Process bulk multi-item sale from cart
+        salesCart.forEach(cItem => {
+          const item = db.stock[cItem.stockIndex];
+          if (item) {
+            item.qty -= cItem.qty;
+            db.sales.push({
+              model: item.model,
+              quality: cItem.quality,
+              qty: cItem.qty,
+              cost_price: cItem.cost_price,
+              sell_price: cItem.sell_price,
+              customer: customer,
+              date: new Date().toISOString().split('T')[0]
+            });
+          }
+        });
       }
-      if (item.qty < qty) {
-        alert(`❌ Error: Insufficient stock available! (${item.qty} pcs in stock)`);
-        return;
-      }
-
-      item.qty -= qty;
-      db.sales.push({
-        model: item.model,
-        quality: quality || item.subcat || 'Standard',
-        qty: qty,
-        cost_price: item.cost_price,
-        sell_price: sellPrice || item.sell_price,
-        customer: customer,
-        date: new Date().toISOString().split('T')[0]
-      });
 
       e.target.reset();
+      salesCart = [];
+      renderSalesCart();
       document.getElementById('sale-quality').innerHTML = '<option value="">-- Select Quality --</option>';
       saveDB();
+      alert("✅ Sale completed successfully!");
     });
 
     document.getElementById('returns-form').addEventListener('submit', (e) => {
