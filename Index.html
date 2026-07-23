@@ -5,12 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SKY MODERNIZE SAVE TECHNOLOGY LTD - Inventory</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <style>
     .page { display: none; }
     .page.active { display: block; }
     
     @media print {
-      .no-print, nav, button, .card-header, form, .input-group, .modal, .sales-filter-container, .returns-filter-container, .sup-filter-container { display: none !important; }
+      .no-print, nav, button, .card-header, form, .input-group, .modal, .sales-filter-container, .returns-filter-container, .sup-filter-container, .req-filter-container { display: none !important; }
       body { font-size: 11pt; background-color: #fff !important; }
       .container { max-width: 100% !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
       .card { border: none !important; box-shadow: none !important; }
@@ -26,14 +27,15 @@
   <nav id="main-nav" class="navbar navbar-expand-lg navbar-dark bg-dark mb-4 no-print" style="display: none;">
     <div class="container-fluid">
       <a class="navbar-brand fw-bold" href="#">SKY MODERNIZE SAVE TECHNOLOGY LTD</a>
-      <div class="d-flex gap-2">
+      <div class="d-flex gap-2 flex-wrap">
         <button class="btn btn-sm btn-outline-light" onclick="navigateTo('dashboard')">Dashboard</button>
         <button class="btn btn-sm btn-outline-light" onclick="navigateTo('stock')">Stock 🔒</button>
         <button class="btn btn-sm btn-outline-light" onclick="navigateTo('sales')">Sales</button>
         <button class="btn btn-sm btn-outline-light" onclick="navigateTo('returns')">Customer Returns</button>
         <button class="btn btn-sm btn-outline-warning" onclick="navigateTo('supplier-returns')">Supplier Returns 📦</button>
+        <button class="btn btn-sm btn-outline-info" onclick="navigateTo('purchase-requisition')">Purchase Requisition 📋</button>
         <button class="btn btn-sm btn-outline-light" onclick="navigateTo('change-password')">Password 🔑</button>
-        <button class="btn btn-sm btn-danger ms-3" onclick="logout()">Logout</button>
+        <button class="btn btn-sm btn-danger ms-2" onclick="logout()">Logout</button>
       </div>
     </div>
   </nav>
@@ -547,6 +549,87 @@
       </table>
     </div>
 
+    <div id="page-purchase-requisition" class="page">
+      <div class="print-title">
+        <h2>SKY MODERNIZE SAVE TECHNOLOGY LTD</h2>
+        <h4 id="req-print-subtitle">Purchase Requisition Form</h4>
+        <hr>
+      </div>
+
+      <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <h3>📋 Purchase Requisition</h3>
+        <div class="no-print d-flex align-items-center gap-2 flex-wrap req-filter-container">
+          <button class="btn btn-outline-primary btn-sm" onclick="exportRequisitionsToCSV()">📥 Export Requisitions CSV</button>
+          <button class="btn btn-outline-danger btn-sm" onclick="exportRequisitionsPDF()">📄 Export PDF Report</button>
+          <button class="btn btn-outline-dark btn-sm fw-bold" onclick="printFilteredRequisitions()">🖨️ Print Requisitions</button>
+          <button class="btn btn-danger btn-sm" onclick="sendRequisitionToGmail()">📧 Send to Gmail</button>
+        </div>
+      </div>
+
+      <div class="card mb-4 border-info no-print">
+        <div class="card-header bg-info text-white fw-bold">Request Needed Goods / Stock Procurement</div>
+        <div class="card-body">
+          <form id="requisition-form" class="row g-2">
+            <div class="col-md-3">
+              <label class="form-label small fw-bold">Item Description / Model Needed</label>
+              <input id="req-item" class="form-control" placeholder="e.g. iPhone 14 Pro Max 256GB" required>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small fw-bold">Category / Specs</label>
+              <input id="req-cat" class="form-control" placeholder="e.g. Grade A / Blue" required>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small fw-bold">Requested Qty</label>
+              <input id="req-qty" type="number" class="form-control" min="1" placeholder="Qty needed" required>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small fw-bold">Estimated Cost (₦)</label>
+              <input id="req-cost" type="number" min="0" class="form-control" placeholder="Est. Unit Cost">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small fw-bold">Preferred Vendor / Supplier</label>
+              <input id="req-supplier" class="form-control" placeholder="Supplier Name / Contact">
+            </div>
+            <div class="col-md-9 mt-2">
+              <input id="req-notes" class="form-control" placeholder="Reason for requisition / Urgent notes (e.g. Out of stock, high customer demand)...">
+            </div>
+            <div class="col-md-3 mt-2">
+              <button class="btn btn-info text-white fw-bold w-100">Submit Purchase Requisition</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div id="requisition-printable-area">
+        <div class="d-flex justify-content-between align-items-center mb-3 no-print">
+          <h5 class="mb-0">Requisition Orders List</h5>
+          <div class="input-group" style="max-width: 400px;">
+            <input type="text" id="req-search-input" class="form-control form-control-sm" placeholder="Search requisitions..." onkeyup="if(event.key==='Enter') searchRequisitions()">
+            <button class="btn btn-sm btn-primary" type="button" onclick="searchRequisitions()">🔍 Search</button>
+            <button class="btn btn-sm btn-outline-secondary" type="button" onclick="clearRequisitionsSearch()">Clear</button>
+          </div>
+        </div>
+
+        <table class="table table-striped align-middle">
+          <thead class="table-dark">
+            <tr>
+              <th>Req ID</th>
+              <th>Date</th>
+              <th>Item / Model</th>
+              <th>Category / Specs</th>
+              <th>Qty Needed</th>
+              <th>Est. Unit Cost</th>
+              <th>Est. Total</th>
+              <th>Preferred Supplier</th>
+              <th>Status</th>
+              <th class="no-print">Action</th>
+            </tr>
+          </thead>
+          <tbody id="requisition-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+
   </div>
 
   <div class="modal fade" id="editStockModal" tabindex="-1" aria-hidden="true">
@@ -615,9 +698,16 @@
     let isStockTotalsVisible = true;
 
     const DB_KEY = "sky_modernize_db";
-    let db = JSON.parse(localStorage.getItem(DB_KEY)) || { stock: [], sales: [], returns: [], supplierReturns: [] };
+    let db = JSON.parse(localStorage.getItem(DB_KEY)) || { 
+      stock: [], 
+      sales: [], 
+      returns: [], 
+      supplierReturns: [],
+      requisitions: []
+    };
 
     if (!db.supplierReturns) db.supplierReturns = [];
+    if (!db.requisitions) db.requisitions = [];
 
     function saveDB() {
       localStorage.setItem(DB_KEY, JSON.stringify(db));
@@ -674,6 +764,31 @@
         csv += `"${r.date}","${r.model}","${r.supplier}",${r.qty},"${r.reason}","${r.status}"\n`;
       });
       downloadCSV(csv, `Supplier_Returns_${periodLabel.replace(/[^a-zA-Z0-9]/g, '_')}.csv`);
+    }
+
+    function exportRequisitionsToCSV() {
+      if (db.requisitions.length === 0) return alert("No purchase requisitions available to export.");
+      let csv = "Req ID,Date,Item Needed,Category,Qty Needed,Est Unit Cost (NGN),Est Total Cost (NGN),Preferred Supplier,Status,Notes\n";
+      db.requisitions.forEach(r => {
+        csv += `"${r.id}","${r.date}","${r.item}","${r.category}",${r.qty},${r.cost || 0},${(r.cost || 0) * r.qty},"${r.supplier || ''}","${r.status}","${r.notes || ''}"\n`;
+      });
+      downloadCSV(csv, `Purchase_Requisitions_${new Date().toISOString().split('T')[0]}.csv`);
+    }
+
+    // --- PDF EXPORT FOR REQUISITIONS ---
+    function exportRequisitionsPDF() {
+      if (db.requisitions.length === 0) return alert("No requisition records to export.");
+      
+      const element = document.getElementById('requisition-printable-area');
+      const opt = {
+        margin:       0.5,
+        filename:     `Purchase_Requisitions_${new Date().toISOString().split('T')[0]}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2 },
+        jsPDF:        { unit: 'in', format: 'letter', orientation: 'landscape' }
+      };
+
+      html2pdf().set(opt).from(element).save();
     }
 
     // --- JSON BACKUP & IMPORT RESTORE ---
@@ -911,6 +1026,16 @@
       renderSupplierReturns();
     }
 
+    function searchRequisitions() {
+      const query = document.getElementById('req-search-input').value.trim().toLowerCase();
+      renderRequisitions(query);
+    }
+
+    function clearRequisitionsSearch() {
+      document.getElementById('req-search-input').value = '';
+      renderRequisitions();
+    }
+
     // --- DASHBOARD SEARCH GOODS ---
     function searchDashboardGoods() {
       const query = document.getElementById('dash-goods-search-input').value.trim().toLowerCase();
@@ -954,6 +1079,7 @@
       renderSales();
       renderReturns();
       renderSupplierReturns();
+      renderRequisitions();
     }
 
     function handleDashboardFilterChange() {
@@ -1728,6 +1854,138 @@
         }
         saveDB();
       }
+    }
+
+    // --- PURCHASE REQUISITION FUNCTIONS ---
+    function renderRequisitions(filterQuery = "") {
+      const tbody = document.getElementById('requisition-table-body');
+      
+      const filteredReqs = db.requisitions.map((req, originalIdx) => ({ ...req, originalIdx })).slice().reverse().filter(req => {
+        if (!filterQuery) return true;
+        const q = filterQuery.toLowerCase();
+        return (req.id && req.id.toLowerCase().includes(q)) ||
+               (req.item && req.item.toLowerCase().includes(q)) ||
+               (req.category && req.category.toLowerCase().includes(q)) ||
+               (req.supplier && req.supplier.toLowerCase().includes(q)) ||
+               (req.status && req.status.toLowerCase().includes(q));
+      });
+
+      if (filteredReqs.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="10" class="text-center text-muted py-3">No purchase requisitions found</td></tr>`;
+      } else {
+        tbody.innerHTML = filteredReqs.map(req => {
+          const unitCost = req.cost || 0;
+          const totalCost = unitCost * req.qty;
+          let statusBadge = '';
+
+          if (req.status === 'Approved') {
+            statusBadge = '<span class="badge bg-success p-2">Approved ✅</span>';
+          } else if (req.status === 'Ordered') {
+            statusBadge = '<span class="badge bg-info p-2">Ordered 📦</span>';
+          } else if (req.status === 'Cancelled') {
+            statusBadge = '<span class="badge bg-danger p-2">Cancelled ❌</span>';
+          } else {
+            statusBadge = '<span class="badge bg-warning text-dark p-2">Pending ⏳</span>';
+          }
+
+          return `
+            <tr>
+              <td><small class="fw-bold">${req.id}</small></td>
+              <td>${req.date}</td>
+              <td><b>${req.item}</b></td>
+              <td><span class="badge bg-secondary">${req.category}</span></td>
+              <td><b>${req.qty} pcs</b></td>
+              <td>₦${unitCost.toLocaleString()}</td>
+              <td class="fw-bold text-success">₦${totalCost.toLocaleString()}</td>
+              <td>${req.supplier || '-'}</td>
+              <td>${statusBadge}</td>
+              <td class="no-print">
+                <div class="dropdown">
+                  <button class="btn btn-sm btn-outline-dark dropdown-toggle" type="button" data-bs-toggle="dropdown">Status</button>
+                  <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="#" onclick="updateRequisitionStatus(${req.originalIdx}, 'Pending')">Set Pending ⏳</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="updateRequisitionStatus(${req.originalIdx}, 'Approved')">Approve ✅</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="updateRequisitionStatus(${req.originalIdx}, 'Ordered')">Set Ordered 📦</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="updateRequisitionStatus(${req.originalIdx}, 'Cancelled')">Cancel ❌</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item text-danger" href="#" onclick="deleteRequisition(${req.originalIdx})">Delete</a></li>
+                  </ul>
+                </div>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      }
+    }
+
+    document.getElementById('requisition-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const qty = parseInt(document.getElementById('req-qty').value);
+      const cost = parseInt(document.getElementById('req-cost').value) || 0;
+
+      if (isNaN(qty) || qty <= 0) return alert("❌ Validation Error: Requested quantity must be at least 1!");
+      if (cost < 0) return alert("❌ Validation Error: Estimated cost cannot be negative!");
+
+      const reqId = "REQ-" + Math.floor(1000 + Math.random() * 9000);
+
+      db.requisitions.push({
+        id: reqId,
+        item: document.getElementById('req-item').value,
+        category: document.getElementById('req-cat').value,
+        qty: qty,
+        cost: cost,
+        supplier: document.getElementById('req-supplier').value,
+        notes: document.getElementById('req-notes').value,
+        status: "Pending",
+        date: new Date().toISOString().split('T')[0]
+      });
+
+      e.target.reset();
+      saveDB();
+      alert(`Requisition ${reqId} created successfully!`);
+    });
+
+    function updateRequisitionStatus(idx, newStatus) {
+      if (db.requisitions[idx]) {
+        db.requisitions[idx].status = newStatus;
+        saveDB();
+      }
+    }
+
+    function deleteRequisition(idx) {
+      if (confirm("Delete this purchase requisition record?")) {
+        db.requisitions.splice(idx, 1);
+        saveDB();
+      }
+    }
+
+    function printFilteredRequisitions() {
+      if (db.requisitions.length === 0) return alert("No requisitions to print.");
+      document.getElementById('req-print-subtitle').innerText = `Purchase Requisition Voucher - ${new Date().toISOString().split('T')[0]}`;
+      window.print();
+    }
+
+    function sendRequisitionToGmail() {
+      if (db.requisitions.length === 0) return alert("No requisitions available to send!");
+
+      let emailBody = `SKY MODERNIZE SAVE TECHNOLOGY LTD - Purchase Requisition Order\n`;
+      emailBody += `Generated On: ${new Date().toISOString().split('T')[0]}\n\n`;
+      emailBody += `--- REQUIRED GOODS & STOCK PROCUREMENT --- \n`;
+      emailBody += `Req ID | Date | Item Needed | Specs | Qty Needed | Est. Unit Price | Total Cost | Preferred Vendor | Status\n`;
+      emailBody += `----------------------------------------------------------------------------------------------------\n`;
+
+      let grandTotalCost = 0;
+      db.requisitions.forEach(r => {
+        const itemTotal = (r.cost || 0) * r.qty;
+        grandTotalCost += itemTotal;
+        emailBody += `${r.id} | ${r.date} | ${r.item} | ${r.category} | ${r.qty} pcs | ₦${(r.cost || 0).toLocaleString()} | ₦${itemTotal.toLocaleString()} | ${r.supplier || '-'} | ${r.status}\n`;
+      });
+
+      emailBody += `----------------------------------------------------------------------------------------------------\n`;
+      emailBody += `Grand Estimated Budget: ₦${grandTotalCost.toLocaleString()}\n\n`;
+
+      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(`SKY MODERNIZE - Purchase Requisition Order`)}&body=${encodeURIComponent(emailBody)}`;
+      window.open(gmailUrl, '_blank');
     }
 
     // --- FORM ACTIONS WITH DATA VALIDATION ---
