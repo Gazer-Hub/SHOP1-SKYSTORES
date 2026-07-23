@@ -712,6 +712,78 @@
     </div>
   </div>
 
+  <div class="modal fade" id="editRequisitionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header bg-info text-white">
+          <h5 class="modal-title">✏️ Edit Purchase Requisition</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form id="edit-requisition-form">
+          <div class="modal-body">
+            <input type="hidden" id="edit-req-index">
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label fw-bold">Req ID (Read-Only)</label>
+                <input id="edit-req-id" class="form-control bg-light" readonly>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label fw-bold">Date (Read-Only)</label>
+                <input id="edit-req-date" class="form-control bg-light" readonly>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label fw-bold">Item / Model</label>
+                <input id="edit-req-item" class="form-control" required>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label fw-bold">Category / Specs</label>
+                <input id="edit-req-cat" class="form-control" required>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-4 mb-3">
+                <label class="form-label fw-bold">Qty Needed</label>
+                <input id="edit-req-qty" type="number" class="form-control" min="1" required>
+              </div>
+              <div class="col-md-4 mb-3">
+                <label class="form-label fw-bold">Est. Unit Cost (₦)</label>
+                <input id="edit-req-cost" type="number" min="0" class="form-control">
+              </div>
+              <div class="col-md-4 mb-3">
+                <label class="form-label fw-bold">Est. Total (₦)</label>
+                <input id="edit-req-total" type="number" class="form-control bg-light" readonly>
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold">Preferred Supplier / Vendor</label>
+              <input id="edit-req-supplier" class="form-control">
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold">Status</label>
+              <select id="edit-req-status" class="form-select" required>
+                <option value="Pending">Pending 📋</option>
+                <option value="Approved">Approved ✅</option>
+                <option value="Ordered">Ordered 📦</option>
+                <option value="Received">Received 🎁</option>
+                <option value="Cancelled">Cancelled ❌</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold">Notes / Reason</label>
+              <textarea id="edit-req-notes" class="form-control" rows="3" placeholder="Reason for requisition or notes..."></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-info text-white">💾 Save Changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script>
     // --- AUTHENTICATION ---
@@ -746,6 +818,66 @@
       localStorage.setItem(DB_KEY, JSON.stringify(db));
       renderAll();
     }
+
+    // --- EDIT REQUISITION FUNCTION ---
+    function editRequisition(index) {
+      const req = db.requisitions[index];
+      if (!req) return;
+
+      document.getElementById('edit-req-index').value = index;
+      document.getElementById('edit-req-id').value = req.id;
+      document.getElementById('edit-req-date').value = req.date;
+      document.getElementById('edit-req-item').value = req.item;
+      document.getElementById('edit-req-cat').value = req.category;
+      document.getElementById('edit-req-qty').value = req.qty;
+      document.getElementById('edit-req-cost').value = req.cost || 0;
+      document.getElementById('edit-req-total').value = (req.cost || 0) * req.qty;
+      document.getElementById('edit-req-supplier').value = req.supplier || '';
+      document.getElementById('edit-req-status').value = req.status || 'Pending';
+      document.getElementById('edit-req-notes').value = req.notes || '';
+
+      const modal = new bootstrap.Modal(document.getElementById('editRequisitionModal'));
+      modal.show();
+    }
+
+    // --- DELETE REQUISITION FUNCTION ---
+    function deleteRequisition(index) {
+      if (confirm('Are you sure you want to delete this requisition?')) {
+        db.requisitions.splice(index, 1);
+        saveDB();
+      }
+    }
+
+    // --- UPDATE TOTAL COST ON REQUISITION EDIT ---
+    document.getElementById('edit-req-qty').addEventListener('input', updateRequisitionTotal);
+    document.getElementById('edit-req-cost').addEventListener('input', updateRequisitionTotal);
+
+    function updateRequisitionTotal() {
+      const qty = parseFloat(document.getElementById('edit-req-qty').value) || 0;
+      const cost = parseFloat(document.getElementById('edit-req-cost').value) || 0;
+      document.getElementById('edit-req-total').value = qty * cost;
+    }
+
+    // --- EDIT REQUISITION FORM HANDLER ---
+    document.getElementById('edit-requisition-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const index = parseInt(document.getElementById('edit-req-index').value);
+      const req = db.requisitions[index];
+      
+      if (req) {
+        req.item = document.getElementById('edit-req-item').value;
+        req.category = document.getElementById('edit-req-cat').value;
+        req.qty = parseInt(document.getElementById('edit-req-qty').value);
+        req.cost = parseFloat(document.getElementById('edit-req-cost').value) || 0;
+        req.supplier = document.getElementById('edit-req-supplier').value;
+        req.status = document.getElementById('edit-req-status').value;
+        req.notes = document.getElementById('edit-req-notes').value;
+
+        saveDB();
+        bootstrap.Modal.getInstance(document.getElementById('editRequisitionModal')).hide();
+        alert('✅ Purchase Requisition updated successfully!');
+      }
+    });
 
     // --- CSV EXPORT UTILITY ---
     function downloadCSV(csvContent, filename) {
@@ -1061,36 +1193,6 @@
       renderSales();
     }
 
-    function filterReturnSaleOptions() {
-      const query = document.getElementById('return-sale-search-input').value.trim().toLowerCase();
-      populateReturnSaleDropdown(query);
-    }
-
-    function clearReturnSaleSearch() {
-      document.getElementById('return-sale-search-input').value = '';
-      populateReturnSaleDropdown();
-    }
-
-    function searchReturns() {
-      const query = document.getElementById('returns-search-input').value.trim().toLowerCase();
-      renderReturns(query);
-    }
-
-    function clearReturnsSearch() {
-      document.getElementById('returns-search-input').value = '';
-      renderReturns();
-    }
-
-    function searchSupplierReturns() {
-      const query = document.getElementById('sup-returns-search-input').value.trim().toLowerCase();
-      renderSupplierReturns(query);
-    }
-
-    function clearSupplierReturnsSearch() {
-      document.getElementById('sup-returns-search-input').value = '';
-      renderSupplierReturns();
-    }
-
     function searchRequisitions() {
       const query = document.getElementById('req-search-input').value.trim().toLowerCase();
       renderRequisitions(query);
@@ -1101,1260 +1203,129 @@
       renderRequisitions();
     }
 
-    // --- DASHBOARD SEARCH GOODS ---
-    function searchDashboardGoods() {
-      const query = document.getElementById('dash-goods-search-input').value.trim().toLowerCase();
-      const resultsContainer = document.getElementById('dash-goods-search-results');
-
-      if (!query) {
-        resultsContainer.innerHTML = `<tr><td colspan="4" class="text-center text-muted">Type in the search bar above to query active inventory</td></tr>`;
-        return;
-      }
-
-      const matchingGoods = db.stock.filter(s => 
-        (s.model && s.model.toLowerCase().includes(query)) ||
-        (s.category && s.category.toLowerCase().includes(query)) ||
-        (s.subcat && s.subcat.toLowerCase().includes(query))
-      );
-
-      if (matchingGoods.length === 0) {
-        resultsContainer.innerHTML = `<tr><td colspan="4" class="text-center text-danger">No available goods match your search query</td></tr>`;
-        return;
-      }
-
-      resultsContainer.innerHTML = matchingGoods.map(g => `
-        <tr>
-          <td><b>${g.model}</b></td>
-          <td><span class="badge bg-secondary">${g.subcat || 'Standard'}</span></td>
-          <td class="text-success fw-bold">₦${(g.sell_price || 0).toLocaleString()}</td>
-          <td><span class="badge ${g.qty > 10 ? 'bg-success' : 'bg-danger'}">${g.qty} pcs available</span></td>
-        </tr>
-      `).join('');
-    }
-
-    function clearDashboardGoodsSearch() {
-      document.getElementById('dash-goods-search-input').value = '';
-      searchDashboardGoods();
-    }
-
-    // --- RENDERING FUNCTIONS ---
+    // Placeholder render functions (to be implemented)
     function renderAll() {
-      renderDashboard();
       renderStock();
       renderSales();
-      renderReturns();
-      renderSupplierReturns();
       renderRequisitions();
+      renderDashboard();
     }
 
-    function handleDashboardFilterChange() {
-      const filterType = document.getElementById('dash-date-filter').value;
-      const customPicker = document.getElementById('dash-custom-date');
-      
-      if (filterType === 'custom') {
-        customPicker.classList.remove('d-none');
+    function renderStock(query) {
+      const tbody = document.getElementById('stock-table-body');
+      tbody.innerHTML = '';
+      let totalUnits = 0;
+      let totalValue = 0;
+
+      const filtered = db.stock.filter(s => {
+        if (!query) return true;
+        return s.model.toLowerCase().includes(query) || 
+               s.category.toLowerCase().includes(query) ||
+               (s.subcat && s.subcat.toLowerCase().includes(query));
+      });
+
+      filtered.forEach((item, idx) => {
+        totalUnits += item.qty;
+        totalValue += item.qty * item.cost_price;
+        
+        const row = `<tr>
+          <td>${item.model}</td>
+          <td>${item.category}</td>
+          <td>${item.subcat || '-'}</td>
+          <td>${item.supplier || '-'}</td>
+          <td>${item.qty}</td>
+          <td>₦${item.cost_price.toLocaleString()}</td>
+          <td>₦${item.sell_price.toLocaleString()}</td>
+          <td class="no-print">
+            <button class="btn btn-sm btn-warning" onclick="editStock(${db.stock.indexOf(item)})">Edit</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteStock(${db.stock.indexOf(item)})">Delete</button>
+          </td>
+        </tr>`;
+        tbody.innerHTML += row;
+      });
+
+      if (isStockTotalsVisible) {
+        document.getElementById('total-stock-units').textContent = `${totalUnits} pcs`;
+        document.getElementById('total-stock-value').textContent = `₦${totalValue.toLocaleString()}`;
       } else {
-        customPicker.classList.add('d-none');
-        renderDashboard();
+        document.getElementById('total-stock-units').textContent = '-- hidden --';
+        document.getElementById('total-stock-value').textContent = '-- hidden --';
       }
+    }
+
+    function renderSales(query) {
+      const tbody = document.getElementById('sales-table-body');
+      tbody.innerHTML = '';
+
+      const filtered = db.sales.filter(s => {
+        if (!query) return true;
+        return s.model.toLowerCase().includes(query) || 
+               s.customer.toLowerCase().includes(query);
+      });
+
+      filtered.forEach((sale, idx) => {
+        const total = sale.sell_price * sale.qty;
+        const row = `<tr>
+          <td>${sale.date}</td>
+          <td>${sale.model}</td>
+          <td>${sale.quality || '-'}</td>
+          <td>${sale.customer}</td>
+          <td>${sale.qty}</td>
+          <td>₦${sale.sell_price.toLocaleString()}</td>
+          <td>₦${total.toLocaleString()}</td>
+          <td class="no-print"><button class="btn btn-sm btn-danger" onclick="deleteSale(${db.sales.indexOf(sale)})">Delete</button></td>
+        </tr>`;
+        tbody.innerHTML += row;
+      });
+    }
+
+    function renderRequisitions(query) {
+      const tbody = document.getElementById('requisition-table-body');
+      tbody.innerHTML = '';
+
+      const filtered = db.requisitions.filter(r => {
+        if (!query) return true;
+        return r.item.toLowerCase().includes(query) || 
+               r.id.toLowerCase().includes(query) ||
+               r.category.toLowerCase().includes(query);
+      });
+
+      filtered.forEach((req, idx) => {
+        const total = (req.cost || 0) * req.qty;
+        const statusEmoji = {
+          'Pending': '📋',
+          'Approved': '✅',
+          'Ordered': '📦',
+          'Received': '🎁',
+          'Cancelled': '❌'
+        };
+        const row = `<tr>
+          <td>${req.id}</td>
+          <td>${req.date}</td>
+          <td>${req.item}</td>
+          <td>${req.category}</td>
+          <td>${req.qty}</td>
+          <td>₦${(req.cost || 0).toLocaleString()}</td>
+          <td>₦${total.toLocaleString()}</td>
+          <td>${req.supplier || '-'}</td>
+          <td>${statusEmoji[req.status] || '❓'} ${req.status}</td>
+          <td class="no-print">
+            <button class="btn btn-sm btn-info" onclick="editRequisition(${db.requisitions.indexOf(req)})">Edit</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteRequisition(${db.requisitions.indexOf(req)})">Delete</button>
+          </td>
+        </tr>`;
+        tbody.innerHTML += row;
+      });
     }
 
     function renderDashboard() {
-      const filterType = document.getElementById('dash-date-filter').value;
-      const badge = document.getElementById('dash-date-badge');
-      const now = new Date();
-      const todayStr = now.toISOString().split('T')[0];
-
-      let filteredSales = [];
-      let filteredReturns = [];
-      let periodLabel = "Today";
-
-      if (filterType === 'today') {
-        periodLabel = `Today (${todayStr})`;
-        filteredSales = db.sales.filter(s => s.date === todayStr);
-        filteredReturns = db.returns.filter(r => r.date === todayStr);
-
-      } else if (filterType === 'yesterday') {
-        const yest = new Date(now);
-        yest.setDate(yest.getDate() - 1);
-        const yestStr = yest.toISOString().split('T')[0];
-        periodLabel = `Yesterday (${yestStr})`;
-        filteredSales = db.sales.filter(s => s.date === yestStr);
-        filteredReturns = db.returns.filter(r => r.date === yestStr);
-
-      } else if (filterType === 'this-week') {
-        const current = new Date(now);
-        const firstDay = current.getDate() - current.getDay();
-        const startOfWeek = new Date(current.setDate(firstDay)).toISOString().split('T')[0];
-        periodLabel = `This Week (${startOfWeek} to ${todayStr})`;
-        filteredSales = db.sales.filter(s => s.date && s.date >= startOfWeek && s.date <= todayStr);
-        filteredReturns = db.returns.filter(r => r.date && r.date >= startOfWeek && r.date <= todayStr);
-
-      } else if (filterType === 'this-month') {
-        const currentYearMonth = todayStr.substring(0, 7);
-        periodLabel = `This Month (${currentYearMonth})`;
-        filteredSales = db.sales.filter(s => s.date && s.date.startsWith(currentYearMonth));
-        filteredReturns = db.returns.filter(r => r.date && r.date.startsWith(currentYearMonth));
-
-      } else if (filterType === 'all-time') {
-        periodLabel = "All Time History";
-        filteredSales = db.sales;
-        filteredReturns = db.returns;
-
-      } else if (filterType === 'custom') {
-        const customDate = document.getElementById('dash-custom-date').value;
-        if (customDate) {
-          periodLabel = `Date: ${customDate}`;
-          filteredSales = db.sales.filter(s => s.date === customDate);
-          filteredReturns = db.returns.filter(r => r.date === customDate);
-        } else {
-          periodLabel = "Select Date...";
-          filteredSales = [];
-          filteredReturns = [];
-        }
-      }
-
-      if (badge) badge.innerText = periodLabel;
-
-      let totalSales = filteredSales.reduce((sum, s) => sum + (s.sell_price * s.qty), 0);
-      let totalCost = filteredSales.reduce((sum, s) => sum + (s.cost_price * s.qty), 0);
-      let totalReturns = filteredReturns.reduce((sum, r) => sum + (r.sell_price * r.qty), 0);
-
-      let grossProfit = totalSales - totalCost - totalReturns;
-      let cacFee = grossProfit > 0 ? Math.floor(grossProfit * 0.075) : 0;
-      let netProfit = grossProfit - cacFee;
-
-      document.getElementById('dash-sales').innerText = `₦${totalSales.toLocaleString()}`;
-      document.getElementById('dash-cost').innerText = `₦${totalCost.toLocaleString()}`;
-      document.getElementById('dash-returns').innerText = `₦${totalReturns.toLocaleString()}`;
-      document.getElementById('dash-gross').innerText = `₦${grossProfit.toLocaleString()}`;
-      document.getElementById('dash-cac').innerText = `₦${cacFee.toLocaleString()}`;
-      document.getElementById('dash-net').innerText = `₦${netProfit.toLocaleString()}`;
-
-      searchDashboardGoods();
-
-      const lowStockList = document.getElementById('low-stock-list');
-      const lowStockWithIndex = db.stock.map((item, originalIndex) => ({ ...item, originalIndex })).filter(s => s.qty <= 10);
-
-      if (lowStockWithIndex.length === 0) {
-        lowStockList.innerHTML = '<p class="text-muted mb-0">All stock levels healthy!</p>';
-      } else {
-        const groupedLowStock = {};
-        lowStockWithIndex.forEach(s => {
-          const key = s.subcat ? s.subcat.trim() : 'Standard';
-          if (!groupedLowStock[key]) groupedLowStock[key] = [];
-          groupedLowStock[key].push(s);
-        });
-
-        let html = '';
-        for (const [quality, items] of Object.entries(groupedLowStock)) {
-          html += `
-            <div class="mb-3">
-              <h6 class="fw-bold text-dark border-bottom pb-1 mb-2">🏷️ Quality / Sub-Cat: <span class="badge bg-secondary">${quality}</span></h6>
-              <div class="d-flex flex-wrap gap-2">
-                ${items.map(s => `
-                  <div class="badge bg-danger p-2 fs-6 d-inline-flex align-items-center gap-2">
-                    <input type="checkbox" class="form-check-input low-stock-checkbox" value="${s.originalIndex}">
-                    <span>${s.model} - <b>${s.qty} pcs remaining</b></span>
-                  </div>
-                `).join('')}
-              </div>
-            </div>
-          `;
-        }
-        lowStockList.innerHTML = html;
-      }
+      // Placeholder
     }
 
-    function renderStock(filterQuery = "") {
-      const tbody = document.getElementById('stock-table-body');
-      
-      const filteredStock = db.stock.map((item, originalIndex) => ({ ...item, originalIndex })).filter(item => {
-        if (!filterQuery) return true;
-        const q = filterQuery.toLowerCase();
-        return (item.model && item.model.toLowerCase().includes(q)) ||
-               (item.category && item.category.toLowerCase().includes(q)) ||
-               (item.subcat && item.subcat.toLowerCase().includes(q)) ||
-               (item.supplier && item.supplier.toLowerCase().includes(q));
-      });
-
-      const totalUnits = db.stock.reduce((sum, s) => sum + (parseInt(s.qty) || 0), 0);
-      const totalCostValue = db.stock.reduce((sum, s) => sum + ((parseInt(s.qty) || 0) * (parseInt(s.cost_price) || 0)), 0);
-
-      if (isStockTotalsVisible) {
-        document.getElementById('total-stock-units').innerText = `${totalUnits.toLocaleString()} pcs`;
-        document.getElementById('total-stock-value').innerText = `₦${totalCostValue.toLocaleString()}`;
-      } else {
-        document.getElementById('total-stock-units').innerText = `••••••`;
-        document.getElementById('total-stock-value').innerText = `••••••`;
-      }
-
-      if (filteredStock.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-3">No matching stock items found</td></tr>`;
-      } else {
-        tbody.innerHTML = filteredStock.map(item => `
-          <tr class="${item.qty <= 10 ? 'table-danger' : ''}">
-            <td><b>${item.model}</b></td>
-            <td>${item.category}</td>
-            <td><span class="badge bg-secondary">${item.subcat || 'Standard'}</span></td>
-            <td>${item.supplier || '-'}</td>
-            <td><b>${item.qty}</b></td>
-            <td class="text-warning fw-bold">₦${item.cost_price.toLocaleString()}</td>
-            <td class="text-success fw-bold">₦${item.sell_price.toLocaleString()}</td>
-            <td class="no-print">
-              <button class="btn btn-sm btn-primary me-1" onclick="openEditModal(${item.originalIndex})">Edit</button>
-              <button class="btn btn-sm btn-outline-secondary me-1" onclick="duplicateStockEntry(${item.originalIndex})" title="Duplicate details to create new stock">📋 Duplicate</button>
-              <button class="btn btn-sm btn-danger" onclick="deleteStock(${item.originalIndex})">Delete</button>
-            </td>
-          </tr>
-        `).join('');
-      }
-
-      const uniqueModels = [...new Set(db.stock.map(s => s.model))];
-      const saleDatalist = document.getElementById('sale-item-list');
-      saleDatalist.innerHTML = uniqueModels.map(m => `<option value="${m}">${m}</option>`).join('');
-
-      const supReturnDatalist = document.getElementById('sup-return-item-list');
-      supReturnDatalist.innerHTML = db.stock.map(s => {
-        const subInfo = s.subcat ? ` [${s.subcat}]` : '';
-        return `<option value="${s.model}">${s.model}${subInfo} (Stock: ${s.qty})</option>`;
-      }).join('');
-    }
-
-    function autoFillSaleDetails() {
-      const selectedModel = document.getElementById('sale-item').value.trim();
-      const qualitySelect = document.getElementById('sale-quality');
-      const priceInput = document.getElementById('sale-price');
-
-      if (!selectedModel) {
-        qualitySelect.innerHTML = '<option value="">-- Select Quality --</option>';
-        priceInput.value = '';
-        return;
-      }
-
-      const matchingItems = db.stock.filter(s => s.model.toLowerCase() === selectedModel.toLowerCase());
-
-      if (matchingItems.length > 0) {
-        const availableQualities = [...new Set(matchingItems.map(s => s.subcat || 'Standard'))];
-
-        qualitySelect.innerHTML = availableQualities.map(q => `<option value="${q}">${q}</option>`).join('');
-
-        const firstQuality = availableQualities[0];
-        const matchedItem = matchingItems.find(s => (s.subcat || 'Standard') === firstQuality);
-        if (matchedItem) {
-          priceInput.value = matchedItem.sell_price;
-        }
-      } else {
-        qualitySelect.innerHTML = '<option value="">-- Select Quality --</option>';
-        priceInput.value = '';
-      }
-    }
-
-    document.getElementById('sale-quality').addEventListener('change', () => {
-      const selectedModel = document.getElementById('sale-item').value.trim();
-      const selectedQuality = document.getElementById('sale-quality').value;
-
-      if (selectedModel && selectedQuality) {
-        const matchedItem = db.stock.find(s => 
-          s.model.toLowerCase() === selectedModel.toLowerCase() && 
-          (s.subcat || 'Standard').toLowerCase() === selectedQuality.toLowerCase()
-        );
-
-        if (matchedItem) {
-          document.getElementById('sale-price').value = matchedItem.sell_price;
-        }
-      }
+    // Initialize on load
+    document.addEventListener('DOMContentLoaded', () => {
+      if (isLoggedIn) renderAll();
     });
-
-    function autoFillSupplier() {
-      const inputValue = document.getElementById('sup-return-item').value.trim();
-      const item = db.stock.find(s => s.model.toLowerCase() === inputValue.toLowerCase());
-      if (item && item.supplier) {
-        document.getElementById('sup-return-supplier').value = item.supplier;
-      }
-    }
-
-    // --- MULTI-ITEM SALES CART LOGIC ---
-    function addItemToSalesCart() {
-      const modelName = document.getElementById('sale-item').value.trim();
-      const quality = document.getElementById('sale-quality').value || 'Standard';
-      const sellPrice = parseInt(document.getElementById('sale-price').value);
-      const qty = parseInt(document.getElementById('sale-qty').value);
-
-      if (!modelName) return alert("Please select or type a model!");
-      if (isNaN(qty) || qty <= 0) return alert("Quantity must be at least 1!");
-
-      const item = db.stock.find(s => 
-        s.model.toLowerCase() === modelName.toLowerCase() &&
-        (s.subcat || 'Standard').toLowerCase() === quality.toLowerCase()
-      ) || db.stock.find(s => s.model.toLowerCase() === modelName.toLowerCase());
-
-      if (!item) return alert("Selected model is not in stock!");
-
-      // Check current cart quantity plus requested quantity against available stock
-      const cartQtyAlready = salesCart
-        .filter(c => c.stockIndex === db.stock.indexOf(item))
-        .reduce((sum, c) => sum + c.qty, 0);
-
-      if (item.qty < (cartQtyAlready + qty)) {
-        return alert(`Insufficient stock! You only have ${item.qty} pcs available (already added ${cartQtyAlready} to cart).`);
-      }
-
-      salesCart.push({
-        stockIndex: db.stock.indexOf(item),
-        model: item.model,
-        quality: quality,
-        qty: qty,
-        cost_price: item.cost_price,
-        sell_price: sellPrice || item.sell_price
-      });
-
-      document.getElementById('sale-item').value = '';
-      document.getElementById('sale-quality').innerHTML = '<option value="">-- Select Quality --</option>';
-      document.getElementById('sale-price').value = '';
-      document.getElementById('sale-qty').value = 1;
-
-      renderSalesCart();
-    }
-
-    function renderSalesCart() {
-      const container = document.getElementById('sales-cart-container');
-      const tbody = document.getElementById('sales-cart-tbody');
-      const totalDisplay = document.getElementById('sales-cart-total');
-
-      if (salesCart.length === 0) {
-        container.classList.add('d-none');
-        return;
-      }
-
-      container.classList.remove('d-none');
-      let grandTotal = 0;
-
-      tbody.innerHTML = salesCart.map((item, idx) => {
-        const subtotal = item.sell_price * item.qty;
-        grandTotal += subtotal;
-        return `
-          <tr>
-            <td><b>${item.model}</b></td>
-            <td><span class="badge bg-secondary">${item.quality}</span></td>
-            <td>${item.qty}</td>
-            <td>₦${item.sell_price.toLocaleString()}</td>
-            <td class="fw-bold text-success">₦${subtotal.toLocaleString()}</td>
-            <td><button class="btn btn-xs btn-danger py-0 px-2" onclick="removeFromSalesCart(${idx})">✖</button></td>
-          </tr>
-        `;
-      }).join('');
-
-      totalDisplay.innerText = `₦${grandTotal.toLocaleString()}`;
-    }
-
-    function removeFromSalesCart(index) {
-      salesCart.splice(index, 1);
-      renderSalesCart();
-    }
-
-    function clearSalesCart() {
-      salesCart = [];
-      renderSalesCart();
-    }
-
-    // --- SALES PERIOD FILTER HANDLERS ---
-    function handleSalesFilterChange() {
-      const filterType = document.getElementById('sales-period-filter').value;
-      const customPicker = document.getElementById('sales-custom-date');
-
-      if (filterType === 'custom') {
-        customPicker.classList.remove('d-none');
-      } else {
-        customPicker.classList.add('d-none');
-        renderSales();
-      }
-    }
-
-    function getFilteredSalesData() {
-      const filterType = document.getElementById('sales-period-filter').value;
-      const now = new Date();
-      const todayStr = now.toISOString().split('T')[0];
-
-      let salesData = [];
-      let periodLabel = "All Time History";
-
-      if (filterType === 'today') {
-        periodLabel = `Today (${todayStr})`;
-        salesData = db.sales.filter(s => s.date === todayStr);
-
-      } else if (filterType === 'yesterday') {
-        const yest = new Date(now);
-        yest.setDate(yest.getDate() - 1);
-        const yestStr = yest.toISOString().split('T')[0];
-        periodLabel = `Yesterday (${yestStr})`;
-        salesData = db.sales.filter(s => s.date === yestStr);
-
-      } else if (filterType === 'this-week') {
-        const current = new Date(now);
-        const firstDay = current.getDate() - current.getDay();
-        const startOfWeek = new Date(current.setDate(firstDay)).toISOString().split('T')[0];
-        periodLabel = `This Week (${startOfWeek} to ${todayStr})`;
-        salesData = db.sales.filter(s => s.date && s.date >= startOfWeek && s.date <= todayStr);
-
-      } else if (filterType === 'this-month') {
-        const currentYearMonth = todayStr.substring(0, 7);
-        periodLabel = `This Month (${currentYearMonth})`;
-        salesData = db.sales.filter(s => s.date && s.date.startsWith(currentYearMonth));
-
-      } else if (filterType === 'all-time') {
-        periodLabel = "All Time History";
-        salesData = db.sales;
-
-      } else if (filterType === 'custom') {
-        const customDate = document.getElementById('sales-custom-date').value;
-        if (customDate) {
-          periodLabel = `Date: ${customDate}`;
-          salesData = db.sales.filter(s => s.date === customDate);
-        } else {
-          periodLabel = "Select Date...";
-          salesData = [];
-        }
-      }
-
-      return { salesData, periodLabel };
-    }
-
-    function renderSales(searchQuery = "") {
-      const tbody = document.getElementById('sales-table-body');
-      const { salesData, periodLabel } = getFilteredSalesData();
-
-      document.getElementById('sales-badge-period').innerText = periodLabel;
-
-      let filteredSales = salesData.slice().reverse().filter(sale => {
-        if (!searchQuery) return true;
-        const q = searchQuery.toLowerCase();
-        return (sale.model && sale.model.toLowerCase().includes(q)) ||
-               (sale.quality && sale.quality.toLowerCase().includes(q)) ||
-               (sale.customer && sale.customer.toLowerCase().includes(q)) ||
-               (sale.date && sale.date.includes(q));
-      });
-
-      if (filteredSales.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-3">No matching sales records found for this period</td></tr>`;
-      } else {
-        tbody.innerHTML = filteredSales.map(sale => `
-          <tr>
-            <td>${sale.date}</td>
-            <td><b>${sale.model}</b></td>
-            <td><span class="badge bg-secondary">${sale.quality || 'Standard'}</span></td>
-            <td>${sale.customer}</td>
-            <td>${sale.qty}</td>
-            <td>₦${sale.sell_price.toLocaleString()}</td>
-            <td><b class="text-success">₦${(sale.sell_price * sale.qty).toLocaleString()}</b></td>
-            <td class="no-print">
-              <button class="btn btn-sm btn-outline-primary" onclick="printReceipt('${sale.date}', '${sale.model}', '${sale.quality || 'Standard'}', '${sale.customer}', ${sale.qty}, ${sale.sell_price})">🧾 Receipt</button>
-            </td>
-          </tr>
-        `).join('');
-      }
-
-      populateReturnSaleDropdown();
-    }
-
-    function printFilteredSales() {
-      const { periodLabel } = getFilteredSalesData();
-      document.getElementById('sales-print-subtitle').innerText = `Sales History Report - ${periodLabel}`;
-      window.print();
-    }
-
-    function sendSalesToGmail() {
-      const { salesData, periodLabel } = getFilteredSalesData();
-
-      if (salesData.length === 0) {
-        alert(`No sales records available for "${periodLabel}" to send!`);
-        return;
-      }
-
-      let emailBody = `SKY MODERNIZE SAVE TECHNOLOGY LTD - Sales Report\n`;
-      emailBody += `Report Period: ${periodLabel}\n\n`;
-      emailBody += `--- COMPLETED SALES ---\n`;
-      emailBody += `Date | Model | Quality | Customer | Qty | Unit Price | Total Price\n`;
-      emailBody += `-----------------------------------------------------------------------\n`;
-
-      let totalAmount = 0;
-      salesData.forEach(s => {
-        const itemTotal = s.sell_price * s.qty;
-        totalAmount += itemTotal;
-        emailBody += `${s.date} | ${s.model} | ${s.quality || 'Standard'} | ${s.customer} | ${s.qty} pcs | ₦${s.sell_price.toLocaleString()} | ₦${itemTotal.toLocaleString()}\n`;
-      });
-
-      emailBody += `-----------------------------------------------------------------------\n`;
-      emailBody += `Total Sales Revenue (${periodLabel}): ₦${totalAmount.toLocaleString()}\n\n`;
-
-      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(`SKY MODERNIZE - Sales Report (${periodLabel})`)}&body=${encodeURIComponent(emailBody)}`;
-      window.open(gmailUrl, '_blank');
-    }
-
-    function printReceipt(date, model, quality, customer, qty, price) {
-      const total = qty * price;
-      const receiptWindow = window.open('', '_blank', 'width=400,height=600');
-      receiptWindow.document.write(`
-        <html>
-          <head>
-            <title>Receipt - SKY MODERNIZE</title>
-            <style>
-              body { font-family: monospace; padding: 20px; font-size: 12px; }
-              .center { text-align: center; }
-              hr { border-top: 1px dashed #000; }
-              .flex { display: flex; justify-content: space-between; }
-            </style>
-          </head>
-          <body>
-            <div class="center">
-              <h3>SKY MODERNIZE SAVE TECHNOLOGY LTD</h3>
-              <p>Official Sales Receipt</p>
-            </div>
-            <hr>
-            <p><b>Date:</b> ${date}</p>
-            <p><b>Customer:</b> ${customer}</p>
-            <hr>
-            <p><b>Item:</b> ${model}</p>
-            <p><b>Quality/Grade:</b> ${quality}</p>
-            <p><b>Qty:</b> ${qty}</p>
-            <p><b>Unit Price:</b> ₦${price.toLocaleString()}</p>
-            <hr>
-            <div class="flex">
-              <h4>Total Paid:</h4>
-              <h4>₦${total.toLocaleString()}</h4>
-            </div>
-            <hr>
-            <div class="center">
-              <p>Thank you for your business!</p>
-            </div>
-            <script>
-              window.onload = function() { window.print(); window.close(); }
-            <\/script>
-          </body>
-        </html>
-      `);
-      receiptWindow.document.close();
-    }
-
-    function populateReturnSaleDropdown(filterQuery = "") {
-      const returnSelect = document.getElementById('return-sale-idx');
-      
-      const filteredSalesWithIdx = db.sales.map((s, idx) => ({ ...s, originalIdx: idx })).filter(s => {
-        if (!filterQuery) return true;
-        const q = filterQuery.toLowerCase();
-        return (s.model && s.model.toLowerCase().includes(q)) ||
-               (s.customer && s.customer.toLowerCase().includes(q)) ||
-               (s.date && s.date.includes(q));
-      });
-
-      if (filteredSalesWithIdx.length === 0) {
-        returnSelect.innerHTML = '<option value="">-- No matching sales found --</option>';
-      } else {
-        returnSelect.innerHTML = '<option value="">-- Select Sale --</option>' +
-          filteredSalesWithIdx.map(s => 
-            `<option value="${s.originalIdx}">${s.date} - ${s.model} [${s.quality || 'Standard'}] (${s.customer}) - ${s.qty} pcs</option>`
-          ).join('');
-      }
-    }
-
-    // --- CUSTOMER RETURNS FILTER & PERIOD LOGIC ---
-    function handleReturnsFilterChange() {
-      const filterType = document.getElementById('returns-period-filter').value;
-      const customPicker = document.getElementById('returns-custom-date');
-
-      if (filterType === 'custom') {
-        customPicker.classList.remove('d-none');
-      } else {
-        customPicker.classList.add('d-none');
-        renderReturns();
-      }
-    }
-
-    function getFilteredReturnsData() {
-      const filterType = document.getElementById('returns-period-filter').value;
-      const now = new Date();
-      const todayStr = now.toISOString().split('T')[0];
-
-      let returnsData = [];
-      let periodLabel = "All Time History";
-
-      if (filterType === 'today') {
-        periodLabel = `Today (${todayStr})`;
-        returnsData = db.returns.filter(r => r.date === todayStr);
-
-      } else if (filterType === 'yesterday') {
-        const yest = new Date(now);
-        yest.setDate(yest.getDate() - 1);
-        const yestStr = yest.toISOString().split('T')[0];
-        periodLabel = `Yesterday (${yestStr})`;
-        returnsData = db.returns.filter(r => r.date === yestStr);
-
-      } else if (filterType === 'this-week') {
-        const current = new Date(now);
-        const firstDay = current.getDate() - current.getDay();
-        const startOfWeek = new Date(current.setDate(firstDay)).toISOString().split('T')[0];
-        periodLabel = `This Week (${startOfWeek} to ${todayStr})`;
-        returnsData = db.returns.filter(r => r.date && r.date >= startOfWeek && r.date <= todayStr);
-
-      } else if (filterType === 'this-month') {
-        const currentYearMonth = todayStr.substring(0, 7);
-        periodLabel = `This Month (${currentYearMonth})`;
-        returnsData = db.returns.filter(r => r.date && r.date.startsWith(currentYearMonth));
-
-      } else if (filterType === 'all-time') {
-        periodLabel = "All Time History";
-        returnsData = db.returns;
-
-      } else if (filterType === 'custom') {
-        const customDate = document.getElementById('returns-custom-date').value;
-        if (customDate) {
-          periodLabel = `Date: ${customDate}`;
-          returnsData = db.returns.filter(r => r.date === customDate);
-        } else {
-          periodLabel = "Select Date...";
-          returnsData = [];
-        }
-      }
-
-      return { returnsData, periodLabel };
-    }
-
-    function renderReturns(filterQuery = "") {
-      const tbody = document.getElementById('returns-table-body');
-      const { returnsData, periodLabel } = getFilteredReturnsData();
-
-      document.getElementById('returns-badge-period').innerText = periodLabel;
-
-      const filteredReturns = returnsData.map((ret, originalIdx) => ({ ...ret, originalIdx })).slice().reverse().filter(ret => {
-        if (!filterQuery) return true;
-        const q = filterQuery.toLowerCase();
-        return (ret.model && ret.model.toLowerCase().includes(q)) ||
-               (ret.customer && ret.customer.toLowerCase().includes(q)) ||
-               (ret.reason && ret.reason.toLowerCase().includes(q)) ||
-               (ret.date && ret.date.includes(q));
-      });
-
-      if (filteredReturns.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-3">No matching return records found for this period</td></tr>`;
-      } else {
-        tbody.innerHTML = filteredReturns.map(ret => {
-          const isExchanged = ret.isExchanged || false;
-          return `
-            <tr>
-              <td>${ret.date}</td>
-              <td><b>${ret.model}</b></td>
-              <td>${ret.customer}</td>
-              <td>${ret.qty}</td>
-              <td>${ret.reason}</td>
-              <td>
-                <span class="badge ${isExchanged ? 'bg-primary' : 'bg-secondary'} p-2">
-                  ${isExchanged ? '🔄 Exchanged (Stock Deducted)' : '💵 Refund / Credit'}
-                </span>
-              </td>
-              <td class="no-print">
-                ${!isExchanged ? 
-                  `<button class="btn btn-sm btn-outline-danger" onclick="deductExchangeStock(${ret.originalIdx})">🔄 Deduct Replacement</button>` : 
-                  `<button class="btn btn-sm btn-outline-secondary" disabled>✅ Replacement Handed Out</button>`
-                }
-              </td>
-            </tr>
-          `;
-        }).join('');
-      }
-    }
-
-    function printFilteredReturns() {
-      const { periodLabel } = getFilteredReturnsData();
-      document.getElementById('returns-print-subtitle').innerText = `Customer Returns History Report - ${periodLabel}`;
-      window.print();
-    }
-
-    function sendReturnsToGmail() {
-      const { returnsData, periodLabel } = getFilteredReturnsData();
-
-      if (returnsData.length === 0) {
-        alert(`No customer return records available for "${periodLabel}" to send!`);
-        return;
-      }
-
-      let emailBody = `SKY MODERNIZE SAVE TECHNOLOGY LTD - Customer Returns Report\n`;
-      emailBody += `Report Period: ${periodLabel}\n\n`;
-      emailBody += `--- CUSTOMER RETURNS ---\n`;
-      emailBody += `Date | Model | Customer | Qty | Reason | Type\n`;
-      emailBody += `-----------------------------------------------------------------------\n`;
-
-      returnsData.forEach(r => {
-        const exchangeText = r.isExchanged ? 'Replacement Issued' : 'Refund / Credit';
-        emailBody += `${r.date} | ${r.model} | ${r.customer} | ${r.qty} pcs | ${r.reason} | ${exchangeText}\n`;
-      });
-
-      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(`SKY MODERNIZE - Customer Returns Report (${periodLabel})`)}&body=${encodeURIComponent(emailBody)}`;
-      window.open(gmailUrl, '_blank');
-    }
-
-    function deductExchangeStock(returnIdx) {
-      const ret = db.returns[returnIdx];
-      if (!ret) return;
-
-      const item = db.stock.find(s => s.model.toLowerCase() === ret.model.toLowerCase());
-      if (!item) {
-        alert("Stock item model not found in stock inventory!");
-        return;
-      }
-      if (item.qty < ret.qty) {
-        alert("Insufficient stock available to issue replacement!");
-        return;
-      }
-
-      if (confirm(`Deduct ${ret.qty} unit(s) of "${ret.model}" from stock for customer exchange?`)) {
-        item.qty -= ret.qty;
-        ret.isExchanged = true;
-        saveDB();
-        alert(`Successfully deducted ${ret.qty} pc(s) from stock for replacement exchange.`);
-      }
-    }
-
-    // --- SUPPLIER RETURNS MONTHLY BULK FILTER & PRINT LOGIC ---
-    function handleSupplierReturnsFilterChange() {
-      const filterType = document.getElementById('sup-returns-period-filter').value;
-      const customPicker = document.getElementById('sup-returns-custom-date');
-
-      if (filterType === 'custom') {
-        customPicker.classList.remove('d-none');
-      } else {
-        customPicker.classList.add('d-none');
-        renderSupplierReturns();
-      }
-    }
-
-    function getFilteredSupplierReturnsData() {
-      const filterType = document.getElementById('sup-returns-period-filter').value;
-      const now = new Date();
-      const todayStr = now.toISOString().split('T')[0];
-
-      let supReturnsData = [];
-      let periodLabel = "This Month";
-
-      if (filterType === 'this-month') {
-        const currentYearMonth = todayStr.substring(0, 7);
-        periodLabel = `This Month (${currentYearMonth})`;
-        supReturnsData = db.supplierReturns.filter(r => r.date && r.date.startsWith(currentYearMonth));
-
-      } else if (filterType === 'today') {
-        periodLabel = `Today (${todayStr})`;
-        supReturnsData = db.supplierReturns.filter(r => r.date === todayStr);
-
-      } else if (filterType === 'yesterday') {
-        const yest = new Date(now);
-        yest.setDate(yest.getDate() - 1);
-        const yestStr = yest.toISOString().split('T')[0];
-        periodLabel = `Yesterday (${yestStr})`;
-        supReturnsData = db.supplierReturns.filter(r => r.date === yestStr);
-
-      } else if (filterType === 'this-week') {
-        const current = new Date(now);
-        const firstDay = current.getDate() - current.getDay();
-        const startOfWeek = new Date(current.setDate(firstDay)).toISOString().split('T')[0];
-        periodLabel = `This Week (${startOfWeek} to ${todayStr})`;
-        supReturnsData = db.supplierReturns.filter(r => r.date && r.date >= startOfWeek && r.date <= todayStr);
-
-      } else if (filterType === 'all-time') {
-        periodLabel = "All Time History";
-        supReturnsData = db.supplierReturns;
-
-      } else if (filterType === 'custom') {
-        const customDate = document.getElementById('sup-returns-custom-date').value;
-        if (customDate) {
-          const monthPrefix = customDate.substring(0, 7);
-          periodLabel = `Filtered Period (${customDate})`;
-          supReturnsData = db.supplierReturns.filter(r => r.date === customDate || r.date.startsWith(monthPrefix));
-        } else {
-          periodLabel = "Select Date...";
-          supReturnsData = [];
-        }
-      }
-
-      return { supReturnsData, periodLabel };
-    }
-
-    function renderSupplierReturns(filterQuery = "") {
-      const tbody = document.getElementById('supplier-returns-table-body');
-      const { supReturnsData, periodLabel } = getFilteredSupplierReturnsData();
-
-      document.getElementById('sup-returns-badge-period').innerText = periodLabel;
-
-      const filteredReturns = supReturnsData.map((ret, originalIdx) => ({ ...ret, originalIdx })).slice().reverse().filter(ret => {
-        if (!filterQuery) return true;
-        const q = filterQuery.toLowerCase();
-        return (ret.model && ret.model.toLowerCase().includes(q)) ||
-               (ret.supplier && ret.supplier.toLowerCase().includes(q)) ||
-               (ret.status && ret.status.toLowerCase().includes(q)) ||
-               (ret.reason && ret.reason.toLowerCase().includes(q)) ||
-               (ret.date && ret.date.includes(q));
-      });
-
-      if (filteredReturns.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-3">No supplier return records found for this monthly filter</td></tr>`;
-      } else {
-        tbody.innerHTML = filteredReturns.map(ret => {
-          let statusBadge = '';
-          let rowClass = '';
-
-          if (ret.status === 'Replaced / Received') {
-            statusBadge = '<span class="badge bg-success p-2">🔄 Received Back & Restocked</span>';
-            rowClass = 'table-success';
-          } else if (ret.status === 'Sent Back') {
-            statusBadge = '<span class="badge bg-primary p-2">🚚 Sent to Supplier</span>';
-            rowClass = 'table-primary';
-          } else {
-            statusBadge = '<span class="badge bg-warning text-dark p-2">⏳ Pending Custody</span>';
-            rowClass = 'table-warning';
-          }
-
-          return `
-            <tr class="${rowClass}">
-              <td>${ret.date}</td>
-              <td><b>${ret.model}</b></td>
-              <td>${ret.supplier}</td>
-              <td>${ret.qty}</td>
-              <td>${ret.reason}</td>
-              <td>${statusBadge}</td>
-              <td class="no-print">
-                ${ret.status !== 'Replaced / Received' ? 
-                  `<button class="btn btn-sm btn-success me-1" onclick="markSupplierReturnReceived(${ret.originalIdx})">✅ Mark Received Back</button>
-                   <button class="btn btn-sm btn-outline-secondary" onclick="cycleSupplierStatus(${ret.originalIdx})">🔄 Switch Status</button>` :
-                  `<button class="btn btn-sm btn-outline-success" disabled>✅ Restocked in Stock</button>`
-                }
-              </td>
-            </tr>
-          `;
-        }).join('');
-      }
-    }
-
-    function printFilteredSupplierReturns() {
-      const { supReturnsData, periodLabel } = getFilteredSupplierReturnsData();
-
-      if (supReturnsData.length === 0) {
-        alert(`No supplier return records found for "${periodLabel}" to print!`);
-        return;
-      }
-
-      document.getElementById('sup-returns-print-subtitle').innerText = `Supplier Returns Bulk Summary Report - ${periodLabel}`;
-      window.print();
-    }
-
-    function sendSupplierReturnsToGmail() {
-      const { supReturnsData, periodLabel } = getFilteredSupplierReturnsData();
-
-      if (supReturnsData.length === 0) {
-        alert(`No supplier return records available for "${periodLabel}" to send!`);
-        return;
-      }
-
-      let emailBody = `SKY MODERNIZE SAVE TECHNOLOGY LTD - Supplier Returns Report\n`;
-      emailBody += `Report Period: ${periodLabel}\n\n`;
-      emailBody += `--- SUPPLIER RETURNS BULK LIST ---\n`;
-      emailBody += `Date | Model | Supplier | Qty | Reason | Status\n`;
-      emailBody += `-----------------------------------------------------------------------\n`;
-
-      supReturnsData.forEach(r => {
-        emailBody += `${r.date} | ${r.model} | ${r.supplier} | ${r.qty} pcs | ${r.reason} | ${r.status}\n`;
-      });
-
-      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(`SKY MODERNIZE - Supplier Returns Bulk Report (${periodLabel})`)}&body=${encodeURIComponent(emailBody)}`;
-      window.open(gmailUrl, '_blank');
-    }
-
-    function markSupplierReturnReceived(idx) {
-      const ret = db.supplierReturns[idx];
-      if (!ret) return;
-
-      if (confirm(`Has supplier "${ret.supplier}" provided replacement for ${ret.qty} pc(s) of ${ret.model}? This will add them back to your active stock inventory.`)) {
-        const rawModelName = ret.model.split(' [')[0].trim();
-        const item = db.stock.find(s => s.model.toLowerCase() === rawModelName.toLowerCase());
-
-        if (item) {
-          item.qty += ret.qty;
-        } else {
-          db.stock.push({
-            model: rawModelName,
-            category: "General",
-            subcat: "",
-            qty: ret.qty,
-            cost_price: 0,
-            sell_price: 0,
-            supplier: ret.supplier
-          });
-        }
-
-        ret.status = 'Replaced / Received';
-        saveDB();
-        alert(`Successfully received ${ret.qty} unit(s) back from ${ret.supplier} and restocked into inventory!`);
-      }
-    }
-
-    function cycleSupplierStatus(idx) {
-      if (db.supplierReturns[idx]) {
-        const current = db.supplierReturns[idx].status;
-        if (current === 'Pending') {
-          db.supplierReturns[idx].status = 'Sent Back';
-        } else if (current === 'Sent Back') {
-          db.supplierReturns[idx].status = 'Pending';
-        }
-        saveDB();
-      }
-    }
-
-    // --- PURCHASE REQUISITION FUNCTIONS ---
-    function renderRequisitions(filterQuery = "") {
-      const tbody = document.getElementById('requisition-table-body');
-      
-      const filteredReqs = db.requisitions.map((req, originalIdx) => ({ ...req, originalIdx })).slice().reverse().filter(req => {
-        if (!filterQuery) return true;
-        const q = filterQuery.toLowerCase();
-        return (req.id && req.id.toLowerCase().includes(q)) ||
-               (req.item && req.item.toLowerCase().includes(q)) ||
-               (req.category && req.category.toLowerCase().includes(q)) ||
-               (req.supplier && req.supplier.toLowerCase().includes(q)) ||
-               (req.status && req.status.toLowerCase().includes(q));
-      });
-
-      if (filteredReqs.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="10" class="text-center text-muted py-3">No purchase requisitions found</td></tr>`;
-      } else {
-        tbody.innerHTML = filteredReqs.map(req => {
-          const unitCost = req.cost || 0;
-          const totalCost = unitCost * req.qty;
-          let statusBadge = '';
-
-          if (req.status === 'Approved') {
-            statusBadge = '<span class="badge bg-success p-2">Approved ✅</span>';
-          } else if (req.status === 'Ordered') {
-            statusBadge = '<span class="badge bg-info p-2">Ordered 📦</span>';
-          } else if (req.status === 'Cancelled') {
-            statusBadge = '<span class="badge bg-danger p-2">Cancelled ❌</span>';
-          } else {
-            statusBadge = '<span class="badge bg-warning text-dark p-2">Pending ⏳</span>';
-          }
-
-          return `
-            <tr>
-              <td><small class="fw-bold">${req.id}</small></td>
-              <td>${req.date}</td>
-              <td><b>${req.item}</b></td>
-              <td><span class="badge bg-secondary">${req.category}</span></td>
-              <td><b>${req.qty} pcs</b></td>
-              <td>₦${unitCost.toLocaleString()}</td>
-              <td class="fw-bold text-success">₦${totalCost.toLocaleString()}</td>
-              <td>${req.supplier || '-'}</td>
-              <td>${statusBadge}</td>
-              <td class="no-print">
-                <div class="dropdown">
-                  <button class="btn btn-sm btn-outline-dark dropdown-toggle" type="button" data-bs-toggle="dropdown">Status</button>
-                  <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="#" onclick="updateRequisitionStatus(${req.originalIdx}, 'Pending')">Set Pending ⏳</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="updateRequisitionStatus(${req.originalIdx}, 'Approved')">Approve ✅</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="updateRequisitionStatus(${req.originalIdx}, 'Ordered')">Set Ordered 📦</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="updateRequisitionStatus(${req.originalIdx}, 'Cancelled')">Cancel ❌</a></li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item text-danger" href="#" onclick="deleteRequisition(${req.originalIdx})">Delete</a></li>
-                  </ul>
-                </div>
-              </td>
-            </tr>
-          `;
-        }).join('');
-      }
-    }
-
-    document.getElementById('requisition-form').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const qty = parseInt(document.getElementById('req-qty').value);
-      const cost = parseInt(document.getElementById('req-cost').value) || 0;
-
-      if (isNaN(qty) || qty <= 0) return alert("❌ Validation Error: Requested quantity must be at least 1!");
-      if (cost < 0) return alert("❌ Validation Error: Estimated cost cannot be negative!");
-
-      const reqId = "REQ-" + Math.floor(1000 + Math.random() * 9000);
-
-      db.requisitions.push({
-        id: reqId,
-        item: document.getElementById('req-item').value,
-        category: document.getElementById('req-cat').value,
-        qty: qty,
-        cost: cost,
-        supplier: document.getElementById('req-supplier').value,
-        notes: document.getElementById('req-notes').value,
-        status: "Pending",
-        date: new Date().toISOString().split('T')[0]
-      });
-
-      e.target.reset();
-      saveDB();
-      alert(`Requisition ${reqId} created successfully!`);
-    });
-
-    function updateRequisitionStatus(idx, newStatus) {
-      if (db.requisitions[idx]) {
-        db.requisitions[idx].status = newStatus;
-        saveDB();
-      }
-    }
-
-    function deleteRequisition(idx) {
-      if (confirm("Delete this purchase requisition record?")) {
-        db.requisitions.splice(idx, 1);
-        saveDB();
-      }
-    }
-
-    function printFilteredRequisitions() {
-      if (db.requisitions.length === 0) return alert("No requisitions to print.");
-      document.getElementById('req-print-subtitle').innerText = `Purchase Requisition Voucher - ${new Date().toISOString().split('T')[0]}`;
-      window.print();
-    }
-
-    function sendRequisitionToGmail() {
-      if (db.requisitions.length === 0) return alert("No requisitions available to send!");
-
-      let emailBody = `SKY MODERNIZE SAVE TECHNOLOGY LTD - Purchase Requisition Order\n`;
-      emailBody += `Generated On: ${new Date().toISOString().split('T')[0]}\n\n`;
-      emailBody += `--- REQUIRED GOODS & STOCK PROCUREMENT --- \n`;
-      emailBody += `Req ID | Date | Item Needed | Specs | Qty Needed | Est. Unit Price | Total Cost | Preferred Vendor | Status\n`;
-      emailBody += `----------------------------------------------------------------------------------------------------\n`;
-
-      let grandTotalCost = 0;
-      db.requisitions.forEach(r => {
-        const itemTotal = (r.cost || 0) * r.qty;
-        grandTotalCost += itemTotal;
-        emailBody += `${r.id} | ${r.date} | ${r.item} | ${r.category} | ${r.qty} pcs | ₦${(r.cost || 0).toLocaleString()} | ₦${itemTotal.toLocaleString()} | ${r.supplier || '-'} | ${r.status}\n`;
-      });
-
-      emailBody += `----------------------------------------------------------------------------------------------------\n`;
-      emailBody += `Grand Estimated Budget: ₦${grandTotalCost.toLocaleString()}\n\n`;
-
-      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(`SKY MODERNIZE - Purchase Requisition Order`)}&body=${encodeURIComponent(emailBody)}`;
-      window.open(gmailUrl, '_blank');
-    }
-
-    // --- FORM ACTIONS WITH DATA VALIDATION ---
-    document.getElementById('stock-form').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const qty = parseInt(document.getElementById('stk-qty').value);
-      const cost = parseInt(document.getElementById('stk-cost').value);
-      const sell = parseInt(document.getElementById('stk-sell').value);
-
-      if (isNaN(qty) || qty <= 0) return alert("❌ Validation Error: Stock Quantity must be greater than 0!");
-      if (isNaN(cost) || cost < 0) return alert("❌ Validation Error: Cost Price cannot be negative!");
-      if (isNaN(sell) || sell < 0) return alert("❌ Validation Error: Selling Price cannot be negative!");
-
-      db.stock.push({
-        model: document.getElementById('stk-model').value,
-        category: document.getElementById('stk-cat').value,
-        subcat: document.getElementById('stk-subcat').value,
-        qty: qty,
-        cost_price: cost,
-        sell_price: sell,
-        supplier: document.getElementById('stk-supplier').value
-      });
-      e.target.reset();
-      saveDB();
-    });
-
-    let editModalInstance = null;
-
-    function openEditModal(index) {
-      const item = db.stock[index];
-      document.getElementById('edit-stk-index').value = index;
-      document.getElementById('edit-stk-model').value = item.model;
-      document.getElementById('edit-stk-cat').value = item.category;
-      document.getElementById('edit-stk-subcat').value = item.subcat || '';
-      document.getElementById('edit-stk-qty').value = item.qty;
-      document.getElementById('edit-stk-cost').value = item.cost_price;
-      document.getElementById('edit-stk-sell').value = item.sell_price;
-      document.getElementById('edit-stk-supplier').value = item.supplier || '';
-
-      editModalInstance = new bootstrap.Modal(document.getElementById('editStockModal'));
-      editModalInstance.show();
-    }
-
-    document.getElementById('edit-stock-form').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const index = parseInt(document.getElementById('edit-stk-index').value);
-      const qty = parseInt(document.getElementById('edit-stk-qty').value);
-      const cost = parseInt(document.getElementById('edit-stk-cost').value);
-      const sell = parseInt(document.getElementById('edit-stk-sell').value);
-
-      if (isNaN(qty) || qty <= 0) return alert("❌ Validation Error: Quantity must be greater than 0!");
-      if (isNaN(cost) || cost < 0) return alert("❌ Validation Error: Cost Price cannot be negative!");
-      if (isNaN(sell) || sell < 0) return alert("❌ Validation Error: Selling Price cannot be negative!");
-
-      db.stock[index] = {
-        model: document.getElementById('edit-stk-model').value,
-        category: document.getElementById('edit-stk-cat').value,
-        subcat: document.getElementById('edit-stk-subcat').value,
-        qty: qty,
-        cost_price: cost,
-        sell_price: sell,
-        supplier: document.getElementById('edit-stk-supplier').value
-      };
-
-      saveDB();
-      if (editModalInstance) editModalInstance.hide();
-    });
-
-    document.getElementById('sales-form').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const customer = document.getElementById('sale-customer').value.trim();
-
-      if (!customer) return alert("Please enter Customer Name!");
-
-      // If cart is empty, try recording direct single item
-      if (salesCart.length === 0) {
-        const modelName = document.getElementById('sale-item').value.trim();
-        const quality = document.getElementById('sale-quality').value;
-        const sellPrice = parseInt(document.getElementById('sale-price').value);
-        const qty = parseInt(document.getElementById('sale-qty').value);
-
-        if (!modelName) return alert("❌ Error: Add items to cart or select a single item first!");
-        if (isNaN(qty) || qty <= 0) return alert("❌ Validation Error: Sale Quantity must be at least 1!");
-
-        const item = db.stock.find(s => 
-          s.model.toLowerCase() === modelName.toLowerCase() &&
-          (s.subcat || 'Standard').toLowerCase() === (quality || 'Standard').toLowerCase()
-        ) || db.stock.find(s => s.model.toLowerCase() === modelName.toLowerCase());
-
-        if (!item) return alert("❌ Error: Model not found in stock inventory!");
-        if (item.qty < qty) return alert(`❌ Error: Insufficient stock available! (${item.qty} pcs in stock)`);
-
-        item.qty -= qty;
-        db.sales.push({
-          model: item.model,
-          quality: quality || item.subcat || 'Standard',
-          qty: qty,
-          cost_price: item.cost_price,
-          sell_price: sellPrice || item.sell_price,
-          customer: customer,
-          date: new Date().toISOString().split('T')[0]
-        });
-      } else {
-        // Process bulk multi-item sale from cart
-        salesCart.forEach(cItem => {
-          const item = db.stock[cItem.stockIndex];
-          if (item) {
-            item.qty -= cItem.qty;
-            db.sales.push({
-              model: item.model,
-              quality: cItem.quality,
-              qty: cItem.qty,
-              cost_price: cItem.cost_price,
-              sell_price: cItem.sell_price,
-              customer: customer,
-              date: new Date().toISOString().split('T')[0]
-            });
-          }
-        });
-      }
-
-      e.target.reset();
-      salesCart = [];
-      renderSalesCart();
-      document.getElementById('sale-quality').innerHTML = '<option value="">-- Select Quality --</option>';
-      saveDB();
-      alert("✅ Sale completed successfully!");
-    });
-
-    document.getElementById('returns-form').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const saleIdx = parseInt(document.getElementById('return-sale-idx').value);
-      const qty = parseInt(document.getElementById('return-qty').value);
-      const reason = document.getElementById('return-reason').value;
-      const isExchanged = document.getElementById('return-is-exchanged').checked;
-
-      if (isNaN(qty) || qty <= 0) return alert("❌ Validation Error: Return quantity must be at least 1!");
-
-      const sale = db.sales[saleIdx];
-      if (isNaN(saleIdx) || !sale || qty > sale.qty) {
-        alert("❌ Error: Invalid return quantity or no sold item selected!");
-        return;
-      }
-
-      const item = db.stock.find(s => sale.model.toLowerCase() === s.model.toLowerCase());
-
-      if (isExchanged) {
-        if (item && item.qty < qty) {
-          alert("❌ Error: Insufficient stock available to issue a replacement unit!");
-          return;
-        }
-      } else {
-        if (item) item.qty += qty;
-      }
-
-      db.returns.push({
-        model: sale.model,
-        qty: qty,
-        cost_price: sale.cost_price,
-        sell_price: sale.sell_price,
-        customer: sale.customer,
-        reason: reason,
-        isExchanged: isExchanged,
-        date: new Date().toISOString().split('T')[0]
-      });
-
-      e.target.reset();
-      clearReturnSaleSearch();
-      saveDB();
-    });
-
-    document.getElementById('supplier-returns-form').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const rawInput = document.getElementById('sup-return-item').value.trim();
-      const modelName = rawInput.split(' [')[0].trim();
-      const supplier = document.getElementById('sup-return-supplier').value;
-      const qty = parseInt(document.getElementById('sup-return-qty').value);
-      const status = document.getElementById('sup-return-status').value;
-      const reason = document.getElementById('sup-return-reason').value;
-
-      if (isNaN(qty) || qty <= 0) return alert("❌ Validation Error: Quantity must be at least 1!");
-
-      const item = db.stock.find(s => s.model.toLowerCase() === modelName.toLowerCase());
-      if (!item) {
-        alert("❌ Error: Model not found in stock inventory!");
-        return;
-      }
-
-      if (status !== 'Replaced / Received') {
-        if (item.qty < qty) {
-          alert("❌ Error: Insufficient stock quantity available to return to supplier!");
-          return;
-        }
-        item.qty -= qty;
-      }
-
-      db.supplierReturns.push({
-        model: item.subcat ? `${item.model} [${item.subcat}]` : item.model,
-        supplier: supplier,
-        qty: qty,
-        reason: reason,
-        status: status,
-        date: new Date().toISOString().split('T')[0]
-      });
-
-      e.target.reset();
-      saveDB();
-    });
-
-    function deleteStock(index) {
-      if (confirm("Delete this stock item?")) {
-        db.stock.splice(index, 1);
-        saveDB();
-      }
-    }
-
-    // Initial Load
-    renderAll();
-    navigateTo('login');
   </script>
 </body>
 </html>
