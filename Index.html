@@ -26,7 +26,7 @@
 
   <nav id="main-nav" class="navbar navbar-expand-lg navbar-dark bg-dark mb-4 no-print" style="display: none;">
     <div class="container-fluid">
-      <a class="navbar-brand fw-bold" href="#">SKY MODERNIZE SAVE TECHNOLOGY LTD</a>
+      <a class="navbar-brand fw-bold" href="#">SKY MODERNIZE</a>
       <div class="d-flex gap-2 flex-wrap">
         <button class="btn btn-sm btn-outline-light" onclick="navigateTo('dashboard')">Dashboard</button>
         <button class="btn btn-sm btn-outline-light" onclick="navigateTo('stock')">Stock 🔒</button>
@@ -47,7 +47,7 @@
         <div class="col-12 col-sm-8 col-md-6 col-lg-4">
           <div class="card bg-dark text-white shadow-lg border-0 rounded-3">
             <div class="card-body p-4">
-              <h3 class="text-center mb-2">SKY MODERNIZE SAVE TECHNOLOGY LTD</h3>
+              <h3 class="text-center mb-2">SKY MODERNIZE</h3>
               <p class="text-center text-secondary mb-4">Inventory Management System</p>
               
               <div id="login-alert" class="alert alert-danger py-2 d-none" role="alert"></div>
@@ -447,7 +447,7 @@
         <div class="card-header bg-danger text-white fw-bold">Process Customer Return</div>
         <div class="card-body">
           <form id="returns-form" class="row g-2">
-            <div class="col-md-4">
+            <div class="col-md-3">
               <label class="form-label small fw-bold">Search & Select Sold Item</label>
               <div class="input-group mb-2">
                 <input type="text" id="return-sale-search-input" class="form-control form-control-sm" placeholder="Filter sale items..." onkeyup="filterReturnSaleOptions()">
@@ -464,7 +464,7 @@
               <label class="form-label small fw-bold">Reason</label>
               <input id="return-reason" class="form-control" placeholder="Reason for return" required>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-5">
               <label class="form-label small fw-bold text-primary">Item Replacement / Exchange</label>
               <div class="form-check mt-1">
                 <input class="form-check-input" type="checkbox" id="return-is-exchanged">
@@ -472,7 +472,10 @@
                   Customer given replacement 🔄 (Auto-deduct stock)
                 </label>
               </div>
-              <button class="btn btn-danger w-100 mt-2 fw-bold">Process Return</button>
+              <div class="d-flex gap-2 mt-2">
+                <button type="submit" class="btn btn-danger flex-grow-1 fw-bold">Process Return</button>
+                <button type="button" class="btn btn-outline-secondary fw-bold" onclick="clearCustomerReturnForm()">Clear Form</button>
+              </div>
             </div>
           </form>
         </div>
@@ -504,81 +507,85 @@
     </div>
 
     <div id="page-supplier-returns" class="page">
-      <div class="print-title">
-        <h2>SKY MODERNIZE SAVE TECHNOLOGY LTD</h2>
-        <h4 id="sup-returns-print-subtitle">Supplier Returns Bulk Report</h4>
-        <hr>
-      </div>
-
-      <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-        <h3>Supplier Returns Management</h3>
-        <div class="no-print d-flex align-items-center gap-2 flex-wrap sup-filter-container">
-          <label class="fw-bold text-secondary mb-0">Period Filter:</label>
-          <select id="sup-returns-period-filter" class="form-select form-select-sm" style="width: auto;" onchange="handleSupplierReturnsFilterChange()">
-            <option value="this-month" selected>This Month</option>
-            <option value="today">Today</option>
-            <option value="yesterday">Yesterday</option>
-            <option value="this-week">This Week</option>
-            <option value="all-time">All Time History</option>
-            <option value="custom">Custom Date / Month...</option>
-          </select>
-          <input type="date" id="sup-returns-custom-date" class="form-control form-control-sm d-none" style="width: auto;" onchange="renderSupplierReturns()">
-          <button class="btn btn-outline-primary btn-sm" onclick="exportSupplierReturnsToCSV()">📥 Export Supplier Returns CSV</button>
-          <button class="btn btn-outline-dark btn-sm fw-bold" onclick="printFilteredSupplierReturns()">🖨️ Print Bulk Report</button>
-          <button class="btn btn-danger btn-sm" onclick="sendSupplierReturnsToGmail()">📧 Send to Gmail</button>
+      <div id="supplier-returns-printable-area">
+        <div class="print-title">
+          <h2>SKY MODERNIZE SAVE TECHNOLOGY LTD</h2>
+          <h4 id="sup-returns-print-subtitle">Supplier Returns Bulk Report</h4>
+          <hr>
         </div>
-      </div>
 
-      <div class="card mb-4 border-warning no-print">
-        <div class="card-header bg-warning text-dark fw-bold">Process Supplier Return</div>
-        <div class="card-body">
-          <form id="supplier-returns-form" class="row g-2">
-            <div class="col-md-3">
-              <label class="form-label small fw-bold">Search / Select Model</label>
-              <input id="sup-return-item" class="form-control" list="sup-return-item-list" placeholder="Type model name..." required oninput="autoFillSupplier()" autocomplete="off">
-              <datalist id="sup-return-item-list"></datalist>
-            </div>
-            <div class="col-md-3">
-              <label class="form-label small fw-bold">Supplier Name</label>
-              <input id="sup-return-supplier" class="form-control" placeholder="Supplier Name" required>
-            </div>
-            <div class="col-md-2">
-              <label class="form-label small fw-bold">Quantity</label>
-              <input id="sup-return-qty" type="number" class="form-control" min="1" required>
-            </div>
-            <div class="col-md-4">
-              <label class="form-label small fw-bold">Supplier Custody / Status</label>
-              <select id="sup-return-status" class="form-select">
-                <option value="Pending">Pending Custody ⏳</option>
-                <option value="Sent Back">Sent to Supplier 🚚</option>
-                <option value="Replaced / Received">Replaced / Received Back 🔄 (Restock)</option>
-              </select>
-            </div>
-            <div class="col-12 mt-2">
-              <input id="sup-return-reason" class="form-control" placeholder="Reason for returning to supplier..." required>
-            </div>
-            <div class="col-12 mt-2">
-              <button class="btn btn-warning w-100 fw-bold">Record Supplier Return</button>
-            </div>
-          </form>
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+          <h3>Supplier Returns Management</h3>
+          <div class="no-print d-flex align-items-center gap-2 flex-wrap sup-filter-container">
+            <label class="fw-bold text-secondary mb-0">Period Filter:</label>
+            <select id="sup-returns-period-filter" class="form-select form-select-sm" style="width: auto;" onchange="handleSupplierReturnsFilterChange()">
+              <option value="this-month" selected>This Month</option>
+              <option value="today">Today</option>
+              <option value="yesterday">Yesterday</option>
+              <option value="this-week">This Week</option>
+              <option value="all-time">All Time History</option>
+              <option value="custom">Custom Date / Month...</option>
+            </select>
+            <input type="date" id="sup-returns-custom-date" class="form-control form-control-sm d-none" style="width: auto;" onchange="renderSupplierReturns()">
+            <button class="btn btn-outline-primary btn-sm" onclick="exportSupplierReturnsToCSV()">📥 Export CSV</button>
+            <button class="btn btn-outline-danger btn-sm" onclick="exportSupplierReturnsPDF()">📄 Export PDF Report</button>
+            <button class="btn btn-outline-dark btn-sm fw-bold" onclick="printFilteredSupplierReturns()">🖨️ Print Bulk Report</button>
+            <button class="btn btn-danger btn-sm" onclick="sendSupplierReturnsToGmail()">📧 Send to Gmail</button>
+          </div>
         </div>
-      </div>
 
-      <div class="d-flex justify-content-between align-items-center mb-3 no-print">
-        <h5 class="mb-0">Supplier Returns Batch List (<span id="sup-returns-badge-period" class="text-primary fw-bold">This Month</span>)</h5>
-        <div class="input-group" style="max-width: 400px;">
-          <input type="text" id="sup-returns-search-input" class="form-control form-control-sm" placeholder="Search supplier returns..." onkeyup="if(event.key==='Enter') searchSupplierReturns()">
-          <button class="btn btn-sm btn-primary" type="button" onclick="searchSupplierReturns()">🔍 Search</button>
-          <button class="btn btn-sm btn-outline-secondary" type="button" onclick="clearSupplierReturnsSearch()">Clear</button>
+        <div class="card mb-4 border-warning no-print">
+          <div class="card-header bg-warning text-dark fw-bold">Process Supplier Return</div>
+          <div class="card-body">
+            <form id="supplier-returns-form" class="row g-2">
+              <div class="col-md-3">
+                <label class="form-label small fw-bold">Search / Select Model</label>
+                <input id="sup-return-item" class="form-control" list="sup-return-item-list" placeholder="Type model name..." required oninput="autoFillSupplier()" autocomplete="off">
+                <datalist id="sup-return-item-list"></datalist>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small fw-bold">Supplier Name</label>
+                <input id="sup-return-supplier" class="form-control" placeholder="Supplier Name" required>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label small fw-bold">Quantity</label>
+                <input id="sup-return-qty" type="number" class="form-control" min="1" required>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small fw-bold">Supplier Custody / Status</label>
+                <select id="sup-return-status" class="form-select">
+                  <option value="Pending">Pending Custody ⏳</option>
+                  <option value="Sent Back">Sent to Supplier 🚚</option>
+                  <option value="Replaced / Received">Replaced / Received Back 🔄 (Restock)</option>
+                </select>
+              </div>
+              <div class="col-12 mt-2">
+                <input id="sup-return-reason" class="form-control" placeholder="Reason for returning to supplier..." required>
+              </div>
+              <div class="col-12 mt-2 d-flex gap-2">
+                <button type="submit" class="btn btn-warning flex-grow-1 fw-bold">Record Supplier Return</button>
+                <button type="button" class="btn btn-outline-secondary fw-bold" onclick="clearSupplierReturnForm()">Clear Form</button>
+              </div>
+            </form>
+          </div>
         </div>
-      </div>
 
-      <table class="table table-striped align-middle">
-        <thead class="table-dark">
-          <tr><th>Date</th><th>Model</th><th>Supplier</th><th>Qty</th><th>Reason</th><th>Status / Custody</th><th class="no-print">Action</th></tr>
-        </thead>
-        <tbody id="supplier-returns-table-body"></tbody>
-      </table>
+        <div class="d-flex justify-content-between align-items-center mb-3 no-print">
+          <h5 class="mb-0">Supplier Returns Batch List (<span id="sup-returns-badge-period" class="text-primary fw-bold">This Month</span>)</h5>
+          <div class="input-group" style="max-width: 400px;">
+            <input type="text" id="sup-returns-search-input" class="form-control form-control-sm" placeholder="Search supplier returns..." onkeyup="if(event.key==='Enter') searchSupplierReturns()">
+            <button class="btn btn-sm btn-primary" type="button" onclick="searchSupplierReturns()">🔍 Search</button>
+            <button class="btn btn-sm btn-outline-secondary" type="button" onclick="clearSupplierReturnsSearch()">Clear</button>
+          </div>
+        </div>
+
+        <table class="table table-striped align-middle">
+          <thead class="table-dark">
+            <tr><th>Date</th><th>Model</th><th>Supplier</th><th>Qty</th><th>Reason</th><th>Status / Custody</th><th class="no-print">Action</th></tr>
+          </thead>
+          <tbody id="supplier-returns-table-body"></tbody>
+        </table>
+      </div>
     </div>
 
     <div id="page-purchase-requisition" class="page">
@@ -712,6 +719,50 @@
     </div>
   </div>
 
+  <div class="modal fade" id="editRequisitionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header bg-info text-white">
+          <h5 class="modal-title">Edit Purchase Requisition</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form id="edit-requisition-form">
+          <div class="modal-body">
+            <input type="hidden" id="edit-req-index">
+            <div class="mb-2">
+              <label class="form-label">Item / Model Needed</label>
+              <input id="edit-req-item" class="form-control" required>
+            </div>
+            <div class="mb-2">
+              <label class="form-label">Category / Specs</label>
+              <input id="edit-req-cat" class="form-control" required>
+            </div>
+            <div class="mb-2">
+              <label class="form-label">Requested Qty</label>
+              <input id="edit-req-qty" type="number" min="1" class="form-control" required>
+            </div>
+            <div class="mb-2">
+              <label class="form-label">Estimated Unit Cost (₦)</label>
+              <input id="edit-req-cost" type="number" min="0" class="form-control">
+            </div>
+            <div class="mb-2">
+              <label class="form-label">Preferred Supplier</label>
+              <input id="edit-req-supplier" class="form-control">
+            </div>
+            <div class="mb-2">
+              <label class="form-label">Notes</label>
+              <input id="edit-req-notes" class="form-control">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-info text-white">Save Changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script>
     // --- AUTHENTICATION ---
@@ -808,7 +859,7 @@
       downloadCSV(csv, `Purchase_Requisitions_${new Date().toISOString().split('T')[0]}.csv`);
     }
 
-    // --- PDF EXPORT FOR REQUISITIONS ---
+    // --- PDF EXPORT FOR REQUISITIONS & SUPPLIER RETURNS ---
     function exportRequisitionsPDF() {
       if (db.requisitions.length === 0) return alert("No requisition records to export.");
       
@@ -816,6 +867,22 @@
       const opt = {
         margin:       0.5,
         filename:     `Purchase_Requisitions_${new Date().toISOString().split('T')[0]}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2 },
+        jsPDF:        { unit: 'in', format: 'letter', orientation: 'landscape' }
+      };
+
+      html2pdf().set(opt).from(element).save();
+    }
+
+    function exportSupplierReturnsPDF() {
+      const { supReturnsData, periodLabel } = getFilteredSupplierReturnsData();
+      if (supReturnsData.length === 0) return alert("No supplier return records to export for this period.");
+
+      const element = document.getElementById('supplier-returns-printable-area');
+      const opt = {
+        margin:       0.5,
+        filename:     `Supplier_Returns_${periodLabel.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`,
         image:        { type: 'jpeg', quality: 0.98 },
         html2canvas:  { scale: 2 },
         jsPDF:        { unit: 'in', format: 'letter', orientation: 'landscape' }
@@ -856,6 +923,17 @@
       if (event.target.files[0]) {
         fileReader.readAsText(event.target.files[0]);
       }
+    }
+
+    // --- FORM CLEAR FUNCTIONS ---
+    function clearCustomerReturnForm() {
+      document.getElementById('returns-form').reset();
+      document.getElementById('return-sale-search-input').value = '';
+      populateReturnSaleDropdown();
+    }
+
+    function clearSupplierReturnForm() {
+      document.getElementById('supplier-returns-form').reset();
     }
 
     // --- DUPLICATE ENTRY HANDLER ---
@@ -1391,7 +1469,6 @@
 
       if (!item) return alert("Selected model is not in stock!");
 
-      // Check current cart quantity plus requested quantity against available stock
       const cartQtyAlready = salesCart
         .filter(c => c.stockIndex === db.stock.indexOf(item))
         .reduce((sum, c) => sum + c.qty, 0);
@@ -1625,7 +1702,7 @@
             </div>
             <hr>
             <div class="center">
-              <p>THANKS FOR YOUR PATRONAGE!</p>
+              <p>Thank you for your business!</p>
             </div>
             <script>
               window.onload = function() { window.print(); window.close(); }
@@ -2007,6 +2084,46 @@
     }
 
     // --- PURCHASE REQUISITION FUNCTIONS ---
+    let editReqModalInstance = null;
+
+    function openEditRequisitionModal(index) {
+      const req = db.requisitions[index];
+      if (!req) return;
+
+      document.getElementById('edit-req-index').value = index;
+      document.getElementById('edit-req-item').value = req.item;
+      document.getElementById('edit-req-cat').value = req.category;
+      document.getElementById('edit-req-qty').value = req.qty;
+      document.getElementById('edit-req-cost').value = req.cost || 0;
+      document.getElementById('edit-req-supplier').value = req.supplier || '';
+      document.getElementById('edit-req-notes').value = req.notes || '';
+
+      editReqModalInstance = new bootstrap.Modal(document.getElementById('editRequisitionModal'));
+      editReqModalInstance.show();
+    }
+
+    document.getElementById('edit-requisition-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const index = parseInt(document.getElementById('edit-req-index').value);
+      const qty = parseInt(document.getElementById('edit-req-qty').value);
+      const cost = parseInt(document.getElementById('edit-req-cost').value) || 0;
+
+      if (isNaN(qty) || qty <= 0) return alert("❌ Validation Error: Requested quantity must be at least 1!");
+
+      if (db.requisitions[index]) {
+        db.requisitions[index].item = document.getElementById('edit-req-item').value;
+        db.requisitions[index].category = document.getElementById('edit-req-cat').value;
+        db.requisitions[index].qty = qty;
+        db.requisitions[index].cost = cost;
+        db.requisitions[index].supplier = document.getElementById('edit-req-supplier').value;
+        db.requisitions[index].notes = document.getElementById('edit-req-notes').value;
+
+        saveDB();
+        if (editReqModalInstance) editReqModalInstance.hide();
+        alert("✅ Purchase Requisition successfully updated!");
+      }
+    });
+
     function renderRequisitions(filterQuery = "") {
       const tbody = document.getElementById('requisition-table-body');
       
@@ -2050,16 +2167,19 @@
               <td>${req.supplier || '-'}</td>
               <td>${statusBadge}</td>
               <td class="no-print">
-                <div class="dropdown">
-                  <button class="btn btn-sm btn-outline-dark dropdown-toggle" type="button" data-bs-toggle="dropdown">Status</button>
-                  <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="#" onclick="updateRequisitionStatus(${req.originalIdx}, 'Pending')">Set Pending ⏳</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="updateRequisitionStatus(${req.originalIdx}, 'Approved')">Approve ✅</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="updateRequisitionStatus(${req.originalIdx}, 'Ordered')">Set Ordered 📦</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="updateRequisitionStatus(${req.originalIdx}, 'Cancelled')">Cancel ❌</a></li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item text-danger" href="#" onclick="deleteRequisition(${req.originalIdx})">Delete</a></li>
-                  </ul>
+                <div class="d-flex gap-1">
+                  <button class="btn btn-sm btn-outline-primary" onclick="openEditRequisitionModal(${req.originalIdx})">Edit</button>
+                  <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-dark dropdown-toggle" type="button" data-bs-toggle="dropdown">Status</button>
+                    <ul class="dropdown-menu">
+                      <li><a class="dropdown-item" href="#" onclick="updateRequisitionStatus(${req.originalIdx}, 'Pending')">Set Pending ⏳</a></li>
+                      <li><a class="dropdown-item" href="#" onclick="updateRequisitionStatus(${req.originalIdx}, 'Approved')">Approve ✅</a></li>
+                      <li><a class="dropdown-item" href="#" onclick="updateRequisitionStatus(${req.originalIdx}, 'Ordered')">Set Ordered 📦</a></li>
+                      <li><a class="dropdown-item" href="#" onclick="updateRequisitionStatus(${req.originalIdx}, 'Cancelled')">Cancel ❌</a></li>
+                      <li><hr class="dropdown-divider"></li>
+                      <li><a class="dropdown-item text-danger" href="#" onclick="deleteRequisition(${req.originalIdx})">Delete</a></li>
+                    </ul>
+                  </div>
                 </div>
               </td>
             </tr>
@@ -2210,7 +2330,6 @@
 
       if (!customer) return alert("Please enter Customer Name!");
 
-      // If cart is empty, try recording direct single item
       if (salesCart.length === 0) {
         const modelName = document.getElementById('sale-item').value.trim();
         const quality = document.getElementById('sale-quality').value;
@@ -2239,7 +2358,6 @@
           date: new Date().toISOString().split('T')[0]
         });
       } else {
-        // Process bulk multi-item sale from cart
         salesCart.forEach(cItem => {
           const item = db.stock[cItem.stockIndex];
           if (item) {
