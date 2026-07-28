@@ -1130,7 +1130,6 @@
       if (totalCountedEl) totalCountedEl.innerText = `₦${totalCounted.toLocaleString()}`;
 
       const todayStr = new Date().toISOString().split('T')[0];
-      // Only include Cash sales for Cash Drawer reconciliation
       const todayCashSales = db.sales.filter(s => s.date === todayStr && (!s.paymentMethod || s.paymentMethod === 'Cash'));
       const expectedSales = todayCashSales.reduce((sum, s) => sum + (s.sell_price * s.qty), 0);
       
@@ -1636,7 +1635,6 @@
       checkBulkPriceEligibility();
     });
 
-    // --- BULK TOGGLE MODE LOGIC (QTY >= 5 EDITABLE PRICE) ---
     function toggleBulkMode() {
       checkBulkPriceEligibility();
     }
@@ -2289,8 +2287,8 @@
               <td class="no-print">
                 ${ret.status !== 'Replaced / Received' ? 
                   `<button class="btn btn-sm btn-success me-1" onclick="markSupplierReturnReceived(${ret.originalIdx})">✅ Mark Received Back</button>
-                   <button class="btn btn-sm btn-outline-secondary" onclick="cycleSupplierStatus(${ret.originalIdx})">🔄 Switch Status</button>` :
-                  `<button class="btn btn-sm btn-outline-success" disabled>✅ Restocked in Stock</button>`
+                   <button class="btn btn-sm btn-danger" onclick="deleteSupplierReturn(${ret.originalIdx})">Delete</button>` :
+                  `<button class="btn btn-sm btn-danger" onclick="deleteSupplierReturn(${ret.originalIdx})">Delete</button>`
                 }
               </td>
             </tr>
@@ -2300,9 +2298,8 @@
     }
 
     function printFilteredSupplierReturns() {
-      const { supReturnsData, periodLabel } = getFilteredSupplierReturnsData();
-      if (supReturnsData.length === 0) return alert(`No supplier return records found for "${periodLabel}" to print!`);
-      document.getElementById('sup-returns-print-subtitle').innerText = `Supplier Returns Bulk Summary Report - ${periodLabel}`;
+      const { periodLabel } = getFilteredSupplierReturnsData();
+      document.getElementById('sup-returns-print-subtitle').innerText = `Supplier Returns Bulk Report - ${periodLabel}`;
       window.print();
     }
 
@@ -2312,7 +2309,7 @@
 
       let emailBody = `SKY MODERNIZE SAVE TECHNOLOGY LTD - Supplier Returns Report\n`;
       emailBody += `Report Period: ${periodLabel}\n\n`;
-      emailBody += `--- SUPPLIER RETURNS BULK LIST ---\n`;
+      emailBody += `--- SUPPLIER RETURNS ---\n`;
       emailBody += `Date | Model | Supplier | Qty | Reason | Status\n`;
       emailBody += `-----------------------------------------------------------------------\n`;
 
@@ -2320,45 +2317,33 @@
         emailBody += `${r.date} | ${r.model} | ${r.supplier} | ${r.qty} pcs | ${r.reason} | ${r.status}\n`;
       });
 
-      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(`SKY MODERNIZE - Supplier Returns Bulk Report (${periodLabel})`)}&body=${encodeURIComponent(emailBody)}`;
+      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(`SKY MODERNIZE - Supplier Returns Report (${periodLabel})`)}&body=${encodeURIComponent(emailBody)}`;
       window.open(gmailUrl, '_blank');
     }
 
-    function markSupplierReturnReceived(idx) {
-      const ret = db.supplierReturns[idx];
+    function markSupplierReturnReceived(index) {
+      const ret = db.supplierReturns[index];
       if (!ret) return;
-      if (confirm(`Has supplier "${ret.supplier}" provided replacement for ${ret.qty} pc(s) of ${ret.model}? This will add them back to your active stock inventory.`)) {
-        const rawModelName = ret.model.split(' [')[0].trim();
-        const item = db.stock.find(s => s.model.toLowerCase() === rawModelName.toLowerCase());
-        if (item) {
-          item.qty += ret.qty;
-        } else {
-          db.stock.push({
-            model: rawModelName,
-            category: "General",
-            subcat: "",
-            qty: ret.qty,
-            cost_price: 0,
-            sell_price: 0,
-            supplier: ret.supplier
-          });
-        }
-        ret.status = 'Replaced / Received';
-        saveDB();
-        alert(`Successfully received ${ret.qty} unit(s) back from ${ret.supplier} and restocked into inventory!`);
-      }
-    }
+      if (ret.status === 'Replaced / Received') return alert("Already marked as received back!");
 
-    function cycleSupplierStatus(idx) {
-      if (db.supplierReturns[idx]) {
-        const current = db.supplierReturns[idx].status;
-        if (current === 'Pending') {
-          db.supplierReturns[idx].status = 'Sent Back';
-        } else if (current === 'Sent Back') {
-          db.supplierReturns[idx].status = 'Pending';
-        }
-        saveDB();
+      const stockItem = db.stock.find(s => s.model.toLowerCase() === ret.model.toLowerCase());
+      if (stockItem) {
+        stockItem.qty += ret.qty;
+      } else {
+        db.stock.push({
+          model: ret.model,
+          category: "General",
+          subcat: "",
+          qty: ret.qty,
+          cost_price: 0,
+          sell_price: 0,
+          supplier: ret.supplier
+        });
       }
+
+      ret.status = 'Replaced / Received';
+      saveDB();
+      alert(`✅ Supplier return marked as received and ${ret.qty} units restocked successfully!`);
     }
 
     document.getElementById('supplier-returns-form').addEventListener('submit', (e) => {
@@ -2369,66 +2354,40 @@
       const status = document.getElementById('sup-return-status').value;
       const reason = document.getElementById('sup-return-reason').value.trim();
 
-      const item = db.stock.find(s => s.model.toLowerCase() === model.toLowerCase());
-      if (item && item.qty < qty && status !== 'Replaced / Received') {
-        if (!confirm(`Warning: You are returning ${qty} pcs of "${model}", but current stock is only ${item.qty} pcs. Proceed anyway?`)) return;
+      if (!model || isNaN(qty) || qty <= 0) return alert("Please fill out valid supplier return details!");
+
+      const stockItem = db.stock.find(s => s.model.toLowerCase() === model.toLowerCase());
+      if (stockItem) {
+        if (stockItem.qty < qty) {
+          return alert(`Insufficient stock available to return! Only ${stockItem.qty} pcs in stock.`);
+        }
+        stockItem.qty -= qty;
       }
 
-      if (item && status === 'Replaced / Received') {
-        item.qty += qty;
-      } else if (item && status !== 'Replaced / Received') {
-        item.qty -= qty;
+      if (status === 'Replaced / Received') {
+        if (stockItem) stockItem.qty += qty;
       }
 
       db.supplierReturns.push({
         date: new Date().toISOString().split('T')[0],
-        model: item && item.subcat ? `${model} [${item.subcat}]` : model,
-        supplier: supplier,
-        qty: qty,
-        reason: reason,
-        status: status
+        model,
+        supplier,
+        qty,
+        reason,
+        status
       });
 
       saveDB();
       clearSupplierReturnForm();
-      alert("✅ Supplier return successfully recorded!");
+      alert("✅ Supplier return successfully recorded and stock adjusted!");
     });
 
-    let editReqModalInstance = null;
-    function openEditRequisitionModal(index) {
-      const req = db.requisitions[index];
-      if (!req) return;
-      document.getElementById('edit-req-index').value = index;
-      document.getElementById('edit-req-item').value = req.item;
-      document.getElementById('edit-req-cat').value = req.category;
-      document.getElementById('edit-req-qty').value = req.qty;
-      document.getElementById('edit-req-cost').value = req.cost || 0;
-      document.getElementById('edit-req-supplier').value = req.supplier || '';
-      document.getElementById('edit-req-notes').value = req.notes || '';
-      editReqModalInstance = new bootstrap.Modal(document.getElementById('editRequisitionModal'));
-      editReqModalInstance.show();
-    }
-
-    document.getElementById('edit-requisition-form').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const index = parseInt(document.getElementById('edit-req-index').value);
-      const qty = parseInt(document.getElementById('edit-req-qty').value);
-      const cost = parseInt(document.getElementById('edit-req-cost').value) || 0;
-
-      if (isNaN(qty) || qty <= 0) return alert("❌ Validation Error: Requested quantity must be at least 1!");
-
-      if (db.requisitions[index]) {
-        db.requisitions[index].item = document.getElementById('edit-req-item').value;
-        db.requisitions[index].category = document.getElementById('edit-req-cat').value;
-        db.requisitions[index].qty = qty;
-        db.requisitions[index].cost = cost;
-        db.requisitions[index].supplier = document.getElementById('edit-req-supplier').value;
-        db.requisitions[index].notes = document.getElementById('edit-req-notes').value;
+    function deleteSupplierReturn(index) {
+      if (confirm("Are you sure you want to delete this supplier return record?")) {
+        db.supplierReturns.splice(index, 1);
         saveDB();
-        if (editReqModalInstance) editReqModalInstance.hide();
-        alert("✅ Purchase Requisition successfully updated!");
       }
-    });
+    }
 
     function renderRequisitions(filterQuery = "") {
       const tbody = document.getElementById('requisition-table-body');
@@ -2439,50 +2398,39 @@
                (req.item && req.item.toLowerCase().includes(q)) ||
                (req.category && req.category.toLowerCase().includes(q)) ||
                (req.supplier && req.supplier.toLowerCase().includes(q)) ||
-               (req.status && req.status.toLowerCase().includes(q));
+               (req.status && req.status.toLowerCase().includes(q)) ||
+               (req.date && req.date.includes(q));
       });
 
       if (filteredReqs.length === 0) {
         tbody.innerHTML = `<tr><td colspan="10" class="text-center text-muted py-3">No purchase requisitions found</td></tr>`;
       } else {
         tbody.innerHTML = filteredReqs.map(req => {
-          const unitCost = req.cost || 0;
-          const totalCost = unitCost * req.qty;
+          const estTotal = (req.cost || 0) * req.qty;
           let statusBadge = '';
           if (req.status === 'Approved') {
-            statusBadge = '<span class="badge bg-success p-2">Approved ✅</span>';
+            statusBadge = '<span class="badge bg-success">Approved</span>';
           } else if (req.status === 'Ordered') {
-            statusBadge = '<span class="badge bg-info p-2">Ordered 📦</span>';
-          } else if (req.status === 'Cancelled') {
-            statusBadge = '<span class="badge bg-danger p-2">Cancelled ❌</span>';
+            statusBadge = '<span class="badge bg-primary">Ordered</span>';
           } else {
-            statusBadge = '<span class="badge bg-warning text-dark p-2">Pending ⏳</span>';
+            statusBadge = '<span class="badge bg-warning text-dark">Pending</span>';
           }
 
           return `
             <tr>
-              <td><small class="fw-bold">${req.id}</small></td>
+              <td><b>${req.id}</b></td>
               <td>${req.date}</td>
               <td><b>${req.item}</b></td>
-              <td><span class="badge bg-secondary">${req.category}</span></td>
-              <td><b>${req.qty} pcs</b></td>
-              <td>₦${unitCost.toLocaleString()}</td>
-              <td class="fw-bold text-success">₦${totalCost.toLocaleString()}</td>
+              <td>${req.category}</td>
+              <td><b>${req.qty}</b></td>
+              <td>₦${(req.cost || 0).toLocaleString()}</td>
+              <td class="text-primary fw-bold">₦${estTotal.toLocaleString()}</td>
               <td>${req.supplier || '-'}</td>
               <td>${statusBadge}</td>
               <td class="no-print">
-                <div class="d-flex gap-1">
-                  <button class="btn btn-sm btn-outline-primary" onclick="openEditRequisitionModal(${req.originalIdx})">Edit</button>
-                  <div class="dropdown">
-                    <button class="btn btn-sm btn-outline-dark dropdown-toggle" data-bs-toggle="dropdown">Status</button>
-                    <ul class="dropdown-menu">
-                      <li><a class="dropdown-item" href="#" onclick="updateReqStatus(${req.originalIdx}, 'Pending')">Pending</a></li>
-                      <li><a class="dropdown-item" href="#" onclick="updateReqStatus(${req.originalIdx}, 'Approved')">Approve</a></li>
-                      <li><a class="dropdown-item" href="#" onclick="updateReqStatus(${req.originalIdx}, 'Ordered')">Ordered</a></li>
-                      <li><a class="dropdown-item" href="#" onclick="updateReqStatus(${req.originalIdx}, 'Cancelled')">Cancel</a></li>
-                    </ul>
-                  </div>
-                </div>
+                <button class="btn btn-sm btn-outline-info me-1" onclick="openEditRequisitionModal(${req.originalIdx})">Edit</button>
+                <button class="btn btn-sm btn-success me-1" onclick="updateReqStatus(${req.originalIdx}, 'Approved')">Approve</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteRequisition(${req.originalIdx})">Delete</button>
               </td>
             </tr>
           `;
@@ -2490,11 +2438,18 @@
       }
     }
 
-    function updateReqStatus(idx, status) {
-      if (db.requisitions[idx]) {
-        db.requisitions[idx].status = status;
-        saveDB();
-      }
+    function printFilteredRequisitions() {
+      window.print();
+    }
+
+    function sendRequisitionToGmail() {
+      if (db.requisitions.length === 0) return alert("No purchase requisitions to send!");
+      let emailBody = `SKY MODERNIZE SAVE TECHNOLOGY LTD - Purchase Requisition Orders\n\n`;
+      db.requisitions.forEach(r => {
+        emailBody += `Req ID: ${r.id} | Date: ${r.date} | Item: ${r.item} (${r.category}) | Qty: ${r.qty} | Est. Cost: ₦${(r.cost || 0).toLocaleString()} | Supplier: ${r.supplier || 'N/A'} | Status: ${r.status}\n`;
+      });
+      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(`SKY MODERNIZE - Purchase Requisition Orders`)}&body=${encodeURIComponent(emailBody)}`;
+      window.open(gmailUrl, '_blank');
     }
 
     document.getElementById('requisition-form').addEventListener('submit', (e) => {
@@ -2510,33 +2465,61 @@
       db.requisitions.push({
         id: reqId,
         date: new Date().toISOString().split('T')[0],
-        item: item,
-        category: category,
-        qty: qty,
-        cost: cost,
-        supplier: supplier,
-        notes: notes,
+        item,
+        category,
+        qty,
+        cost,
+        supplier,
+        notes,
         status: "Pending"
       });
 
       saveDB();
-      e.target.reset();
-      alert("✅ Purchase Requisition successfully submitted!");
+      document.getElementById('requisition-form').reset();
+      alert("✅ Purchase requisition successfully submitted!");
     });
 
-    function printFilteredRequisitions() {
-      window.print();
+    function updateReqStatus(index, newStatus) {
+      db.requisitions[index].status = newStatus;
+      saveDB();
     }
 
-    function sendRequisitionToGmail() {
-      if (db.requisitions.length === 0) return alert("No purchase requisitions to send!");
-      let emailBody = `SKY MODERNIZE SAVE TECHNOLOGY LTD - Purchase Requisitions\n\n`;
-      db.requisitions.forEach(r => {
-        emailBody += `Req ID: ${r.id} | Date: ${r.date} | Item: ${r.item} (${r.category}) | Qty: ${r.qty} pcs | Est Cost: ₦${((r.cost || 0) * r.qty).toLocaleString()} | Supplier: ${r.supplier || 'N/A'} | Status: ${r.status}\n`;
-      });
-      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(`SKY MODERNIZE - Purchase Requisitions Report`)}&body=${encodeURIComponent(emailBody)}`;
-      window.open(gmailUrl, '_blank');
+    function deleteRequisition(index) {
+      if (confirm("Delete this purchase requisition order?")) {
+        db.requisitions.splice(index, 1);
+        saveDB();
+      }
     }
+
+    function openEditRequisitionModal(index) {
+      const req = db.requisitions[index];
+      if (!req) return;
+      document.getElementById('edit-req-index').value = index;
+      document.getElementById('edit-req-item').value = req.item;
+      document.getElementById('edit-req-cat').value = req.category;
+      document.getElementById('edit-req-qty').value = req.qty;
+      document.getElementById('edit-req-cost').value = req.cost || 0;
+      document.getElementById('edit-req-supplier').value = req.supplier || '';
+      document.getElementById('edit-req-notes').value = req.notes || '';
+      new bootstrap.Modal(document.getElementById('editRequisitionModal')).show();
+    }
+
+    document.getElementById('edit-requisition-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const idx = parseInt(document.getElementById('edit-req-index').value);
+      const req = db.requisitions[idx];
+      if (req) {
+        req.item = document.getElementById('edit-req-item').value.trim();
+        req.category = document.getElementById('edit-req-cat').value.trim();
+        req.qty = parseInt(document.getElementById('edit-req-qty').value);
+        req.cost = parseInt(document.getElementById('edit-req-cost').value) || 0;
+        req.supplier = document.getElementById('edit-req-supplier').value.trim();
+        req.notes = document.getElementById('edit-req-notes').value.trim();
+        saveDB();
+        bootstrap.Modal.getInstance(document.getElementById('editRequisitionModal')).hide();
+        alert("✅ Purchase requisition updated successfully!");
+      }
+    });
 
     document.getElementById('stock-form').addEventListener('submit', (e) => {
       e.preventDefault();
@@ -2548,13 +2531,25 @@
       const sell_price = parseInt(document.getElementById('stk-sell').value);
       const supplier = document.getElementById('stk-supplier').value.trim();
 
-      db.stock.push({ model, category, subcat, qty, cost_price, sell_price, supplier });
+      const existingItem = db.stock.find(s => 
+        s.model.toLowerCase() === model.toLowerCase() && 
+        (s.subcat || '').toLowerCase() === subcat.toLowerCase()
+      );
+
+      if (existingItem) {
+        existingItem.qty += qty;
+        existingItem.cost_price = cost_price;
+        existingItem.sell_price = sell_price;
+        if (supplier) existingItem.supplier = supplier;
+      } else {
+        db.stock.push({ model, category, subcat, qty, cost_price, sell_price, supplier });
+      }
+
       saveDB();
-      e.target.reset();
-      alert("✅ Stock item successfully added!");
+      document.getElementById('stock-form').reset();
+      alert("✅ Stock entry successfully added/updated!");
     });
 
-    let editModalInstance = null;
     function openEditModal(index) {
       const item = db.stock[index];
       if (!item) return;
@@ -2566,36 +2561,35 @@
       document.getElementById('edit-stk-cost').value = item.cost_price;
       document.getElementById('edit-stk-sell').value = item.sell_price;
       document.getElementById('edit-stk-supplier').value = item.supplier || '';
-
-      editModalInstance = new bootstrap.Modal(document.getElementById('editStockModal'));
-      editModalInstance.show();
+      new bootstrap.Modal(document.getElementById('editStockModal')).show();
     }
 
     document.getElementById('edit-stock-form').addEventListener('submit', (e) => {
       e.preventDefault();
-      const index = parseInt(document.getElementById('edit-stk-index').value);
-      if (db.stock[index]) {
-        db.stock[index].model = document.getElementById('edit-stk-model').value.trim();
-        db.stock[index].category = document.getElementById('edit-stk-cat').value.trim();
-        db.stock[index].subcat = document.getElementById('edit-stk-subcat').value.trim();
-        db.stock[index].qty = parseInt(document.getElementById('edit-stk-qty').value);
-        db.stock[index].cost_price = parseInt(document.getElementById('edit-sw-cost') ? document.getElementById('edit-sw-cost').value : document.getElementById('edit-stk-cost').value);
-        db.stock[index].sell_price = parseInt(document.getElementById('edit-stk-sell').value);
-        db.stock[index].supplier = document.getElementById('edit-stk-supplier').value.trim();
-        
+      const idx = parseInt(document.getElementById('edit-stk-index').value);
+      const item = db.stock[idx];
+      if (item) {
+        item.model = document.getElementById('edit-stk-model').value.trim();
+        item.category = document.getElementById('edit-stk-cat').value.trim();
+        item.subcat = document.getElementById('edit-stk-subcat').value.trim();
+        item.qty = parseInt(document.getElementById('edit-stk-qty').value);
+        item.cost_price = parseInt(document.getElementById('edit-stk-cost').value);
+        item.sell_price = parseInt(document.getElementById('edit-stk-sell').value);
+        item.supplier = document.getElementById('edit-stk-supplier').value.trim();
         saveDB();
-        if (editModalInstance) editModalInstance.hide();
-        alert("✅ Stock details successfully updated!");
+        bootstrap.Modal.getInstance(document.getElementById('editStockModal')).hide();
+        alert("✅ Stock item updated successfully!");
       }
     });
 
     function deleteStock(index) {
-      if (confirm("Are you sure you want to delete this stock entry?")) {
+      if (confirm("Are you sure you want to delete this stock item?")) {
         db.stock.splice(index, 1);
         saveDB();
       }
     }
 
+    // Initialize initial render on script load
     renderAll();
   </script>
 </body>
