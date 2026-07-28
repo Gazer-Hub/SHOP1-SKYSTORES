@@ -138,14 +138,14 @@
         <h3>Dashboard Summary</h3>
         <div class="d-flex align-items-center gap-2 flex-wrap">
           <button id="btn-toggle-dashboard-summary" class="btn btn-sm btn-outline-secondary" onclick="toggleDashboardSummary()">👁️ Hide Dashboard Summary</button>
-          <button class="btn btn-sm btn-outline-dark" onclick="printCACReport()">🖨️ Print CAC Report Only</button>
+          <button class="btn btn-sm btn-outline-dark" onclick="printCACReport()">🖨️ Print CAC (7.5%) Audit Report</button>
           <label class="fw-bold text-secondary mb-0">Period:</label>
           <select id="dash-date-filter" class="form-select form-select-sm" style="width: auto;" onchange="handleDashboardFilterChange()">
             <option value="today" selected>Today</option>
             <option value="yesterday">Yesterday</option>
-            <option value="this-week">This Week</option>
+            <option value="this-week">This Week (Weekly Report)</option>
             <option value="this-month">This Month</option>
-            <option value="this-year">This Year (Yearly)</option>
+            <option value="this-year">This Year (Yearly Report - Grouped by Month)</option>
             <option value="all-time">All Time</option>
             <option value="custom">Custom Specific Date...</option>
           </select>
@@ -157,13 +157,13 @@
       <div id="dashboard-summary-container">
         <div class="row g-3 mb-4">
           <div class="col-md-2">
-            <div class="card text-center"><div class="card-body"><h6 class="text-muted" id="lbl-dash-sales">Sales Revenue</h6><h4 class="text-success" id="dash-sales">₦0</h4></div></div>
+            <div class="card text-center"><div class="card-body"><h6 class="text-muted">Sales Revenue</h6><h4 class="text-success" id="dash-sales">₦0</h4></div></div>
           </div>
           <div class="col-md-2">
-            <div class="card text-center"><div class="card-body"><h6 class="text-muted" id="lbl-dash-cost">Cost Price</h6><h4 class="text-warning" id="dash-cost">₦0</h4></div></div>
+            <div class="card text-center"><div class="card-body"><h6 class="text-muted">Cost Price</h6><h4 class="text-warning" id="dash-cost">₦0</h4></div></div>
           </div>
           <div class="col-md-2">
-            <div class="card text-center"><div class="card-body"><h6 class="text-muted" id="lbl-dash-returns">Refund Returns</h6><h4 class="text-danger" id="dash-returns">₦0</h4></div></div>
+            <div class="card text-center"><div class="card-body"><h6 class="text-muted">Refund Returns</h6><h4 class="text-danger" id="dash-returns">₦0</h4></div></div>
           </div>
           <div class="col-md-2">
             <div class="card text-center"><div class="card-body"><h6 class="text-muted">Gross Profit</h6><h4 class="text-info" id="dash-gross">₦0</h4></div></div>
@@ -179,17 +179,19 @@
 
       <div class="cac-print-section mb-4">
         <h3 class="text-center">SKY MODERNIZE SAVE TECHNOLOGY LTD</h3>
-        <h5 class="text-center text-muted">Official CAC (7.5%) Audit Printout</h5>
+        <h5 class="text-center text-muted">Official CAC (7.5%) Audit Tax Printout</h5>
         <p class="text-center"><b>Period:</b> <span id="printout-period-label">Today</span></p>
         <hr>
-        <table class="table table-bordered">
-          <tr><td><b>Total Sales Revenue:</b></td><td id="print-val-sales">₦0</td></tr>
-          <tr><td><b>Total Cost Price:</b></td><td id="print-val-cost">₦0</td></tr>
-          <tr><td><b>Total Customer Refunds:</b></td><td id="print-val-returns">₦0</td></tr>
-          <tr><td><b>Gross Profit:</b></td><td id="print-val-gross">₦0</td></tr>
-          <tr class="table-danger"><td><b>CAC Tax Deduction (7.5%):</b></td><td id="print-val-cac">₦0</td></tr>
-          <tr class="table-success"><td><b>Final Net Profit:</b></td><td id="print-val-net">₦0</td></tr>
-        </table>
+        <div id="cac-print-dynamic-content">
+          <table class="table table-bordered">
+            <tr><td><b>Total Sales Revenue:</b></td><td id="print-val-sales">₦0</td></tr>
+            <tr><td><b>Total Cost Price:</b></td><td id="print-val-cost">₦0</td></tr>
+            <tr><td><b>Total Customer Refunds:</b></td><td id="print-val-returns">₦0</td></tr>
+            <tr><td><b>Gross Profit:</b></td><td id="print-val-gross">₦0</td></tr>
+            <tr class="table-danger"><td><b>CAC Tax Deduction Amount (7.5%):</b></td><td id="print-val-cac">₦0</td></tr>
+            <tr class="table-success"><td><b>Final Net Profit:</b></td><td id="print-val-net">₦0</td></tr>
+          </table>
+        </div>
         <div class="row mt-4">
           <div class="col-6"><p>Authorized Signature: ______________________</p></div>
           <div class="col-6 text-end"><p>Date: ______________________</p></div>
@@ -198,7 +200,7 @@
 
       <div class="card mb-4 border-danger shadow-sm">
         <div class="card-header bg-danger text-white fw-bold d-flex justify-content-between align-items-center">
-          <span>🔥 Top 5 Critical Low Stock Models (<= 10 pcs)</span>
+          <span>🔥 Top 5 Critical Low Stock Models (&le; 10 pcs)</span>
           <span class="badge bg-light text-dark">Priority Restock</span>
         </div>
         <div class="card-body" id="top-5-low-stock-container">
@@ -237,7 +239,7 @@
 
       <div class="card mb-4 border-warning">
         <div class="card-header bg-warning fw-bold d-flex justify-content-between align-items-center">
-          <span>⚠️ Low Stock Alert (<= 10 pcs) - Grouped by Quality / Sub-Cat</span>
+          <span>⚠️ Low Stock Alert (&le; 10 pcs) - Grouped by Quality / Sub-Cat</span>
           <button class="btn btn-sm btn-dark" onclick="requestBulkLowStockRequisition()">📋 Request Selected Stock in Bulk</button>
         </div>
         <div class="card-body" id="low-stock-list"></div>
@@ -433,7 +435,7 @@
           <span>Record Sale (Supports Multi-Item Shopping Cart)</span>
           <div class="form-check form-switch m-0 text-white">
             <input class="form-check-input" type="checkbox" id="bulk-toggle-mode" onchange="toggleBulkMode()">
-            <label class="form-check-label fw-bold" for="bulk-toggle-mode">📦 Bulk Toggle Mode (Qty ≥ 5 Editable Price)</label>
+            <label class="form-check-label fw-bold" for="bulk-toggle-mode">📦 Bulk Toggle Mode (Cart Total Qty &ge; 5 Editable Price)</label>
           </div>
         </div>
         <div class="card-body">
@@ -483,7 +485,7 @@
               </table>
             </div>
             <div class="d-flex justify-content-between align-items-center">
-              <h5 class="mb-0">Total: <span id="sales-cart-total" class="text-success fw-bold">₦0</span></h5>
+              <h5 class="mb-0">Total Qty: <span id="sales-cart-total-qty" class="text-primary fw-bold">0 pcs</span> | Total Amount: <span id="sales-cart-total" class="text-success fw-bold">₦0</span></h5>
               <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearSalesCart()">Clear Cart</button>
             </div>
           </div>
@@ -1104,14 +1106,111 @@
     }
 
     function printCACReport() {
-      const { periodLabel } = getFilteredDashboardPeriod();
+      const { periodLabel, filteredSales, filteredReturns } = getFilteredDashboardPeriod();
+      const filterType = document.getElementById('dash-date-filter').value;
       document.getElementById('printout-period-label').innerText = periodLabel;
-      document.getElementById('print-val-sales').innerText = document.getElementById('dash-sales').innerText;
-      document.getElementById('print-val-cost').innerText = document.getElementById('dash-cost').innerText;
-      document.getElementById('print-val-returns').innerText = document.getElementById('dash-returns').innerText;
-      document.getElementById('print-val-gross').innerText = document.getElementById('dash-gross').innerText;
-      document.getElementById('print-val-cac').innerText = document.getElementById('dash-cac').innerText;
-      document.getElementById('print-val-net').innerText = document.getElementById('dash-net').innerText;
+
+      const dynamicContentContainer = document.getElementById('cac-print-dynamic-content');
+
+      if (filterType === 'this-week') {
+        // Weekly Report Breakdown Printout (Focusing on 7.5% CAC amounts)
+        let totalSales = filteredSales.reduce((sum, s) => sum + (s.sell_price * s.qty), 0);
+        let totalCost = filteredSales.reduce((sum, s) => sum + (s.cost_price * s.qty), 0);
+        let totalReturns = filteredReturns.reduce((sum, r) => sum + (r.sell_price * r.qty), 0);
+        let grossProfit = totalSales - totalCost - totalReturns;
+        let cacFee = grossProfit > 0 ? Math.floor(grossProfit * 0.075) : 0;
+        let netProfit = grossProfit - cacFee;
+
+        dynamicContentContainer.innerHTML = `
+          <h6 class="text-center fw-bold mb-3">Weekly CAC Audit & Tax Summary</h6>
+          <table class="table table-bordered">
+            <tr><td><b>Total Weekly Sales Revenue:</b></td><td>₦${totalSales.toLocaleString()}</td></tr>
+            <tr><td><b>Total Cost Price:</b></td><td>₦${totalCost.toLocaleString()}</td></tr>
+            <tr><td><b>Total Customer Refunds:</b></td><td>₦${totalReturns.toLocaleString()}</td></tr>
+            <tr><td><b>Gross Profit:</b></td><td>₦${grossProfit.toLocaleString()}</td></tr>
+            <tr class="table-danger"><td><b>Official CAC Tax Deduction (7.5%):</b></td><td><b>₦${cacFee.toLocaleString()}</b></td></tr>
+            <tr class="table-success"><td><b>Final Net Profit:</b></td><td>₦${netProfit.toLocaleString()}</td></tr>
+          </table>
+        `;
+      } else if (filterType === 'this-year') {
+        // Yearly Report Grouped Into Months Printout (Focusing on 7.5% CAC amounts)
+        const monthlyGroups = {};
+        for (let m = 1; m <= 12; m++) {
+          const monthStr = m < 10 ? `0${m}` : `${m}`;
+          monthlyGroups[monthStr] = { sales: 0, cost: 0, returns: 0 };
+        }
+
+        filteredSales.forEach(s => {
+          if (s.date && s.date.length >= 7) {
+            const mKey = s.date.substring(5, 7);
+            if (monthlyGroups[mKey]) {
+              monthlyGroups[mKey].sales += (s.sell_price * s.qty);
+              monthlyGroups[mKey].cost += (s.cost_price * s.qty);
+            }
+          }
+        });
+
+        filteredReturns.forEach(r => {
+          if (r.date && r.date.length >= 7) {
+            const mKey = r.date.substring(5, 7);
+            if (monthlyGroups[mKey]) {
+              monthlyGroups[mKey].returns += (r.sell_price * r.qty);
+            }
+          }
+        });
+
+        const monthNames = {
+          "01": "January", "02": "February", "03": "March", "04": "April",
+          "05": "May", "06": "June", "07": "July", "08": "August",
+          "09": "September", "10": "October", "11": "November", "12": "December"
+        };
+
+        let tableRows = '';
+        let annualTotalCAC = 0;
+
+        for (const [mKey, data] of Object.entries(monthlyGroups)) {
+          const gross = data.sales - data.cost - data.returns;
+          const cacAmt = gross > 0 ? Math.floor(gross * 0.075) : 0;
+          annualTotalCAC += cacAmt;
+          tableRows += `
+            <tr>
+              <td>${monthNames[mKey]}</td>
+              <td>₦${data.sales.toLocaleString()}</td>
+              <td>₦${gross.toLocaleString()}</td>
+              <td class="table-danger"><b>₦${cacAmt.toLocaleString()}</b></td>
+            </tr>
+          `;
+        }
+
+        dynamicContentContainer.innerHTML = `
+          <h6 class="text-center fw-bold mb-3">Yearly CAC (7.5%) Audit Report — Grouped by Month</h6>
+          <table class="table table-bordered table-sm align-middle">
+            <thead class="table-light">
+              <tr><th>Month</th><th>Sales Revenue</th><th>Gross Profit</th><th>CAC 7.5% Tax Amount</th></tr>
+            </thead>
+            <tbody>
+              ${tableRows}
+              <tr class="table-dark fw-bold">
+                <td colspan="3" class="text-end">Total Annual CAC 7.5% Tax Amount:</td>
+                <td>₦${annualTotalCAC.toLocaleString()}</td>
+              </tr>
+            </tbody>
+          </table>
+        `;
+      } else {
+        // Standard single period printout
+        dynamicContentContainer.innerHTML = `
+          <table class="table table-bordered">
+            <tr><td><b>Total Sales Revenue:</b></td><td>${document.getElementById('dash-sales').innerText}</td></tr>
+            <tr><td><b>Total Cost Price:</b></td><td>${document.getElementById('dash-cost').innerText}</td></tr>
+            <tr><td><b>Total Customer Refunds:</b></td><td>${document.getElementById('dash-returns').innerText}</td></tr>
+            <tr><td><b>Gross Profit:</b></td><td>${document.getElementById('dash-gross').innerText}</td></tr>
+            <tr class="table-danger"><td><b>CAC Tax Deduction Amount (7.5%):</b></td><td><b>${document.getElementById('dash-cac').innerText}</b></td></tr>
+            <tr class="table-success"><td><b>Final Net Profit:</b></td><td>${document.getElementById('dash-net').innerText}</td></tr>
+          </table>
+        `;
+      }
+
       window.print();
     }
 
@@ -1426,7 +1525,7 @@
         const current = new Date(now);
         const firstDay = current.getDate() - current.getDay();
         const startOfWeek = new Date(current.setDate(firstDay)).toISOString().split('T')[0];
-        periodLabel = `This Week (${startOfWeek} to ${todayStr})`;
+        periodLabel = `This Week (Weekly Report: ${startOfWeek} to ${todayStr})`;
         filteredSales = db.sales.filter(s => s.date && s.date >= startOfWeek && s.date <= todayStr);
         filteredReturns = db.returns.filter(r => r.date && r.date >= startOfWeek && r.date <= todayStr);
       } else if (filterType === 'this-month') {
@@ -1436,7 +1535,7 @@
         filteredReturns = db.returns.filter(r => r.date && r.date.startsWith(currentYearMonth));
       } else if (filterType === 'this-year') {
         const currentYear = now.getFullYear().toString();
-        periodLabel = `Yearly Printout (${currentYear})`;
+        periodLabel = `Yearly Report (Grouped by Month - ${currentYear})`;
         filteredSales = db.sales.filter(s => s.date && s.date.startsWith(currentYear));
         filteredReturns = db.returns.filter(r => r.date && r.date.startsWith(currentYear));
       } else if (filterType === 'all-time') {
@@ -1641,14 +1740,16 @@
 
     function checkBulkPriceEligibility() {
       const isBulkModeActive = document.getElementById('bulk-toggle-mode').checked;
-      const qty = parseInt(document.getElementById('sale-qty').value) || 0;
+      const currentCartTotalQty = salesCart.reduce((sum, item) => sum + item.qty, 0);
+      const pendingInputQty = parseInt(document.getElementById('sale-qty').value) || 0;
+      const totalCombinedQty = currentCartTotalQty + pendingInputQty;
       const priceInput = document.getElementById('sale-price');
 
-      if (isBulkModeActive && qty >= 5) {
+      if (isBulkModeActive && totalCombinedQty >= 5) {
         priceInput.removeAttribute('readonly');
         priceInput.classList.remove('bg-light');
         priceInput.classList.add('border-warning');
-        priceInput.title = "Bulk mode active (5 or more): You can now edit this price!";
+        priceInput.title = "Bulk mode active (Cart total qty ≥ 5): You can now edit this price!";
       } else {
         priceInput.setAttribute('readonly', true);
         priceInput.classList.add('bg-light');
@@ -1702,9 +1803,7 @@
       document.getElementById('sale-quality').innerHTML = '<option value="">-- Select Quality --</option>';
       document.getElementById('sale-price').value = '';
       document.getElementById('sale-qty').value = 1;
-      document.getElementById('bulk-toggle-mode').checked = false;
-      checkBulkPriceEligibility();
-
+      
       renderSalesCart();
     }
 
@@ -1712,18 +1811,22 @@
       const container = document.getElementById('sales-cart-container');
       const tbody = document.getElementById('sales-cart-tbody');
       const totalDisplay = document.getElementById('sales-cart-total');
+      const totalQtyDisplay = document.getElementById('sales-cart-total-qty');
 
       if (salesCart.length === 0) {
         container.classList.add('d-none');
+        checkBulkPriceEligibility();
         return;
       }
 
       container.classList.remove('d-none');
       let grandTotal = 0;
+      let totalQty = 0;
 
       tbody.innerHTML = salesCart.map((item, idx) => {
         const subtotal = item.sell_price * item.qty;
         grandTotal += subtotal;
+        totalQty += item.qty;
         return `
           <tr>
             <td><b>${item.model}</b></td>
@@ -1737,6 +1840,8 @@
       }).join('');
 
       totalDisplay.innerText = `₦${grandTotal.toLocaleString()}`;
+      totalQtyDisplay.innerText = `${totalQty} pcs`;
+      checkBulkPriceEligibility();
     }
 
     function removeFromSalesCart(index) {
@@ -2285,11 +2390,7 @@
               <td>${ret.reason}</td>
               <td>${statusBadge}</td>
               <td class="no-print">
-                ${ret.status !== 'Replaced / Received' ? 
-                  `<button class="btn btn-sm btn-success me-1" onclick="markSupplierReturnReceived(${ret.originalIdx})">✅ Mark Received Back</button>
-                   <button class="btn btn-sm btn-danger" onclick="deleteSupplierReturn(${ret.originalIdx})">Delete</button>` :
-                  `<button class="btn btn-sm btn-danger" onclick="deleteSupplierReturn(${ret.originalIdx})">Delete</button>`
-                }
+                <button class="btn btn-sm btn-danger" onclick="deleteSupplierReturn(${ret.originalIdx})">Delete</button>
               </td>
             </tr>
           `;
@@ -2309,7 +2410,7 @@
 
       let emailBody = `SKY MODERNIZE SAVE TECHNOLOGY LTD - Supplier Returns Report\n`;
       emailBody += `Report Period: ${periodLabel}\n\n`;
-      emailBody += `--- SUPPLIER RETURNS ---\n`;
+      emailBody += `--- SUPPLIER RETURNS BATCH ---\n`;
       emailBody += `Date | Model | Supplier | Qty | Reason | Status\n`;
       emailBody += `-----------------------------------------------------------------------\n`;
 
@@ -2321,60 +2422,30 @@
       window.open(gmailUrl, '_blank');
     }
 
-    function markSupplierReturnReceived(index) {
-      const ret = db.supplierReturns[index];
-      if (!ret) return;
-      if (ret.status === 'Replaced / Received') return alert("Already marked as received back!");
-
-      const stockItem = db.stock.find(s => s.model.toLowerCase() === ret.model.toLowerCase());
-      if (stockItem) {
-        stockItem.qty += ret.qty;
-      } else {
-        db.stock.push({
-          model: ret.model,
-          category: "General",
-          subcat: "",
-          qty: ret.qty,
-          cost_price: 0,
-          sell_price: 0,
-          supplier: ret.supplier
-        });
-      }
-
-      ret.status = 'Replaced / Received';
-      saveDB();
-      alert(`✅ Supplier return marked as received and ${ret.qty} units restocked successfully!`);
-    }
-
     document.getElementById('supplier-returns-form').addEventListener('submit', (e) => {
       e.preventDefault();
-      const model = document.getElementById('sup-return-item').value.trim();
-      const supplier = document.getElementById('sup-return-supplier').value.trim();
+      const modelName = document.getElementById('sup-return-item').value.trim();
+      const supplierName = document.getElementById('sup-return-supplier').value.trim();
       const qty = parseInt(document.getElementById('sup-return-qty').value);
       const status = document.getElementById('sup-return-status').value;
       const reason = document.getElementById('sup-return-reason').value.trim();
 
-      if (!model || isNaN(qty) || qty <= 0) return alert("Please fill out valid supplier return details!");
+      const item = db.stock.find(s => s.model.toLowerCase() === modelName.toLowerCase());
+      if (!item) return alert("Model not found in stock inventory!");
+      if (item.qty < qty) return alert(`Insufficient stock! Only ${item.qty} pcs available to return to supplier.`);
 
-      const stockItem = db.stock.find(s => s.model.toLowerCase() === model.toLowerCase());
-      if (stockItem) {
-        if (stockItem.qty < qty) {
-          return alert(`Insufficient stock available to return! Only ${stockItem.qty} pcs in stock.`);
-        }
-        stockItem.qty -= qty;
-      }
-
+      item.qty -= qty;
       if (status === 'Replaced / Received') {
-        if (stockItem) stockItem.qty += qty;
+        item.qty += qty; // Immediate restock
       }
 
       db.supplierReturns.push({
         date: new Date().toISOString().split('T')[0],
-        model,
-        supplier,
-        qty,
-        reason,
-        status
+        model: modelName,
+        supplier: supplierName,
+        qty: qty,
+        reason: reason,
+        status: status
       });
 
       saveDB();
@@ -2383,7 +2454,7 @@
     });
 
     function deleteSupplierReturn(index) {
-      if (confirm("Are you sure you want to delete this supplier return record?")) {
+      if (confirm("Delete this supplier return record?")) {
         db.supplierReturns.splice(index, 1);
         saveDB();
       }
@@ -2394,12 +2465,11 @@
       const filteredReqs = db.requisitions.map((req, originalIdx) => ({ ...req, originalIdx })).slice().reverse().filter(req => {
         if (!filterQuery) return true;
         const q = filterQuery.toLowerCase();
-        return (req.id && req.id.toLowerCase().includes(q)) ||
-               (req.item && req.item.toLowerCase().includes(q)) ||
+        return (req.item && req.item.toLowerCase().includes(q)) ||
                (req.category && req.category.toLowerCase().includes(q)) ||
                (req.supplier && req.supplier.toLowerCase().includes(q)) ||
                (req.status && req.status.toLowerCase().includes(q)) ||
-               (req.date && req.date.includes(q));
+               (req.id && req.id.toLowerCase().includes(q));
       });
 
       if (filteredReqs.length === 0) {
@@ -2407,15 +2477,7 @@
       } else {
         tbody.innerHTML = filteredReqs.map(req => {
           const estTotal = (req.cost || 0) * req.qty;
-          let statusBadge = '';
-          if (req.status === 'Approved') {
-            statusBadge = '<span class="badge bg-success">Approved</span>';
-          } else if (req.status === 'Ordered') {
-            statusBadge = '<span class="badge bg-primary">Ordered</span>';
-          } else {
-            statusBadge = '<span class="badge bg-warning text-dark">Pending</span>';
-          }
-
+          let statusBadge = req.status === 'Approved' ? '<span class="badge bg-success">Approved ✅</span>' : '<span class="badge bg-warning text-dark">Pending ⏳</span>';
           return `
             <tr>
               <td><b>${req.id}</b></td>
@@ -2424,13 +2486,13 @@
               <td>${req.category}</td>
               <td><b>${req.qty}</b></td>
               <td>₦${(req.cost || 0).toLocaleString()}</td>
-              <td class="text-primary fw-bold">₦${estTotal.toLocaleString()}</td>
+              <td class="text-success fw-bold">₦${estTotal.toLocaleString()}</td>
               <td>${req.supplier || '-'}</td>
               <td>${statusBadge}</td>
               <td class="no-print">
-                <button class="btn btn-sm btn-outline-info me-1" onclick="openEditRequisitionModal(${req.originalIdx})">Edit</button>
-                <button class="btn btn-sm btn-success me-1" onclick="updateReqStatus(${req.originalIdx}, 'Approved')">Approve</button>
-                <button class="btn btn-sm btn-danger" onclick="deleteRequisition(${req.originalIdx})">Delete</button>
+                <button class="btn btn-sm btn-outline-primary mb-1" onclick="openEditRequisitionModal(${req.originalIdx})">Edit</button>
+                <button class="btn btn-sm btn-success mb-1" onclick="toggleRequisitionStatus(${req.originalIdx})">Toggle Status</button>
+                <button class="btn btn-sm btn-danger mb-1" onclick="deleteRequisition(${req.originalIdx})">Delete</button>
               </td>
             </tr>
           `;
@@ -2443,112 +2505,48 @@
     }
 
     function sendRequisitionToGmail() {
-      if (db.requisitions.length === 0) return alert("No purchase requisitions to send!");
-      let emailBody = `SKY MODERNIZE SAVE TECHNOLOGY LTD - Purchase Requisition Orders\n\n`;
+      if (db.requisitions.length === 0) return alert("No purchase requisitions available to send!");
+      let emailBody = `SKY MODERNIZE SAVE TECHNOLOGY LTD - Purchase Requisitions\n\n`;
       db.requisitions.forEach(r => {
-        emailBody += `Req ID: ${r.id} | Date: ${r.date} | Item: ${r.item} (${r.category}) | Qty: ${r.qty} | Est. Cost: ₦${(r.cost || 0).toLocaleString()} | Supplier: ${r.supplier || 'N/A'} | Status: ${r.status}\n`;
+        emailBody += `Req ID: ${r.id} | Date: ${r.date} | Item: ${r.item} (${r.category}) | Qty: ${r.qty} | Est Cost: ₦${(r.cost || 0) * r.qty} | Supplier: ${r.supplier || 'N/A'} | Status: ${r.status}\n`;
       });
-      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(`SKY MODERNIZE - Purchase Requisition Orders`)}&body=${encodeURIComponent(emailBody)}`;
+      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(`SKY MODERNIZE - Purchase Requisitions Order`)}&body=${encodeURIComponent(emailBody)}`;
       window.open(gmailUrl, '_blank');
     }
 
     document.getElementById('requisition-form').addEventListener('submit', (e) => {
       e.preventDefault();
-      const item = document.getElementById('req-item').value.trim();
-      const category = document.getElementById('req-cat').value.trim();
-      const qty = parseInt(document.getElementById('req-qty').value);
-      const cost = parseInt(document.getElementById('req-cost').value) || 0;
-      const supplier = document.getElementById('req-supplier').value.trim();
-      const notes = document.getElementById('req-notes').value.trim();
-
       const reqId = "REQ-" + Math.floor(1000 + Math.random() * 9000);
       db.requisitions.push({
         id: reqId,
         date: new Date().toISOString().split('T')[0],
-        item,
-        category,
-        qty,
-        cost,
-        supplier,
-        notes,
+        item: document.getElementById('req-item').value.trim(),
+        category: document.getElementById('req-cat').value.trim(),
+        qty: parseInt(document.getElementById('req-qty').value),
+        cost: parseInt(document.getElementById('req-cost').value) || 0,
+        supplier: document.getElementById('req-supplier').value.trim(),
+        notes: document.getElementById('req-notes').value.trim(),
         status: "Pending"
       });
-
       saveDB();
-      document.getElementById('requisition-form').reset();
-      alert("✅ Purchase requisition successfully submitted!");
+      e.target.reset();
+      alert("📋 Purchase requisition successfully submitted!");
     });
 
-    function updateReqStatus(index, newStatus) {
-      db.requisitions[index].status = newStatus;
-      saveDB();
+    function toggleRequisitionStatus(index) {
+      const req = db.requisitions[index];
+      if (req) {
+        req.status = req.status === 'Pending' ? 'Approved' : 'Pending';
+        saveDB();
+      }
     }
 
     function deleteRequisition(index) {
-      if (confirm("Delete this purchase requisition order?")) {
+      if (confirm("Delete this purchase requisition?")) {
         db.requisitions.splice(index, 1);
         saveDB();
       }
     }
-
-    function openEditRequisitionModal(index) {
-      const req = db.requisitions[index];
-      if (!req) return;
-      document.getElementById('edit-req-index').value = index;
-      document.getElementById('edit-req-item').value = req.item;
-      document.getElementById('edit-req-cat').value = req.category;
-      document.getElementById('edit-req-qty').value = req.qty;
-      document.getElementById('edit-req-cost').value = req.cost || 0;
-      document.getElementById('edit-req-supplier').value = req.supplier || '';
-      document.getElementById('edit-req-notes').value = req.notes || '';
-      new bootstrap.Modal(document.getElementById('editRequisitionModal')).show();
-    }
-
-    document.getElementById('edit-requisition-form').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const idx = parseInt(document.getElementById('edit-req-index').value);
-      const req = db.requisitions[idx];
-      if (req) {
-        req.item = document.getElementById('edit-req-item').value.trim();
-        req.category = document.getElementById('edit-req-cat').value.trim();
-        req.qty = parseInt(document.getElementById('edit-req-qty').value);
-        req.cost = parseInt(document.getElementById('edit-req-cost').value) || 0;
-        req.supplier = document.getElementById('edit-req-supplier').value.trim();
-        req.notes = document.getElementById('edit-req-notes').value.trim();
-        saveDB();
-        bootstrap.Modal.getInstance(document.getElementById('editRequisitionModal')).hide();
-        alert("✅ Purchase requisition updated successfully!");
-      }
-    });
-
-    document.getElementById('stock-form').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const model = document.getElementById('stk-model').value.trim();
-      const category = document.getElementById('stk-cat').value.trim();
-      const subcat = document.getElementById('stk-subcat').value.trim();
-      const qty = parseInt(document.getElementById('stk-qty').value);
-      const cost_price = parseInt(document.getElementById('stk-cost').value);
-      const sell_price = parseInt(document.getElementById('stk-sell').value);
-      const supplier = document.getElementById('stk-supplier').value.trim();
-
-      const existingItem = db.stock.find(s => 
-        s.model.toLowerCase() === model.toLowerCase() && 
-        (s.subcat || '').toLowerCase() === subcat.toLowerCase()
-      );
-
-      if (existingItem) {
-        existingItem.qty += qty;
-        existingItem.cost_price = cost_price;
-        existingItem.sell_price = sell_price;
-        if (supplier) existingItem.supplier = supplier;
-      } else {
-        db.stock.push({ model, category, subcat, qty, cost_price, sell_price, supplier });
-      }
-
-      saveDB();
-      document.getElementById('stock-form').reset();
-      alert("✅ Stock entry successfully added/updated!");
-    });
 
     function openEditModal(index) {
       const item = db.stock[index];
@@ -2567,29 +2565,77 @@
     document.getElementById('edit-stock-form').addEventListener('submit', (e) => {
       e.preventDefault();
       const idx = parseInt(document.getElementById('edit-stk-index').value);
-      const item = db.stock[idx];
-      if (item) {
-        item.model = document.getElementById('edit-stk-model').value.trim();
-        item.category = document.getElementById('edit-stk-cat').value.trim();
-        item.subcat = document.getElementById('edit-stk-subcat').value.trim();
-        item.qty = parseInt(document.getElementById('edit-stk-qty').value);
-        item.cost_price = parseInt(document.getElementById('edit-stk-cost').value);
-        item.sell_price = parseInt(document.getElementById('edit-stk-sell').value);
-        item.supplier = document.getElementById('edit-stk-supplier').value.trim();
-        saveDB();
-        bootstrap.Modal.getInstance(document.getElementById('editStockModal')).hide();
-        alert("✅ Stock item updated successfully!");
-      }
+      if (isNaN(idx) || !db.stock[idx]) return;
+
+      db.stock[idx] = {
+        model: document.getElementById('edit-stk-model').value.trim(),
+        category: document.getElementById('edit-stk-cat').value.trim(),
+        subcat: document.getElementById('edit-stk-subcat').value.trim(),
+        qty: parseInt(document.getElementById('edit-stk-qty').value),
+        cost_price: parseInt(document.getElementById('edit-stk-cost').value),
+        sell_price: parseInt(document.getElementById('edit-stk-sell').value),
+        supplier: document.getElementById('edit-stk-supplier').value.trim()
+      };
+
+      saveDB();
+      bootstrap.Modal.getInstance(document.getElementById('editStockModal')).hide();
+      alert("✅ Stock item successfully updated!");
+    });
+
+    function openEditRequisitionModal(index) {
+      const req = db.requisitions[index];
+      if (!req) return;
+      document.getElementById('edit-req-index').value = index;
+      document.getElementById('edit-req-item').value = req.item;
+      document.getElementById('edit-req-cat').value = req.category;
+      document.getElementById('edit-req-qty').value = req.qty;
+      document.getElementById('edit-req-cost').value = req.cost || 0;
+      document.getElementById('edit-req-supplier').value = req.supplier || '';
+      document.getElementById('edit-req-notes').value = req.notes || '';
+      new bootstrap.Modal(document.getElementById('editRequisitionModal')).show();
+    }
+
+    document.getElementById('edit-requisition-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const idx = parseInt(document.getElementById('edit-req-index').value);
+      if (isNaN(idx) || !db.requisitions[idx]) return;
+
+      db.requisitions[idx].item = document.getElementById('edit-req-item').value.trim();
+      db.requisitions[idx].category = document.getElementById('edit-req-cat').value.trim();
+      db.requisitions[idx].qty = parseInt(document.getElementById('edit-req-qty').value);
+      db.requisitions[idx].cost = parseInt(document.getElementById('edit-req-cost').value) || 0;
+      db.requisitions[idx].supplier = document.getElementById('edit-req-supplier').value.trim();
+      db.requisitions[idx].notes = document.getElementById('edit-req-notes').value.trim();
+
+      saveDB();
+      bootstrap.Modal.getInstance(document.getElementById('editRequisitionModal')).hide();
+      alert("✅ Requisition successfully updated!");
     });
 
     function deleteStock(index) {
-      if (confirm("Are you sure you want to delete this stock item?")) {
+      if (confirm("Are you sure you want to delete this stock entry?")) {
         db.stock.splice(index, 1);
         saveDB();
       }
     }
 
-    // Initialize initial render on script load
+    document.getElementById('stock-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      db.stock.push({
+        model: document.getElementById('stk-model').value.trim(),
+        category: document.getElementById('stk-cat').value.trim(),
+        subcat: document.getElementById('stk-subcat').value.trim(),
+        qty: parseInt(document.getElementById('stk-qty').value),
+        cost_price: parseInt(document.getElementById('stk-cost').value),
+        sell_price: parseInt(document.getElementById('stk-sell').value),
+        supplier: document.getElementById('stk-supplier').value.trim()
+      });
+      saveDB();
+      e.target.reset();
+      alert("✅ Stock item successfully added!");
+    });
+
+    // Initialize initial render
     renderAll();
   </script>
 </body>
