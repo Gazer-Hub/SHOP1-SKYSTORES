@@ -931,7 +931,7 @@
       if (supabaseClient) {
         try {
           const { error } = await supabaseClient
-            .from('inventory_state')
+            .from('inventory')
             .upsert({ id: 1, payload: db, updated_at: new Date().toISOString() });
           
           if (error) {
