@@ -950,7 +950,7 @@
       if (supabaseClient) {
         try {
           const { data, error } = await supabaseClient
-            .from('inventory_state')
+            .from('inventory')
             .select('payload')
             .eq('id', 1)
             .single();
