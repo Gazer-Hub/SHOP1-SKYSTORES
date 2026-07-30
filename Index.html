@@ -884,11 +884,11 @@
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+ <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script>
     // --- TRIPLE SAVING METHOD CONFIGURATION (SUPABASE + LOCALSTORAGE) ---
-    const SUPABASE_URL = 'https://puktzlekeoojrlxrkziu.supabase.co'; // Replace with your Supabase Project URL
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB1a3R6bGVrZW9vanJseHJreml1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1NTI5MzAsImV4cCI6MjEwMDEyODkzMH0.uSH3tcofOW-LiBHraIb_eDi2hI3_ZUN1b9JjIJ42Z-Q'; // Replace with your Supabase Anon/Public Key
+    const SUPABASE_URL = 'https://puktzlekeoojrlxrkziu.supabase.co'; // Your Supabase Project URL
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB1a3R6bGVrZW9vanJseHJreml1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1NTI5MzAsImV4cCI6MjEwMDEyODkzMH0.uSH3tcofOW-LiBHraIb_eDi2hI3_ZUN1b9JjIJ42Z-Q'; // Your Supabase Anon/Public Key
     const supabaseClient = (window.supabase && SUPABASE_URL !== 'YOUR_SUPABASE_URL_HERE') 
       ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) 
       : null;
@@ -924,10 +924,10 @@
 
     // --- TRIPLE SAVING METHOD IMPLEMENTATION ---
     async function saveDB() {
-      // 1. Save to local browser storage (Local Storage method #1 & #2 redundancy layer)
+      // 1. Save to local browser storage
       localStorage.setItem(DB_KEY, JSON.stringify(db));
 
-      // 2. Save concurrently to Supabase database (Cloud persistent storage method #3)
+      // 2. Save concurrently to Supabase database (Cloud persistent storage)
       if (supabaseClient) {
         try {
           const { error } = await supabaseClient
@@ -956,7 +956,6 @@
             .single();
           
           if (data && data.payload && !error) {
-            // Merge or adopt cloud payload if local data is empty or older
             db = data.payload;
             if (!db.supplierReturns) db.supplierReturns = [];
             if (!db.requisitions) db.requisitions = [];
@@ -969,6 +968,13 @@
       renderAll();
     }
 
+    // --- AUTO-INITIALIZE ON PHONE & LAPTOP BOOT ---
+    window.addEventListener('DOMContentLoaded', () => {
+      initTripleSavingSync();
+    });
+
+    // [Rest of your helper functions, event listeners, and render loops continue here...]
+   
     // --- CSV EXPORT UTILITY ---
     function downloadCSV(csvContent, filename) {
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
