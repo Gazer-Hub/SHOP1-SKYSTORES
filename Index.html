@@ -6,6 +6,8 @@
   <title>SKY MODERNIZE SAVE TECHNOLOGY LTD - Inventory</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <!-- Supabase CDN Client Library for Triple Saving Method -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     .page { display: none; }
     .page.active { display: block; }
@@ -884,6 +886,13 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script>
+    // --- TRIPLE SAVING METHOD CONFIGURATION (SUPABASE + LOCALSTORAGE) ---
+    const SUPABASE_URL = 'https://puktzlekeoojrlxrkziu.supabase.co'; // Replace with your Supabase Project URL
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB1a3R6bGVrZW9vanJseHJreml1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1NTI5MzAsImV4cCI6MjEwMDEyODkzMH0.uSH3tcofOW-LiBHraIb_eDi2hI3_ZUN1b9JjIJ42Z-Q'; // Replace with your Supabase Anon/Public Key
+    const supabaseClient = (window.supabase && SUPABASE_URL !== 'YOUR_SUPABASE_URL_HERE') 
+      ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) 
+      : null;
+
     // --- AUTHENTICATION ---
     const AUTH_KEY = "sky_modernize_auth";
     let auth = JSON.parse(localStorage.getItem(AUTH_KEY)) || { username: "admin", password: "1234" };
@@ -913,8 +922,50 @@
     if (!db.supplierReturns) db.supplierReturns = [];
     if (!db.requisitions) db.requisitions = [];
 
-    function saveDB() {
+    // --- TRIPLE SAVING METHOD IMPLEMENTATION ---
+    async function saveDB() {
+      // 1. Save to local browser storage (Local Storage method #1 & #2 redundancy layer)
       localStorage.setItem(DB_KEY, JSON.stringify(db));
+
+      // 2. Save concurrently to Supabase database (Cloud persistent storage method #3)
+      if (supabaseClient) {
+        try {
+          const { error } = await supabaseClient
+            .from('inventory_state')
+            .upsert({ id: 1, payload: db, updated_at: new Date().toISOString() });
+          
+          if (error) {
+            console.error('Supabase sync error:', error.message);
+          }
+        } catch (err) {
+          console.error('Network error during Supabase triple saving sync:', err);
+        }
+      }
+
+      renderAll();
+    }
+
+    // Initial load sync check from Supabase on startup
+    async function initTripleSavingSync() {
+      if (supabaseClient) {
+        try {
+          const { data, error } = await supabaseClient
+            .from('inventory_state')
+            .select('payload')
+            .eq('id', 1)
+            .single();
+          
+          if (data && data.payload && !error) {
+            // Merge or adopt cloud payload if local data is empty or older
+            db = data.payload;
+            if (!db.supplierReturns) db.supplierReturns = [];
+            if (!db.requisitions) db.requisitions = [];
+            localStorage.setItem(DB_KEY, JSON.stringify(db));
+          }
+        } catch (e) {
+          console.log('Using local backup storage fallback.');
+        }
+      }
       renderAll();
     }
 
@@ -1805,66 +1856,62 @@
     }
 
     function renderSalesCart() {
-  const container = document.getElementById('sales-cart-container');
-  const tbody = document.getElementById('sales-cart-tbody');
-  const totalDisplay = document.getElementById('sales-cart-total');
-  const totalQtyDisplay = document.getElementById('sales-cart-total-qty');
-  
-  if (salesCart.length === 0) {
-    container.classList.add('d-none');
-    checkBulkPriceEligibility();
-    return;
-  }
-  
-  container.classList.remove('d-none');
-  let grandTotal = 0;
-  let totalQty = 0;
+      const container = document.getElementById('sales-cart-container');
+      const tbody = document.getElementById('sales-cart-tbody');
+      const totalDisplay = document.getElementById('sales-cart-total');
+      const totalQtyDisplay = document.getElementById('sales-cart-total-qty');
+      
+      if (salesCart.length === 0) {
+        container.classList.add('d-none');
+        checkBulkPriceEligibility();
+        return;
+      }
+      
+      container.classList.remove('d-none');
+      let grandTotal = 0;
+      let totalQty = 0;
 
-  // Calculate aggregate quantity of all items combined in the cart
-  salesCart.forEach(item => { totalQty += Number(item.qty || 0); });
-  const allowPriceEdit = totalQty >= 5;
+      salesCart.forEach(item => { totalQty += Number(item.qty || 0); });
+      const allowPriceEdit = totalQty >= 5;
 
-  tbody.innerHTML = salesCart.map((item, idx) => {
-    const subtotal = item.sell_price * item.qty;
-    grandTotal += subtotal;
+      tbody.innerHTML = salesCart.map((item, idx) => {
+        const subtotal = item.sell_price * item.qty;
+        grandTotal += subtotal;
 
-    // If aggregate total quantity is 5 or higher, make unit price editable
-    const unitPriceDisplay = allowPriceEdit
-      ? `<input type="number" min="0" step="0.01" class="form-control form-control-sm cart-price-input" data-index="${idx}" value="${item.sell_price}" style="width: 100px;">`
-      : `₦${item.sell_price.toLocaleString()}`;
+        const unitPriceDisplay = allowPriceEdit
+          ? `<input type="number" min="0" step="0.01" class="form-control form-control-sm cart-price-input" data-index="${idx}" value="${item.sell_price}" style="width: 100px;">`
+          : `₦${item.sell_price.toLocaleString()}`;
 
-    return `
-      <tr>
-        <td><b>${item.model}</b></td>
-        <td><span class="badge bg-secondary">${item.quality}</span></td>
-        <td>${item.qty}</td>
-        <td>${unitPriceDisplay}</td>
-        <td class="fw-bold text-success">₦${subtotal.toLocaleString()}</td>
-        <td><button class="btn btn-xs btn-danger py-0 px-2" onclick="removeFromSalesCart(${idx})">✖</button></td>
-      </tr>
-    `;
-  }).join('');
+        return `
+          <tr>
+            <td><b>${item.model}</b></td>
+            <td><span class="badge bg-secondary">${item.quality}</span></td>
+            <td>${item.qty}</td>
+            <td>${unitPriceDisplay}</td>
+            <td class="fw-bold text-success">₦${subtotal.toLocaleString()}</td>
+            <td><button class="btn btn-xs btn-danger py-0 px-2" onclick="removeFromSalesCart(${idx})">✖</button></td>
+          </tr>
+        `;
+      }).join('');
 
-  totalDisplay.innerText = `₦${grandTotal.toLocaleString()}`;
-  totalQtyDisplay.innerText = `${totalQty} pcs`;
+      totalDisplay.innerText = `₦${grandTotal.toLocaleString()}`;
+      totalQtyDisplay.innerText = `${totalQty} pcs`;
 
-  // Attach event listener to dynamically handle price changes
-  if (allowPriceEdit) {
-    document.querySelectorAll('.cart-price-input').forEach(input => {
-      input.addEventListener('change', (e) => {
-        const index = e.target.getAttribute('data-index');
-        const newPrice = parseFloat(e.target.value);
-        if (!isNaN(newPrice) && newPrice >= 0) {
-          salesCart[index].sell_price = newPrice;
-          renderSalesCart();
-        }
-      });
-    });
-  }
+      if (allowPriceEdit) {
+        document.querySelectorAll('.cart-price-input').forEach(input => {
+          input.addEventListener('change', (e) => {
+            const index = e.target.getAttribute('data-index');
+            const newPrice = parseFloat(e.target.value);
+            if (!isNaN(newPrice) && newPrice >= 0) {
+              salesCart[index].sell_price = newPrice;
+              renderSalesCart();
+            }
+          });
+        });
+      }
 
-  checkBulkPriceEligibility();
-}
-
+      checkBulkPriceEligibility();
+    }
 
     function removeFromSalesCart(index) {
       salesCart.splice(index, 1);
@@ -2387,7 +2434,7 @@
       });
 
       if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-3">No supplier returns found for this period</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-3">No matching supplier return records found for this period</td></tr>`;
       } else {
         tbody.innerHTML = filtered.map(r => `
           <tr>
@@ -2396,7 +2443,7 @@
             <td>${r.supplier}</td>
             <td>${r.qty}</td>
             <td>${r.reason}</td>
-            <td><span class="badge ${r.status === 'Replaced / Received' ? 'bg-success' : (r.status === 'Sent Back' ? 'bg-primary' : 'bg-warning text-dark')}">${r.status}</span></td>
+            <td><span class="badge ${r.status === 'Replaced / Received' ? 'bg-success' : (r.status === 'Sent Back' ? 'bg-info text-dark' : 'bg-warning text-dark')}">${r.status}</span></td>
             <td class="no-print">
               <button class="btn btn-sm btn-danger" onclick="deleteSupplierReturn(${r.originalIdx})">Delete</button>
             </td>
@@ -2419,6 +2466,7 @@
       emailBody += `Report Period: ${periodLabel}\n\n`;
       emailBody += `Date | Model | Supplier | Qty | Reason | Status\n`;
       emailBody += `-----------------------------------------------------------------------\n`;
+
       supReturnsData.forEach(r => {
         emailBody += `${r.date} | ${r.model} | ${r.supplier} | ${r.qty} pcs | ${r.reason} | ${r.status}\n`;
       });
@@ -2435,23 +2483,38 @@
       const status = document.getElementById('sup-return-status').value;
       const reason = document.getElementById('sup-return-reason').value.trim();
 
-      if (isNaN(qty) || qty <= 0) return alert("Quantity must be at least 1!");
-
       const stockItem = db.stock.find(s => s.model.toLowerCase() === model.toLowerCase());
-      if (status === 'Sent Back' || status === 'Pending') {
+
+      if (status === 'Sent Back' || status === 'Replaced / Received') {
         if (stockItem) {
-          if (stockItem.qty < qty) return alert("Insufficient stock to send back to supplier!");
+          if (stockItem.qty < qty) return alert(`Insufficient stock! Only ${stockItem.qty} pcs available to return to supplier.`);
           stockItem.qty -= qty;
         }
-      } else if (status === 'Replaced / Received') {
+      }
+
+      if (status === 'Replaced / Received') {
         if (stockItem) {
           stockItem.qty += qty;
+        } else {
+          db.stock.push({
+            model: model,
+            category: "General",
+            subcat: "",
+            qty: qty,
+            cost_price: 0,
+            sell_price: 0,
+            supplier: supplier
+          });
         }
       }
 
       db.supplierReturns.push({
         date: new Date().toISOString().split('T')[0],
-        model, supplier, qty, status, reason
+        model: model,
+        supplier: supplier,
+        qty: qty,
+        reason: reason,
+        status: status
       });
 
       saveDB();
@@ -2459,28 +2522,100 @@
       alert("✅ Supplier return successfully recorded!");
     });
 
-    function deleteSupplierReturn(idx) {
+    function deleteSupplierReturn(index) {
       if (confirm("Delete this supplier return record?")) {
-        db.supplierReturns.splice(idx, 1);
+        db.supplierReturns.splice(index, 1);
         saveDB();
       }
     }
 
-    document.getElementById('stock-form').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const model = document.getElementById('stk-model').value.trim();
-      const category = document.getElementById('stk-cat').value.trim();
-      const subcat = document.getElementById('stk-subcat').value.trim();
-      const qty = parseInt(document.getElementById('stk-qty').value);
-      const cost_price = parseInt(document.getElementById('stk-cost').value);
-      const sell_price = parseInt(document.getElementById('stk-sell').value);
-      const supplier = document.getElementById('stk-supplier').value.trim();
+    function renderRequisitions(filterQuery = "") {
+      const tbody = document.getElementById('requisition-table-body');
+      const filtered = db.requisitions.map((item, originalIdx) => ({ ...item, originalIdx })).slice().reverse().filter(r => {
+        if (!filterQuery) return true;
+        const q = filterQuery.toLowerCase();
+        return (r.id && r.id.toLowerCase().includes(q)) ||
+               (r.item && r.item.toLowerCase().includes(q)) ||
+               (r.category && r.category.toLowerCase().includes(q)) ||
+               (r.supplier && r.supplier.toLowerCase().includes(q)) ||
+               (r.status && r.status.toLowerCase().includes(q)) ||
+               (r.date && r.date.includes(q));
+      });
 
-      db.stock.push({ model, category, subcat, qty, cost_price, sell_price, supplier });
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="10" class="text-center text-muted py-3">No matching purchase requisitions found</td></tr>`;
+      } else {
+        tbody.innerHTML = filtered.map(r => {
+          const estTotal = (r.cost || 0) * r.qty;
+          return `
+            <tr>
+              <td><b>${r.id}</b></td>
+              <td>${r.date}</td>
+              <td><b>${r.item}</b></td>
+              <td><span class="badge bg-secondary">${r.category}</span></td>
+              <td><b>${r.qty}</b></td>
+              <td>₦${(r.cost || 0).toLocaleString()}</td>
+              <td class="text-success fw-bold">₦${estTotal.toLocaleString()}</td>
+              <td>${r.supplier || '-'}</td>
+              <td><span class="badge ${r.status === 'Approved' ? 'bg-success' : 'bg-warning text-dark'}">${r.status}</span></td>
+              <td class="no-print">
+                <button class="btn btn-sm btn-primary me-1" onclick="openEditRequisitionModal(${r.originalIdx})">Edit</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteRequisition(${r.originalIdx})">Delete</button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      }
+    }
+
+    function printFilteredRequisitions() {
+      window.print();
+    }
+
+    function sendRequisitionToGmail() {
+      if (db.requisitions.length === 0) return alert("No purchase requisitions available to send!");
+      let emailBody = `SKY MODERNIZE SAVE TECHNOLOGY LTD - Purchase Requisitions\n\n`;
+      db.requisitions.forEach(r => {
+        emailBody += `Req ID: ${r.id} | Date: ${r.date} | Item: ${r.item} (${r.category}) | Qty: ${r.qty} | Est Cost: ₦${(r.cost || 0) * r.qty} | Supplier: ${r.supplier || 'N/A'} | Status: ${r.status}\n`;
+      });
+      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent('SKY MODERNIZE - Purchase Requisition Orders')}&body=${encodeURIComponent(emailBody)}`;
+      window.open(gmailUrl, '_blank');
+    }
+
+    document.getElementById('requisition-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const item = document.getElementById('req-item').value.trim();
+      const category = document.getElementById('req-cat').value.trim();
+      const qty = parseInt(document.getElementById('req-qty').value);
+      const cost = parseInt(document.getElementById('req-cost').value) || 0;
+      const supplier = document.getElementById('req-supplier').value.trim();
+      const notes = document.getElementById('req-notes').value.trim();
+
+      const reqId = "REQ-" + Math.floor(1000 + Math.random() * 9000);
+
+      db.requisitions.push({
+        id: reqId,
+        date: new Date().toISOString().split('T')[0],
+        item: item,
+        category: category,
+        qty: qty,
+        cost: cost,
+        supplier: supplier,
+        notes: notes,
+        status: "Pending"
+      });
+
       saveDB();
-      document.getElementById('stock-form').reset();
-      alert("✅ Stock entry added successfully!");
+      e.target.reset();
+      alert("✅ Purchase Requisition successfully submitted!");
     });
+
+    function deleteRequisition(index) {
+      if (confirm("Delete this requisition order?")) {
+        db.requisitions.splice(index, 1);
+        saveDB();
+      }
+    }
 
     function openEditModal(index) {
       const item = db.stock[index];
@@ -2493,7 +2628,9 @@
       document.getElementById('edit-stk-cost').value = item.cost_price;
       document.getElementById('edit-stk-sell').value = item.sell_price;
       document.getElementById('edit-stk-supplier').value = item.supplier || '';
-      new bootstrap.Modal(document.getElementById('editStockModal')).show();
+      
+      const modal = new bootstrap.Modal(document.getElementById('editStockModal'));
+      modal.show();
     }
 
     document.getElementById('edit-stock-form').addEventListener('submit', (e) => {
@@ -2511,9 +2648,41 @@
         supplier: document.getElementById('edit-stk-supplier').value.trim()
       };
 
-      bootstrap.Modal.getInstance(document.getElementById('editStockModal')).hide();
       saveDB();
-      alert("✅ Stock details updated successfully!");
+      bootstrap.Modal.getInstance(document.getElementById('editStockModal')).hide();
+      alert("✅ Stock item successfully updated!");
+    });
+
+    function openEditRequisitionModal(index) {
+      const req = db.requisitions[index];
+      if (!req) return;
+      document.getElementById('edit-req-index').value = index;
+      document.getElementById('edit-req-item').value = req.item;
+      document.getElementById('edit-req-cat').value = req.category;
+      document.getElementById('edit-req-qty').value = req.qty;
+      document.getElementById('edit-req-cost').value = req.cost || 0;
+      document.getElementById('edit-req-supplier').value = req.supplier || '';
+      document.getElementById('edit-req-notes').value = req.notes || '';
+
+      const modal = new bootstrap.Modal(document.getElementById('editRequisitionModal'));
+      modal.show();
+    }
+
+    document.getElementById('edit-requisition-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const index = parseInt(document.getElementById('edit-req-index').value);
+      if (isNaN(index) || !db.requisitions[index]) return;
+
+      db.requisitions[index].item = document.getElementById('edit-req-item').value.trim();
+      db.requisitions[index].category = document.getElementById('edit-req-cat').value.trim();
+      db.requisitions[index].qty = parseInt(document.getElementById('edit-req-qty').value);
+      db.requisitions[index].cost = parseInt(document.getElementById('edit-req-cost').value) || 0;
+      db.requisitions[index].supplier = document.getElementById('edit-req-supplier').value.trim();
+      db.requisitions[index].notes = document.getElementById('edit-req-notes').value.trim();
+
+      saveDB();
+      bootstrap.Modal.getInstance(document.getElementById('editRequisitionModal')).hide();
+      alert("✅ Purchase Requisition successfully updated!");
     });
 
     function deleteStock(index) {
@@ -2523,126 +2692,26 @@
       }
     }
 
-    document.getElementById('requisition-form').addEventListener('submit', (e) => {
+    document.getElementById('stock-form').addEventListener('submit', (e) => {
       e.preventDefault();
-      const item = document.getElementById('req-item').value.trim();
-      const category = document.getElementById('req-cat').value.trim();
-      const qty = parseInt(document.getElementById('req-qty').value);
-      const cost = parseInt(document.getElementById('req-cost').value) || 0;
-      const supplier = document.getElementById('req-supplier').value.trim();
-      const notes = document.getElementById('req-notes').value.trim();
+      const model = document.getElementById('stk-model').value.trim();
+      const category = document.getElementById('stk-cat').value.trim();
+      const subcat = document.getElementById('stk-subcat').value.trim();
+      const qty = parseInt(document.getElementById('stk-qty').value);
+      const cost_price = parseInt(document.getElementById('stk-cost').value);
+      const sell_price = parseInt(document.getElementById('stk-sell').value);
+      const supplier = document.getElementById('stk-supplier').value.trim();
 
-      const reqId = "REQ-" + Math.floor(1000 + Math.random() * 9000);
-      db.requisitions.push({
-        id: reqId,
-        date: new Date().toISOString().split('T')[0],
-        item, category, qty, cost, supplier, notes,
-        status: "Pending"
-      });
-
+      db.stock.push({ model, category, subcat, qty, cost_price, sell_price, supplier });
       saveDB();
-      document.getElementById('requisition-form').reset();
-      alert("✅ Purchase requisition successfully submitted!");
+      e.target.reset();
+      alert("✅ New stock entry successfully added!");
     });
 
-    function renderRequisitions(filterQuery = "") {
-      const tbody = document.getElementById('requisition-table-body');
-      const filtered = db.requisitions.map((req, originalIdx) => ({ ...req, originalIdx })).slice().reverse().filter(r => {
-        if (!filterQuery) return true;
-        const q = filterQuery.toLowerCase();
-        return (r.id && r.id.toLowerCase().includes(q)) ||
-               (r.item && r.item.toLowerCase().includes(q)) ||
-               (r.category && r.category.toLowerCase().includes(q)) ||
-               (r.supplier && r.supplier.toLowerCase().includes(q)) ||
-               (r.status && r.status.toLowerCase().includes(q)) ||
-               (r.date && r.date.includes(q));
-      });
-
-      if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="10" class="text-center text-muted py-3">No purchase requisitions found</td></tr>`;
-      } else {
-        tbody.innerHTML = filtered.map(r => {
-          const estTotal = (r.cost || 0) * r.qty;
-          return `
-            <tr>
-              <td><b>${r.id}</b></td>
-              <td>${r.date}</td>
-              <td><b>${r.item}</b></td>
-              <td>${r.category}</td>
-              <td>${r.qty}</td>
-              <td>₦${(r.cost || 0).toLocaleString()}</td>
-              <td class="text-success fw-bold">₦${estTotal.toLocaleString()}</td>
-              <td>${r.supplier || '-'}</td>
-              <td><span class="badge ${r.status === 'Approved' ? 'bg-success' : (r.status === 'Declined' ? 'bg-danger' : 'bg-warning text-dark')}">${r.status}</span></td>
-              <td class="no-print">
-                <button class="btn btn-sm btn-outline-primary me-1" onclick="openEditRequisitionModal(${r.originalIdx})">Edit</button>
-                <button class="btn btn-sm btn-success me-1" onclick="updateRequisitionStatus(${r.originalIdx}, 'Approved')">Approve</button>
-                <button class="btn btn-sm btn-danger" onclick="deleteRequisition(${r.originalIdx})">Delete</button>
-              </td>
-            </tr>
-          `;
-        }).join('');
-      }
-    }
-
-    function openEditRequisitionModal(idx) {
-      const r = db.requisitions[idx];
-      if (!r) return;
-      document.getElementById('edit-req-index').value = idx;
-      document.getElementById('edit-req-item').value = r.item;
-      document.getElementById('edit-req-cat').value = r.category;
-      document.getElementById('edit-req-qty').value = r.qty;
-      document.getElementById('edit-req-cost').value = r.cost || 0;
-      document.getElementById('edit-req-supplier').value = r.supplier || '';
-      document.getElementById('edit-req-notes').value = r.notes || '';
-      new bootstrap.Modal(document.getElementById('editRequisitionModal')).show();
-    }
-
-    document.getElementById('edit-requisition-form').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const idx = parseInt(document.getElementById('edit-req-index').value);
-      if (isNaN(idx) || !db.requisitions[idx]) return;
-
-      db.requisitions[idx].item = document.getElementById('edit-req-item').value.trim();
-      db.requisitions[idx].category = document.getElementById('edit-req-cat').value.trim();
-      db.requisitions[idx].qty = parseInt(document.getElementById('edit-req-qty').value);
-      db.requisitions[idx].cost = parseInt(document.getElementById('edit-req-cost').value) || 0;
-      db.requisitions[idx].supplier = document.getElementById('edit-req-supplier').value.trim();
-      db.requisitions[idx].notes = document.getElementById('edit-req-notes').value.trim();
-
-      bootstrap.Modal.getInstance(document.getElementById('editRequisitionModal')).hide();
-      saveDB();
-      alert("✅ Purchase requisition updated successfully!");
-    });
-
-    function updateRequisitionStatus(idx, status) {
-      db.requisitions[idx].status = status;
-      saveDB();
-    }
-
-    function deleteRequisition(idx) {
-      if (confirm("Delete this requisition order?")) {
-        db.requisitions.splice(idx, 1);
-        saveDB();
-      }
-    }
-
-    function printFilteredRequisitions() {
-      window.print();
-    }
-
-    function sendRequisitionToGmail() {
-      if (db.requisitions.length === 0) return alert("No requisitions to send!");
-      let emailBody = `SKY MODERNIZE SAVE TECHNOLOGY LTD - Purchase Requisitions\n\n`;
-      db.requisitions.forEach(r => {
-        emailBody += `Req ID: ${r.id} | Date: ${r.date} | Item: ${r.item} | Qty: ${r.qty} | Est Cost: ₦${((r.cost || 0) * r.qty).toLocaleString()} | Status: ${r.status}\n`;
-      });
-      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(`SKY MODERNIZE - Purchase Requisitions Report`)}&body=${encodeURIComponent(emailBody)}`;
-      window.open(gmailUrl, '_blank');
-    }
-
-    // Initialize application state on load
-    renderAll();
+    // Run initialization on window load
+    window.onload = function() {
+      initTripleSavingSync();
+    };
   </script>
 </body>
 </html>
