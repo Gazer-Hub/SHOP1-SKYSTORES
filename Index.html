@@ -12,14 +12,6 @@
     .page { display: none; }
     .page.active { display: block; }
     
-    /* Toast Notification Container */
-    #toast-container {
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      z-index: 1080;
-    }
-
     @media print {
       .no-print, nav, button, .card-header, form, .input-group, .modal, .sales-filter-container, .returns-filter-container, .sup-filter-container, .req-filter-container { display: none !important; }
       body { font-size: 11pt; background-color: #fff !important; }
@@ -44,7 +36,6 @@
         <button class="btn btn-sm btn-outline-light" onclick="navigateTo('stock')">Stock 🔒</button>
         <button class="btn btn-sm btn-outline-light" onclick="navigateTo('sales')">Sales</button>
         <button class="btn btn-sm btn-outline-light" onclick="navigateTo('cash-drawer')">Cash Drawer 💵</button>
-        <button class="btn btn-sm btn-outline-warning" onclick="navigateTo('moniepoint')">Moniepoint 💳</button>
         <button class="btn btn-sm btn-outline-light" onclick="navigateTo('returns')">Customer Returns</button>
         <button class="btn btn-sm btn-outline-warning" onclick="navigateTo('supplier-returns')">Supplier Returns 📦</button>
         <button class="btn btn-sm btn-outline-info" onclick="navigateTo('purchase-requisition')">Purchase Requisition 📋</button>
@@ -53,9 +44,6 @@
       </div>
     </div>
   </nav>
-
-  <!-- Global Popup Toast Notification Container -->
-  <div id="toast-container"></div>
 
   <div class="container pb-5">
 
@@ -257,75 +245,6 @@
           <button class="btn btn-sm btn-dark" onclick="requestBulkLowStockRequisition()">📋 Request Selected Stock in Bulk</button>
         </div>
         <div class="card-body" id="low-stock-list"></div>
-      </div>
-    </div>
-
-    <!-- NEW MONIEPOINT PAYMENT HISTORY PAGE INTERFACE -->
-    <div id="page-moniepoint" class="page">
-      <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-        <h3>💳 Moniepoint Payment History & Webhook Feed</h3>
-        <div class="d-flex gap-2 flex-wrap">
-          <button class="btn btn-sm btn-outline-primary" onclick="testSimulateMoniepointWebhook()">🧪 Simulate Webhook Test</button>
-          <button class="btn btn-sm btn-outline-success" onclick="fetchMoniepointTransactions()">🔄 Refresh Feed</button>
-          <button class="btn btn-sm btn-outline-danger" onclick="clearMoniepointHistory()">Clear History</button>
-        </div>
-      </div>
-
-      <div class="row g-3 mb-4">
-        <div class="col-md-6">
-          <div class="card text-center border-success shadow-sm">
-            <div class="card-body py-2">
-              <h6 class="text-muted mb-1">Total Moniepoint Inflows (Successful)</h6>
-              <h3 class="text-success fw-bold mb-0" id="moniepoint-total-amount">₦0</h3>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-6">
-          <div class="card text-center border-primary shadow-sm">
-            <div class="card-body py-2">
-              <h6 class="text-muted mb-1">Total Webhook Transactions</h6>
-              <h3 class="text-primary fw-bold mb-0" id="moniepoint-total-count">0</h3>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="card mb-4 border-secondary shadow-sm">
-        <div class="card-header bg-dark text-white fw-bold d-flex justify-content-between align-items-center">
-          <span>Live Webhook Endpoint Status</span>
-          <span class="badge bg-success">Active & Listening</span>
-        </div>
-        <div class="card-body bg-light">
-          <p class="mb-1 small text-muted">Configured Webhook URL:</p>
-          <code>https://sky-moniepoint-webhook.netlify.app</code>[cite: 3]
-          <p class="mb-0 mt-2 small text-secondary">Incoming transaction notifications from your Moniepoint terminal/API will automatically trigger pop-up alerts and list below.</p>
-        </div>
-      </div>
-
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <h5 class="mb-0">Transaction Logs</h5>
-        <div class="input-group" style="max-width: 400px;">
-          <input type="text" id="moniepoint-search-input" class="form-control form-control-sm" placeholder="Search reference, customer, amount..." onkeyup="renderMoniepointHistory()">
-          <button class="btn btn-sm btn-outline-secondary" type="button" onclick="document.getElementById('moniepoint-search-input').value=''; renderMoniepointHistory();">Clear</button>
-        </div>
-      </div>
-
-      <div class="table-responsive">
-        <table class="table table-striped table-bordered align-middle bg-white">
-          <thead class="table-dark">
-            <tr>
-              <th>Timestamp</th>
-              <th>Reference / Session ID</th>
-              <th>Customer Name</th>
-              <th>Amount (₦)</th>
-              <th>Status</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody id="moniepoint-table-body">
-            <tr><td colspan="6" class="text-center text-muted py-3">No Moniepoint payment logs recorded yet.</td></tr>
-          </tbody>
-        </table>
       </div>
     </div>
 
@@ -582,7 +501,7 @@
               <label class="form-label small fw-bold">Payment Method</label>
               <select id="sale-payment-method" class="form-select" required>
                 <option value="Cash">Cash 💵</option>
-                <option value="Transfer">Transfer (Moniepoint) 💳</option>
+                <option value="Transfer">Transfer 💳</option>
               </select>
             </div>
             <div class="col-md-4 d-flex align-items-end">
@@ -965,17 +884,14 @@
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+ <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script>
     // --- TRIPLE SAVING METHOD CONFIGURATION (SUPABASE + LOCALSTORAGE) ---
-    const SUPABASE_URL = 'https://puktzlekeoojrlxrkziu.supabase.co'; 
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB1a3R6bGVrZW9vanJseHJreml1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1NTI5MzAsImV4cCI6MjEwMDEyODkzMH0.uSH3tcofOW-LiBHraIb_eDi2hI3_ZUN1b9JjIJ42Z-Q'; 
+    const SUPABASE_URL = 'https://puktzlekeoojrlxrkziu.supabase.co'; // Your Supabase Project URL
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB1a3R6bGVrZW9vanJseHJreml1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1NTI5MzAsImV4cCI6MjEwMDEyODkzMH0.uSH3tcofOW-LiBHraIb_eDi2hI3_ZUN1b9JjIJ42Z-Q'; // Your Supabase Anon/Public Key
     const supabaseClient = (window.supabase && SUPABASE_URL !== 'YOUR_SUPABASE_URL_HERE') 
       ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) 
       : null;
-
-    // --- MONIEPOINT WEBHOOK URL CONFIGURATION ---
-    const MONIEPOINT_WEBHOOK_URL = 'https://sky-moniepoint-webhook.netlify.app';[cite: 3]
 
     // --- AUTHENTICATION ---
     const AUTH_KEY = "sky_modernize_auth";
@@ -1000,126 +916,18 @@
       sales: [], 
       returns: [], 
       supplierReturns: [],
-      requisitions: [],
-      moniepointTransactions: []
+      requisitions: []
     };
 
     if (!db.supplierReturns) db.supplierReturns = [];
     if (!db.requisitions) db.requisitions = [];
-    if (!db.moniepointTransactions) db.moniepointTransactions = [];
-
-    // --- POP-UP NOTIFICATION TOAST FUNCTION ---
-    function showNotificationToast(title, message, type = 'success') {
-      const container = document.getElementById('toast-container');
-      const toastId = 'toast-' + Date.now();
-      
-      const bgClass = type === 'success' ? 'bg-success' : (type === 'danger' ? 'bg-danger' : 'bg-warning text-dark');
-      
-      const toastHTML = `
-        <div id="${toastId}" class="toast align-items-center text-white ${bgClass} border-0 shadow mb-2" role="alert" aria-live="assertive" aria-atomic="true">
-          <div class="d-flex">
-            <div class="toast-body">
-              <strong>${title}</strong><br>${message}
-            </div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-          </div>
-        </div>
-      `;
-      container.insertAdjacentHTML('beforeend', toastHTML);
-      const toastElement = document.getElementById(toastId);
-      const bsToast = new bootstrap.Toast(toastElement, { delay: 6000 });
-      bsToast.show();
-      
-      toastElement.addEventListener('hidden.bs.toast', () => {
-        toastElement.remove();
-      });
-    }
-
-    // --- SIMULATE OR FETCH MONIEPOINT WEBHOOK INCOMING PAYMENT ---
-    async function fetchMoniepointTransactions() {
-      try {
-        // If your netlify webhook exposes a GET endpoint returning JSON logs, fetch it here:
-        // const response = await fetch(MONIEPOINT_WEBHOOK_URL);
-        // const data = await response.json();
-        renderMoniepointHistory();
-        showNotificationToast("Moniepoint Sync", "Payment feed successfully updated.", "success");
-      } catch (err) {
-        console.error("Webhook fetch error:", err);
-      }
-    }
-
-    function testSimulateMoniepointWebhook() {
-      // Simulate incoming webhook payload from Moniepoint
-      const sampleTx = {
-        reference: "MPN-" + Math.floor(100000 + Math.random() * 900000),
-        customerName: "Walk-in Customer (" + Math.floor(Math.random() * 100) + ")",
-        amount: Math.floor((Math.random() * 50 + 5) * 1000),
-        status: "SUCCESSFUL",
-        timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19)
-      };
-
-      db.moniepointTransactions.push(sampleTx);
-      saveDB();
-      
-      // Trigger Pop-up Alert
-      showNotificationToast("💳 New Moniepoint Payment!", `Received ₦${sampleTx.amount.toLocaleString()} from ${sampleTx.customerName}`, "success");
-    }
-
-    function clearMoniepointHistory() {
-      if (confirm("Are you sure you want to clear Moniepoint transaction logs?")) {
-        db.moniepointTransactions = [];
-        saveDB();
-        renderMoniepointHistory();
-      }
-    }
-
-    function renderMoniepointHistory() {
-      const tbody = document.getElementById('moniepoint-table-body');
-      const searchQuery = document.getElementById('moniepoint-search-input').value.trim().toLowerCase();
-      
-      const txs = db.moniepointTransactions || [];
-      const filtered = txs.slice().reverse().filter(tx => {
-        if (!searchQuery) return true;
-        return (tx.reference && tx.reference.toLowerCase().includes(searchQuery)) ||
-               (tx.customerName && tx.customerName.toLowerCase().includes(searchQuery)) ||
-               (tx.amount && tx.amount.toString().includes(searchQuery));
-      });
-
-      let totalInflow = txs.filter(t => t.status === 'SUCCESSFUL').reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
-      document.getElementById('moniepoint-total-amount').innerText = `₦${totalInflow.toLocaleString()}`;
-      document.getElementById('moniepoint-total-count').innerText = txs.length;
-
-      if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">No matching Moniepoint payment logs found.</td></tr>`;
-        return;
-      }
-
-      tbody.innerHTML = filtered.map((tx, idx) => `
-        <tr>
-          <td>${tx.timestamp}</td>
-          <td><code>${tx.reference}</code></td>
-          <td><b>${tx.customerName || 'N/A'}</b></td>
-          <td class="text-success fw-bold">₦${Number(tx.amount).toLocaleString()}</td>
-          <td><span class="badge bg-success">${tx.status || 'SUCCESSFUL'}</span></td>
-          <td>
-            <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="deleteMoniepointTx(${txs.indexOf(tx)})">Delete</button>
-          </td>
-        </tr>
-      `).join('');
-    }
-
-    function deleteMoniepointTx(index) {
-      if (confirm("Delete this Moniepoint log record?")) {
-        db.moniepointTransactions.splice(index, 1);
-        saveDB();
-        renderMoniepointHistory();
-      }
-    }
 
     // --- TRIPLE SAVING METHOD IMPLEMENTATION ---
     async function saveDB() {
+      // 1. Save to local browser storage
       localStorage.setItem(DB_KEY, JSON.stringify(db));
 
+      // 2. Save concurrently to Supabase database (Cloud persistent storage)
       if (supabaseClient) {
         try {
           const { error } = await supabaseClient
@@ -1130,13 +938,14 @@
             console.error('Supabase sync error:', error.message);
           }
         } catch (err) {
-          console.error('Network error during Supabase sync:', err);
+          console.error('Network error during Supabase triple saving sync:', err);
         }
       }
 
       renderAll();
     }
 
+    // Initial load sync check from Supabase on startup
     async function initTripleSavingSync() {
       if (supabaseClient) {
         try {
@@ -1150,7 +959,6 @@
             db = data.payload;
             if (!db.supplierReturns) db.supplierReturns = [];
             if (!db.requisitions) db.requisitions = [];
-            if (!db.moniepointTransactions) db.moniepointTransactions = [];
             localStorage.setItem(DB_KEY, JSON.stringify(db));
           }
         } catch (e) {
@@ -1160,10 +968,14 @@
       renderAll();
     }
 
+    // --- AUTO-INITIALIZE ON PHONE & LAPTOP BOOT ---
     window.addEventListener('DOMContentLoaded', () => {
       initTripleSavingSync();
     });
 
+    // [Rest of your helper functions, event listeners, and render loops continue here...]
+   
+    // --- CSV EXPORT UTILITY ---
     function downloadCSV(csvContent, filename) {
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement("a");
@@ -1546,9 +1358,6 @@
         showPage('manager-auth');
         return;
       }
-      if (pageId === 'moniepoint') {
-        renderMoniepointHistory();
-      }
       showPage(pageId);
     }
 
@@ -1736,7 +1545,6 @@
       renderReturns();
       renderSupplierReturns();
       renderRequisitions();
-      renderMoniepointHistory();
     }
 
     function handleDashboardFilterChange() {
@@ -2192,7 +2000,7 @@
         tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-3">No matching sales records found for this period</td></tr>`;
       } else {
         tbody.innerHTML = filteredSales.map(sale => {
-          const paymentBadge = sale.paymentMethod === 'Transfer' ? '<span class="badge bg-info text-dark">Transfer (Moniepoint) 💳</span>' : '<span class="badge bg-success">Cash 💵</span>';
+          const paymentBadge = sale.paymentMethod === 'Transfer' ? '<span class="badge bg-info text-dark">Transfer 💳</span>' : '<span class="badge bg-success">Cash 💵</span>';
           return `
             <tr>
               <td>${sale.date}</td>
@@ -2621,33 +2429,29 @@
       const { supReturnsData, periodLabel } = getFilteredSupplierReturnsData();
       document.getElementById('sup-returns-badge-period').innerText = periodLabel;
 
-      const filtered = supReturnsData.map((item, originalIdx) => ({ ...item, originalIdx })).slice().reverse().filter(item => {
+      const filtered = supReturnsData.map((item, originalIdx) => ({ ...item, originalIdx })).slice().reverse().filter(r => {
         if (!filterQuery) return true;
         const q = filterQuery.toLowerCase();
-        return (item.model && item.model.toLowerCase().includes(q)) ||
-               (item.supplier && item.supplier.toLowerCase().includes(q)) ||
-               (item.reason && item.reason.toLowerCase().includes(q)) ||
-               (item.status && item.status.toLowerCase().includes(q)) ||
-               (item.date && item.date.includes(q));
+        return (r.model && r.model.toLowerCase().includes(q)) ||
+               (r.supplier && r.supplier.toLowerCase().includes(q)) ||
+               (r.reason && r.reason.toLowerCase().includes(q)) ||
+               (r.status && r.status.toLowerCase().includes(q)) ||
+               (r.date && r.date.includes(q));
       });
 
       if (filtered.length === 0) {
         tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-3">No matching supplier return records found for this period</td></tr>`;
       } else {
-        tbody.innerHTML = filtered.map(item => `
+        tbody.innerHTML = filtered.map(r => `
           <tr>
-            <td>${item.date}</td>
-            <td><b>${item.model}</b></td>
-            <td>${item.supplier}</td>
-            <td>${item.qty}</td>
-            <td>${item.reason}</td>
-            <td>
-              <span class="badge ${item.status === 'Replaced / Received' ? 'bg-success' : (item.status === 'Sent Back' ? 'bg-primary' : 'bg-warning text-dark')}">
-                ${item.status}
-              </span>
-            </td>
+            <td>${r.date}</td>
+            <td><b>${r.model}</b></td>
+            <td>${r.supplier}</td>
+            <td>${r.qty}</td>
+            <td>${r.reason}</td>
+            <td><span class="badge ${r.status === 'Replaced / Received' ? 'bg-success' : (r.status === 'Sent Back' ? 'bg-info text-dark' : 'bg-warning text-dark')}">${r.status}</span></td>
             <td class="no-print">
-              <button class="btn btn-sm btn-danger" onclick="deleteSupplierReturn(${item.originalIdx})">Delete</button>
+              <button class="btn btn-sm btn-danger" onclick="deleteSupplierReturn(${r.originalIdx})">Delete</button>
             </td>
           </tr>
         `).join('');
@@ -2662,7 +2466,7 @@
 
     function sendSupplierReturnsToGmail() {
       const { supReturnsData, periodLabel } = getFilteredSupplierReturnsData();
-      if (supReturnsData.length === 0) return alert(`No supplier return records available for "${periodLabel}" to send!`);
+      if (supReturnsData.length === 0) return alert(`No supplier returns available for "${periodLabel}" to send!`);
 
       let emailBody = `SKY MODERNIZE SAVE TECHNOLOGY LTD - Supplier Returns Report\n`;
       emailBody += `Report Period: ${periodLabel}\n\n`;
@@ -2685,15 +2489,28 @@
       const status = document.getElementById('sup-return-status').value;
       const reason = document.getElementById('sup-return-reason').value.trim();
 
-      if (!model || isNaN(qty) || qty <= 0) return alert("Please fill out valid model and quantity!");
-
       const stockItem = db.stock.find(s => s.model.toLowerCase() === model.toLowerCase());
-      if (status === 'Replaced / Received') {
-        if (stockItem) stockItem.qty += qty;
-      } else {
+
+      if (status === 'Sent Back' || status === 'Replaced / Received') {
         if (stockItem) {
-          if (stockItem.qty < qty) return alert("Insufficient stock quantity to return to supplier!");
+          if (stockItem.qty < qty) return alert(`Insufficient stock! Only ${stockItem.qty} pcs available to return to supplier.`);
           stockItem.qty -= qty;
+        }
+      }
+
+      if (status === 'Replaced / Received') {
+        if (stockItem) {
+          stockItem.qty += qty;
+        } else {
+          db.stock.push({
+            model: model,
+            category: "General",
+            subcat: "",
+            qty: qty,
+            cost_price: 0,
+            sell_price: 0,
+            supplier: supplier
+          });
         }
       }
 
@@ -2720,38 +2537,36 @@
 
     function renderRequisitions(filterQuery = "") {
       const tbody = document.getElementById('requisition-table-body');
-      const reqs = db.requisitions || [];
-      const filtered = reqs.map((req, originalIdx) => ({ ...req, originalIdx })).slice().reverse().filter(req => {
+      const filtered = db.requisitions.map((item, originalIdx) => ({ ...item, originalIdx })).slice().reverse().filter(r => {
         if (!filterQuery) return true;
         const q = filterQuery.toLowerCase();
-        return (req.id && req.id.toLowerCase().includes(q)) ||
-               (req.item && req.item.toLowerCase().includes(q)) ||
-               (req.category && req.category.toLowerCase().includes(q)) ||
-               (req.supplier && req.supplier.toLowerCase().includes(q)) ||
-               (req.status && req.status.toLowerCase().includes(q)) ||
-               (req.date && req.date.includes(q));
+        return (r.id && r.id.toLowerCase().includes(q)) ||
+               (r.item && r.item.toLowerCase().includes(q)) ||
+               (r.category && r.category.toLowerCase().includes(q)) ||
+               (r.supplier && r.supplier.toLowerCase().includes(q)) ||
+               (r.status && r.status.toLowerCase().includes(q)) ||
+               (r.date && r.date.includes(q));
       });
 
       if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="10" class="text-center text-muted py-3">No matching requisition orders found</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" class="text-center text-muted py-3">No matching purchase requisitions found</td></tr>`;
       } else {
-        tbody.innerHTML = filtered.map(req => {
-          const estUnitCost = Number(req.cost) || 0;
-          const estTotal = estUnitCost * req.qty;
+        tbody.innerHTML = filtered.map(r => {
+          const estTotal = (r.cost || 0) * r.qty;
           return `
             <tr>
-              <td><code>${req.id}</code></td>
-              <td>${req.date}</td>
-              <td><b>${req.item}</b></td>
-              <td>${req.category}</td>
-              <td><b>${req.qty}</b></td>
-              <td>₦${estUnitCost.toLocaleString()}</td>
+              <td><b>${r.id}</b></td>
+              <td>${r.date}</td>
+              <td><b>${r.item}</b></td>
+              <td><span class="badge bg-secondary">${r.category}</span></td>
+              <td><b>${r.qty}</b></td>
+              <td>₦${(r.cost || 0).toLocaleString()}</td>
               <td class="text-success fw-bold">₦${estTotal.toLocaleString()}</td>
-              <td>${req.supplier || '-'}</td>
-              <td><span class="badge ${req.status === 'Approved' ? 'bg-success' : 'bg-warning text-dark'}">${req.status}</span></td>
+              <td>${r.supplier || '-'}</td>
+              <td><span class="badge ${r.status === 'Approved' ? 'bg-success' : 'bg-warning text-dark'}">${r.status}</span></td>
               <td class="no-print">
-                <button class="btn btn-sm btn-outline-primary me-1" onclick="openEditRequisitionModal(${req.originalIdx})">Edit</button>
-                <button class="btn btn-sm btn-danger" onclick="deleteRequisition(${req.originalIdx})">Delete</button>
+                <button class="btn btn-sm btn-primary me-1" onclick="openEditRequisitionModal(${r.originalIdx})">Edit</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteRequisition(${r.originalIdx})">Delete</button>
               </td>
             </tr>
           `;
@@ -2764,12 +2579,12 @@
     }
 
     function sendRequisitionToGmail() {
-      if (db.requisitions.length === 0) return alert("No purchase requisitions to send!");
+      if (db.requisitions.length === 0) return alert("No purchase requisitions available to send!");
       let emailBody = `SKY MODERNIZE SAVE TECHNOLOGY LTD - Purchase Requisitions\n\n`;
       db.requisitions.forEach(r => {
-        emailBody += `[${r.id}] ${r.date} - ${r.item} (${r.category}) | Qty: ${r.qty} | Est. Cost: ₦${(r.cost || 0) * r.qty} | Vendor: ${r.supplier || 'N/A'} | Status: ${r.status}\n`;
+        emailBody += `Req ID: ${r.id} | Date: ${r.date} | Item: ${r.item} (${r.category}) | Qty: ${r.qty} | Est Cost: ₦${(r.cost || 0) * r.qty} | Supplier: ${r.supplier || 'N/A'} | Status: ${r.status}\n`;
       });
-      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(`SKY MODERNIZE - Purchase Requisition Orders`)}&body=${encodeURIComponent(emailBody)}`;
+      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent('SKY MODERNIZE - Purchase Requisition Orders')}&body=${encodeURIComponent(emailBody)}`;
       window.open(gmailUrl, '_blank');
     }
 
@@ -2778,11 +2593,12 @@
       const item = document.getElementById('req-item').value.trim();
       const category = document.getElementById('req-cat').value.trim();
       const qty = parseInt(document.getElementById('req-qty').value);
-      const cost = parseFloat(document.getElementById('req-cost').value) || 0;
+      const cost = parseInt(document.getElementById('req-cost').value) || 0;
       const supplier = document.getElementById('req-supplier').value.trim();
       const notes = document.getElementById('req-notes').value.trim();
 
       const reqId = "REQ-" + Math.floor(1000 + Math.random() * 9000);
+
       db.requisitions.push({
         id: reqId,
         date: new Date().toISOString().split('T')[0],
@@ -2797,11 +2613,11 @@
 
       saveDB();
       e.target.reset();
-      alert("✅ Purchase requisition submitted successfully!");
+      alert("✅ Purchase Requisition successfully submitted!");
     });
 
     function deleteRequisition(index) {
-      if (confirm("Delete this requisition record?")) {
+      if (confirm("Delete this requisition order?")) {
         db.requisitions.splice(index, 1);
         saveDB();
       }
@@ -2826,28 +2642,22 @@
     document.getElementById('edit-stock-form').addEventListener('submit', (e) => {
       e.preventDefault();
       const index = parseInt(document.getElementById('edit-stk-index').value);
-      const item = db.stock[index];
-      if (item) {
-        item.model = document.getElementById('edit-stk-model').value.trim();
-        item.category = document.getElementById('edit-stk-cat').value.trim();
-        item.subcat = document.getElementById('edit-stk-subcat').value.trim();
-        item.qty = parseInt(document.getElementById('edit-stk-qty').value);
-        item.cost_price = parseFloat(document.getElementById('edit-stk-cost').value);
-        item.sell_price = parseFloat(document.getElementById('edit-stk-sell').value);
-        item.supplier = document.getElementById('edit-stk-supplier').value.trim();
+      if (isNaN(index) || !db.stock[index]) return;
 
-        saveDB();
-        bootstrap.Modal.getInstance(document.getElementById('editStockModal')).hide();
-        alert("✅ Stock updated successfully!");
-      }
+      db.stock[index] = {
+        model: document.getElementById('edit-stk-model').value.trim(),
+        category: document.getElementById('edit-stk-cat').value.trim(),
+        subcat: document.getElementById('edit-stk-subcat').value.trim(),
+        qty: parseInt(document.getElementById('edit-stk-qty').value),
+        cost_price: parseInt(document.getElementById('edit-stk-cost').value),
+        sell_price: parseInt(document.getElementById('edit-stk-sell').value),
+        supplier: document.getElementById('edit-stk-supplier').value.trim()
+      };
+
+      saveDB();
+      bootstrap.Modal.getInstance(document.getElementById('editStockModal')).hide();
+      alert("✅ Stock item successfully updated!");
     });
-
-    function deleteStock(index) {
-      if (confirm("Are you sure you want to delete this stock entry?")) {
-        db.stock.splice(index, 1);
-        saveDB();
-      }
-    }
 
     function openEditRequisitionModal(index) {
       const req = db.requisitions[index];
@@ -2867,20 +2677,26 @@
     document.getElementById('edit-requisition-form').addEventListener('submit', (e) => {
       e.preventDefault();
       const index = parseInt(document.getElementById('edit-req-index').value);
-      const req = db.requisitions[index];
-      if (req) {
-        req.item = document.getElementById('edit-req-item').value.trim();
-        req.category = document.getElementById('edit-req-cat').value.trim();
-        req.qty = parseInt(document.getElementById('edit-req-qty').value);
-        req.cost = parseFloat(document.getElementById('edit-req-cost').value) || 0;
-        req.supplier = document.getElementById('edit-req-supplier').value.trim();
-        req.notes = document.getElementById('edit-req-notes').value.trim();
+      if (isNaN(index) || !db.requisitions[index]) return;
 
-        saveDB();
-        bootstrap.Modal.getInstance(document.getElementById('editRequisitionModal')).hide();
-        alert("✅ Requisition updated successfully!");
-      }
+      db.requisitions[index].item = document.getElementById('edit-req-item').value.trim();
+      db.requisitions[index].category = document.getElementById('edit-req-cat').value.trim();
+      db.requisitions[index].qty = parseInt(document.getElementById('edit-req-qty').value);
+      db.requisitions[index].cost = parseInt(document.getElementById('edit-req-cost').value) || 0;
+      db.requisitions[index].supplier = document.getElementById('edit-req-supplier').value.trim();
+      db.requisitions[index].notes = document.getElementById('edit-req-notes').value.trim();
+
+      saveDB();
+      bootstrap.Modal.getInstance(document.getElementById('editRequisitionModal')).hide();
+      alert("✅ Purchase Requisition successfully updated!");
     });
+
+    function deleteStock(index) {
+      if (confirm("Are you sure you want to delete this stock item?")) {
+        db.stock.splice(index, 1);
+        saveDB();
+      }
+    }
 
     document.getElementById('stock-form').addEventListener('submit', (e) => {
       e.preventDefault();
@@ -2888,15 +2704,20 @@
       const category = document.getElementById('stk-cat').value.trim();
       const subcat = document.getElementById('stk-subcat').value.trim();
       const qty = parseInt(document.getElementById('stk-qty').value);
-      const cost_price = parseFloat(document.getElementById('stk-cost').value);
-      const sell_price = parseFloat(document.getElementById('stk-sell').value);
+      const cost_price = parseInt(document.getElementById('stk-cost').value);
+      const sell_price = parseInt(document.getElementById('stk-sell').value);
       const supplier = document.getElementById('stk-supplier').value.trim();
 
       db.stock.push({ model, category, subcat, qty, cost_price, sell_price, supplier });
       saveDB();
       e.target.reset();
-      alert("✅ Stock entry added successfully!");
+      alert("✅ New stock entry successfully added!");
     });
+
+    // Run initialization on window load
+    window.onload = function() {
+      initTripleSavingSync();
+    };
   </script>
 </body>
 </html>
