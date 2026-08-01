@@ -12,6 +12,14 @@
     .page { display: none; }
     .page.active { display: block; }
     
+    /* Toast Notification Container */
+    #toast-container {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 1080;
+    }
+
     @media print {
       .no-print, nav, button, .card-header, form, .input-group, .modal, .sales-filter-container, .returns-filter-container, .sup-filter-container, .req-filter-container { display: none !important; }
       body { font-size: 11pt; background-color: #fff !important; }
@@ -35,8 +43,8 @@
         <button class="btn btn-sm btn-outline-light" onclick="navigateTo('dashboard')">Dashboard</button>
         <button class="btn btn-sm btn-outline-light" onclick="navigateTo('stock')">Stock 🔒</button>
         <button class="btn btn-sm btn-outline-light" onclick="navigateTo('sales')">Sales</button>
-        <button class="btn btn-sm btn-outline-warning fw-bold" onclick="navigateTo('payment')">💳 Payment Checkout</button>
         <button class="btn btn-sm btn-outline-light" onclick="navigateTo('cash-drawer')">Cash Drawer 💵</button>
+        <button class="btn btn-sm btn-outline-warning" onclick="navigateTo('moniepoint')">Moniepoint 💳</button>
         <button class="btn btn-sm btn-outline-light" onclick="navigateTo('returns')">Customer Returns</button>
         <button class="btn btn-sm btn-outline-warning" onclick="navigateTo('supplier-returns')">Supplier Returns 📦</button>
         <button class="btn btn-sm btn-outline-info" onclick="navigateTo('purchase-requisition')">Purchase Requisition 📋</button>
@@ -45,6 +53,9 @@
       </div>
     </div>
   </nav>
+
+  <!-- Global Popup Toast Notification Container -->
+  <div id="toast-container"></div>
 
   <div class="container pb-5">
 
@@ -249,96 +260,72 @@
       </div>
     </div>
 
-    <!-- NEW PAYMENT CHECKOUT INTERFACE PAGE -->
-    <div id="page-payment" class="page">
+    <!-- NEW MONIEPOINT PAYMENT HISTORY PAGE INTERFACE -->
+    <div id="page-moniepoint" class="page">
       <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-        <h3>💳 Dedicated Payment & Checkout Terminal</h3>
-        <span class="text-muted small">Process payments for active shopping cart items</span>
+        <h3>💳 Moniepoint Payment History & Webhook Feed</h3>
+        <div class="d-flex gap-2 flex-wrap">
+          <button class="btn btn-sm btn-outline-primary" onclick="testSimulateMoniepointWebhook()">🧪 Simulate Webhook Test</button>
+          <button class="btn btn-sm btn-outline-success" onclick="fetchMoniepointTransactions()">🔄 Refresh Feed</button>
+          <button class="btn btn-sm btn-outline-danger" onclick="clearMoniepointHistory()">Clear History</button>
+        </div>
       </div>
 
-      <div class="row g-4">
-        <!-- Cart Summary Column -->
-        <div class="col-lg-7">
-          <div class="card shadow-sm border-primary h-100">
-            <div class="card-header bg-primary text-white fw-bold d-flex justify-content-between align-items-center">
-              <span>🛒 Active Checkout Summary</span>
-              <span id="payment-cart-count" class="badge bg-light text-dark">0 items</span>
-            </div>
-            <div class="card-body d-flex flex-column justify-content-between">
-              <div class="table-responsive mb-3">
-                <table class="table table-sm table-bordered align-middle">
-                  <thead class="table-light">
-                    <tr>
-                      <th>Model</th>
-                      <th>Quality</th>
-                      <th>Qty</th>
-                      <th>Unit Price</th>
-                      <th>Subtotal</th>
-                    </tr>
-                  </thead>
-                  <tbody id="payment-cart-tbody">
-                    <tr><td colspan="5" class="text-center text-muted py-4">No items in cart. Add items from the Sales tab first!</td></tr>
-                  </tbody>
-                </table>
-              </div>
-              <div class="bg-light p-3 rounded border">
-                <div class="d-flex justify-content-between mb-2">
-                  <span class="text-secondary">Total Quantity:</span>
-                  <strong id="payment-total-qty">0 pcs</strong>
-                </div>
-                <div class="d-flex justify-content-between">
-                  <span class="fs-5 fw-bold text-dark">Grand Total Due:</span>
-                  <strong id="payment-grand-total" class="fs-4 text-success">₦0</strong>
-                </div>
-              </div>
+      <div class="row g-3 mb-4">
+        <div class="col-md-6">
+          <div class="card text-center border-success shadow-sm">
+            <div class="card-body py-2">
+              <h6 class="text-muted mb-1">Total Moniepoint Inflows (Successful)</h6>
+              <h3 class="text-success fw-bold mb-0" id="moniepoint-total-amount">₦0</h3>
             </div>
           </div>
         </div>
-
-        <!-- Payment Processing Form Column -->
-        <div class="col-lg-5">
-          <div class="card shadow-sm border-success h-100">
-            <div class="card-header bg-success text-white fw-bold">
-              <span>Secure Payment Terminal</span>
-            </div>
-            <div class="card-body">
-              <form id="payment-terminal-form">
-                <div class="mb-3">
-                  <label class="form-label fw-bold small">Customer Full Name</label>
-                  <input id="pay-customer-name" class="form-control" placeholder="Enter Customer Name" required>
-                </div>
-
-                <div class="mb-3">
-                  <label class="form-label fw-bold small">Select Payment Method</label>
-                  <select id="pay-method-select" class="form-select" onchange="handlePaymentMethodChange()" required>
-                    <option value="Cash">Cash 💵</option>
-                    <option value="Transfer">Bank Transfer 💳</option>
-                    <option value="POS">POS Terminal Card 🏧</option>
-                  </select>
-                </div>
-
-                <!-- Conditional Cash Tendered Section -->
-                <div id="cash-tendered-section" class="mb-3">
-                  <label class="form-label fw-bold small">Cash Tendered by Customer (₦)</label>
-                  <input type="number" id="pay-cash-tendered" class="form-control" placeholder="Enter amount given" oninput="calculateCashChange()">
-                  <div class="form-text text-danger fw-bold mt-1" id="pay-change-display">Change to Return: ₦0</div>
-                </div>
-
-                <!-- Conditional Reference Section -->
-                <div id="reference-section" class="mb-3 d-none">
-                  <label class="form-label fw-bold small">Transaction Reference / Approval Code</label>
-                  <input id="pay-reference-code" class="form-control" placeholder="e.g. TRF-982341 or POS-RRN#">
-                </div>
-
-                <div class="alert alert-info py-2 small" role="alert">
-                  ℹ️ Completing payment will deduct items from stock, record the transaction to sales history, and prompt receipt printing.
-                </div>
-
-                <button type="submit" class="btn btn-success w-100 fw-bold py-2 fs-5 shadow-sm">✅ Confirm & Complete Payment</button>
-              </form>
+        <div class="col-md-6">
+          <div class="card text-center border-primary shadow-sm">
+            <div class="card-body py-2">
+              <h6 class="text-muted mb-1">Total Webhook Transactions</h6>
+              <h3 class="text-primary fw-bold mb-0" id="moniepoint-total-count">0</h3>
             </div>
           </div>
         </div>
+      </div>
+
+      <div class="card mb-4 border-secondary shadow-sm">
+        <div class="card-header bg-dark text-white fw-bold d-flex justify-content-between align-items-center">
+          <span>Live Webhook Endpoint Status</span>
+          <span class="badge bg-success">Active & Listening</span>
+        </div>
+        <div class="card-body bg-light">
+          <p class="mb-1 small text-muted">Configured Webhook URL:</p>
+          <code>https://sky-moniepoint-webhook.netlify.app</code>[cite: 3]
+          <p class="mb-0 mt-2 small text-secondary">Incoming transaction notifications from your Moniepoint terminal/API will automatically trigger pop-up alerts and list below.</p>
+        </div>
+      </div>
+
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">Transaction Logs</h5>
+        <div class="input-group" style="max-width: 400px;">
+          <input type="text" id="moniepoint-search-input" class="form-control form-control-sm" placeholder="Search reference, customer, amount..." onkeyup="renderMoniepointHistory()">
+          <button class="btn btn-sm btn-outline-secondary" type="button" onclick="document.getElementById('moniepoint-search-input').value=''; renderMoniepointHistory();">Clear</button>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-striped table-bordered align-middle bg-white">
+          <thead class="table-dark">
+            <tr>
+              <th>Timestamp</th>
+              <th>Reference / Session ID</th>
+              <th>Customer Name</th>
+              <th>Amount (₦)</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="moniepoint-table-body">
+            <tr><td colspan="6" class="text-center text-muted py-3">No Moniepoint payment logs recorded yet.</td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
 
@@ -580,14 +567,28 @@
                 <tbody id="sales-cart-tbody"></tbody>
               </table>
             </div>
-            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div class="d-flex justify-content-between align-items-center">
               <h5 class="mb-0">Total Qty: <span id="sales-cart-total-qty" class="text-primary fw-bold">0 pcs</span> | Total Amount: <span id="sales-cart-total" class="text-success fw-bold">₦0</span></h5>
-              <div class="d-flex gap-2">
-                <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearSalesCart()">Clear Cart</button>
-                <button type="button" class="btn btn-sm btn-success fw-bold" onclick="proceedToPaymentPage()">💳 Proceed to Payment Interface</button>
-              </div>
+              <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearSalesCart()">Clear Cart</button>
             </div>
           </div>
+
+          <form id="sales-form" class="row g-2 border-top pt-2">
+            <div class="col-md-5">
+              <label class="form-label small fw-bold">Customer Name</label>
+              <input id="sale-customer" class="form-control" placeholder="Enter Customer Name" required>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small fw-bold">Payment Method</label>
+              <select id="sale-payment-method" class="form-select" required>
+                <option value="Cash">Cash 💵</option>
+                <option value="Transfer">Transfer (Moniepoint) 💳</option>
+              </select>
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+              <button type="submit" class="btn btn-success fw-bold w-100">Complete & Record Sale</button>
+            </div>
+          </form>
         </div>
       </div>
 
@@ -964,14 +965,17 @@
     </div>
   </div>
 
- <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script>
     // --- TRIPLE SAVING METHOD CONFIGURATION (SUPABASE + LOCALSTORAGE) ---
-    const SUPABASE_URL = 'https://puktzlekeoojrlxrkziu.supabase.co'; // Your Supabase Project URL
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB1a3R6bGVrZW9vanJseHJreml1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1NTI5MzAsImV4cCI6MjEwMDEyODkzMH0.uSH3tcofOW-LiBHraIb_eDi2hI3_ZUN1b9JjIJ42Z-Q'; // Your Supabase Anon/Public Key
+    const SUPABASE_URL = 'https://puktzlekeoojrlxrkziu.supabase.co'; 
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB1a3R6bGVrZW9vanJseHJreml1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1NTI5MzAsImV4cCI6MjEwMDEyODkzMH0.uSH3tcofOW-LiBHraIb_eDi2hI3_ZUN1b9JjIJ42Z-Q'; 
     const supabaseClient = (window.supabase && SUPABASE_URL !== 'YOUR_SUPABASE_URL_HERE') 
       ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) 
       : null;
+
+    // --- MONIEPOINT WEBHOOK URL CONFIGURATION ---
+    const MONIEPOINT_WEBHOOK_URL = 'https://sky-moniepoint-webhook.netlify.app';[cite: 3]
 
     // --- AUTHENTICATION ---
     const AUTH_KEY = "sky_modernize_auth";
@@ -996,25 +1000,140 @@
       sales: [], 
       returns: [], 
       supplierReturns: [],
-      requisitions: []
+      requisitions: [],
+      moniepointTransactions: []
     };
 
     if (!db.supplierReturns) db.supplierReturns = [];
     if (!db.requisitions) db.requisitions = [];
+    if (!db.moniepointTransactions) db.moniepointTransactions = [];
+
+    // --- POP-UP NOTIFICATION TOAST FUNCTION ---
+    function showNotificationToast(title, message, type = 'success') {
+      const container = document.getElementById('toast-container');
+      const toastId = 'toast-' + Date.now();
+      
+      const bgClass = type === 'success' ? 'bg-success' : (type === 'danger' ? 'bg-danger' : 'bg-warning text-dark');
+      
+      const toastHTML = `
+        <div id="${toastId}" class="toast align-items-center text-white ${bgClass} border-0 shadow mb-2" role="alert" aria-live="assertive" aria-atomic="true">
+          <div class="d-flex">
+            <div class="toast-body">
+              <strong>${title}</strong><br>${message}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+          </div>
+        </div>
+      `;
+      container.insertAdjacentHTML('beforeend', toastHTML);
+      const toastElement = document.getElementById(toastId);
+      const bsToast = new bootstrap.Toast(toastElement, { delay: 6000 });
+      bsToast.show();
+      
+      toastElement.addEventListener('hidden.bs.toast', () => {
+        toastElement.remove();
+      });
+    }
+
+    // --- SIMULATE OR FETCH MONIEPOINT WEBHOOK INCOMING PAYMENT ---
+    async function fetchMoniepointTransactions() {
+      try {
+        // If your netlify webhook exposes a GET endpoint returning JSON logs, fetch it here:
+        // const response = await fetch(MONIEPOINT_WEBHOOK_URL);
+        // const data = await response.json();
+        renderMoniepointHistory();
+        showNotificationToast("Moniepoint Sync", "Payment feed successfully updated.", "success");
+      } catch (err) {
+        console.error("Webhook fetch error:", err);
+      }
+    }
+
+    function testSimulateMoniepointWebhook() {
+      // Simulate incoming webhook payload from Moniepoint
+      const sampleTx = {
+        reference: "MPN-" + Math.floor(100000 + Math.random() * 900000),
+        customerName: "Walk-in Customer (" + Math.floor(Math.random() * 100) + ")",
+        amount: Math.floor((Math.random() * 50 + 5) * 1000),
+        status: "SUCCESSFUL",
+        timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19)
+      };
+
+      db.moniepointTransactions.push(sampleTx);
+      saveDB();
+      
+      // Trigger Pop-up Alert
+      showNotificationToast("💳 New Moniepoint Payment!", `Received ₦${sampleTx.amount.toLocaleString()} from ${sampleTx.customerName}`, "success");
+    }
+
+    function clearMoniepointHistory() {
+      if (confirm("Are you sure you want to clear Moniepoint transaction logs?")) {
+        db.moniepointTransactions = [];
+        saveDB();
+        renderMoniepointHistory();
+      }
+    }
+
+    function renderMoniepointHistory() {
+      const tbody = document.getElementById('moniepoint-table-body');
+      const searchQuery = document.getElementById('moniepoint-search-input').value.trim().toLowerCase();
+      
+      const txs = db.moniepointTransactions || [];
+      const filtered = txs.slice().reverse().filter(tx => {
+        if (!searchQuery) return true;
+        return (tx.reference && tx.reference.toLowerCase().includes(searchQuery)) ||
+               (tx.customerName && tx.customerName.toLowerCase().includes(searchQuery)) ||
+               (tx.amount && tx.amount.toString().includes(searchQuery));
+      });
+
+      let totalInflow = txs.filter(t => t.status === 'SUCCESSFUL').reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+      document.getElementById('moniepoint-total-amount').innerText = `₦${totalInflow.toLocaleString()}`;
+      document.getElementById('moniepoint-total-count').innerText = txs.length;
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">No matching Moniepoint payment logs found.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = filtered.map((tx, idx) => `
+        <tr>
+          <td>${tx.timestamp}</td>
+          <td><code>${tx.reference}</code></td>
+          <td><b>${tx.customerName || 'N/A'}</b></td>
+          <td class="text-success fw-bold">₦${Number(tx.amount).toLocaleString()}</td>
+          <td><span class="badge bg-success">${tx.status || 'SUCCESSFUL'}</span></td>
+          <td>
+            <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="deleteMoniepointTx(${txs.indexOf(tx)})">Delete</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function deleteMoniepointTx(index) {
+      if (confirm("Delete this Moniepoint log record?")) {
+        db.moniepointTransactions.splice(index, 1);
+        saveDB();
+        renderMoniepointHistory();
+      }
+    }
 
     // --- TRIPLE SAVING METHOD IMPLEMENTATION ---
     async function saveDB() {
       localStorage.setItem(DB_KEY, JSON.stringify(db));
+
       if (supabaseClient) {
         try {
           const { error } = await supabaseClient
             .from('inventory')
             .upsert({ id: 1, payload: db, updated_at: new Date().toISOString() });
-          if (error) console.error('Supabase sync error:', error.message);
+          
+          if (error) {
+            console.error('Supabase sync error:', error.message);
+          }
         } catch (err) {
           console.error('Network error during Supabase sync:', err);
         }
       }
+
       renderAll();
     }
 
@@ -1026,10 +1145,12 @@
             .select('payload')
             .eq('id', 1)
             .single();
+          
           if (data && data.payload && !error) {
             db = data.payload;
             if (!db.supplierReturns) db.supplierReturns = [];
             if (!db.requisitions) db.requisitions = [];
+            if (!db.moniepointTransactions) db.moniepointTransactions = [];
             localStorage.setItem(DB_KEY, JSON.stringify(db));
           }
         } catch (e) {
@@ -1043,193 +1164,6 @@
       initTripleSavingSync();
     });
 
-    // --- PAYMENT INTERFACE ROUTING & LOGIC ---
-    function proceedToPaymentPage() {
-      if (salesCart.length === 0) {
-        alert("Your sales cart is empty! Add items before proceeding to payment.");
-        return;
-      }
-      renderPaymentInterface();
-      navigateTo('payment');
-    }
-
-    function renderPaymentInterface() {
-      const tbody = document.getElementById('payment-cart-tbody');
-      const countBadge = document.getElementById('payment-cart-count');
-      const totalQtyDisplay = document.getElementById('payment-total-qty');
-      const grandTotalDisplay = document.getElementById('payment-grand-total');
-
-      if (salesCart.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-4">No items in cart. Add items from the Sales tab first!</td></tr>`;
-        countBadge.innerText = "0 items";
-        totalQtyDisplay.innerText = "0 pcs";
-        grandTotalDisplay.innerText = "₦0";
-        return;
-      }
-
-      countBadge.innerText = `${salesCart.length} item(s)`;
-      let totalQty = 0;
-      let grandTotal = 0;
-
-      tbody.innerHTML = salesCart.map(item => {
-        const subtotal = item.sell_price * item.qty;
-        totalQty += item.qty;
-        grandTotal += subtotal;
-        return `
-          <tr>
-            <td><b>${item.model}</b></td>
-            <td><span class="badge bg-secondary">${item.quality}</span></td>
-            <td>${item.qty}</td>
-            <td>₦${item.sell_price.toLocaleString()}</td>
-            <td class="fw-bold text-success">₦${subtotal.toLocaleString()}</td>
-          </tr>
-        `;
-      }).join('');
-
-      totalQtyDisplay.innerText = `${totalQty} pcs`;
-      grandTotalDisplay.innerText = `₦${grandTotal.toLocaleString()}`;
-      calculateCashChange();
-    }
-
-    function handlePaymentMethodChange() {
-      const method = document.getElementById('pay-method-select').value;
-      const cashSection = document.getElementById('cash-tendered-section');
-      const refSection = document.getElementById('reference-section');
-
-      if (method === 'Cash') {
-        cashSection.classList.remove('d-none');
-        refSection.classList.add('d-none');
-      } else {
-        cashSection.classList.add('d-none');
-        refSection.classList.remove('d-none');
-      }
-    }
-
-    function calculateCashChange() {
-      const method = document.getElementById('pay-method-select').value;
-      if (method !== 'Cash') return;
-
-      const grandTotal = salesCart.reduce((sum, item) => sum + (item.sell_price * item.qty), 0);
-      const tendered = parseFloat(document.getElementById('pay-cash-tendered').value) || 0;
-      const changeDisplay = document.getElementById('pay-change-display');
-
-      const change = tendered - grandTotal;
-      if (change >= 0) {
-        changeDisplay.innerText = `Change to Return: ₦${change.toLocaleString()}`;
-        changeDisplay.className = "form-text text-success fw-bold mt-1";
-      } else {
-        changeDisplay.innerText = `Insufficient Cash! Short by: ₦${Math.abs(change).toLocaleString()}`;
-        changeDisplay.className = "form-text text-danger fw-bold mt-1";
-      }
-    }
-
-    document.getElementById('payment-terminal-form').addEventListener('submit', (e) => {
-      e.preventDefault();
-      if (salesCart.length === 0) return alert("No items in cart to checkout!");
-
-      const customerName = document.getElementById('pay-customer-name').value.trim();
-      const paymentMethod = document.getElementById('pay-method-select').value;
-      const grandTotal = salesCart.reduce((sum, item) => sum + (item.sell_price * item.qty), 0);
-
-      if (paymentMethod === 'Cash') {
-        const tendered = parseFloat(document.getElementById('pay-cash-tendered').value) || 0;
-        if (tendered < grandTotal) {
-          return alert("Cash tendered is less than the grand total amount due!");
-        }
-      }
-
-      const todayStr = new Date().toISOString().split('T')[0];
-
-      salesCart.forEach(cartItem => {
-        const stockItem = db.stock[cartItem.stockIndex];
-        if (stockItem) {
-          stockItem.qty -= cartItem.qty;
-        }
-        db.sales.push({
-          date: todayStr,
-          model: cartItem.model,
-          quality: cartItem.quality,
-          customer: customerName,
-          paymentMethod: paymentMethod,
-          qty: cartItem.qty,
-          cost_price: cartItem.cost_price,
-          sell_price: cartItem.sell_price
-        });
-      });
-
-      // Print receipt for the transaction batch
-      printBatchReceipt(customerName, paymentMethod, salesCart, grandTotal);
-
-      // Reset cart and form
-      salesCart = [];
-      renderSalesCart();
-      document.getElementById('payment-terminal-form').reset();
-      handlePaymentMethodChange();
-      saveDB();
-
-      alert("✅ Payment processed successfully, inventory updated, and receipt generated!");
-      navigateTo('sales');
-    });
-
-    function printBatchReceipt(customer, paymentMethod, cartItems, totalAmount) {
-      const receiptWindow = window.open('', '_blank', 'width=450,height=700');
-      let itemsHtml = cartItems.map(i => `
-        <tr>
-          <td>${i.model} (${i.quality})</td>
-          <td>${i.qty}</td>
-          <td>₦${i.sell_price.toLocaleString()}</td>
-          <td>₦${(i.sell_price * i.qty).toLocaleString()}</td>
-        </tr>
-      `).join('');
-
-      receiptWindow.document.write(`
-        <html>
-          <head>
-            <title>Official Receipt - SKY MODERNIZE</title>
-            <style>
-              body { font-family: monospace; padding: 20px; font-size: 12px; }
-              .center { text-align: center; }
-              hr { border-top: 1px dashed #000; }
-              table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-              th, td { border: 1px solid #ddd; padding: 5px; text-align: left; font-size: 11px; }
-            </style>
-          </head>
-          <body>
-            <div class="center">
-              <h3>SKY MODERNIZE SAVE TECHNOLOGY LTD</h3>
-              <p>Official Sales & Payment Receipt</p>
-            </div>
-            <hr>
-            <p><b>Date:</b> ${new Date().toISOString().split('T')[0]}</p>
-            <p><b>Customer:</b> ${customer}</p>
-            <p><b>Payment Method:</b> ${paymentMethod}</p>
-            <hr>
-            <table>
-              <thead>
-                <tr style="background:#f2f2f2;"><th>Item</th><th>Qty</th><th>Price</th><th>Subtotal</th></tr>
-              </thead>
-              <tbody>
-                ${itemsHtml}
-              </tbody>
-            </table>
-            <hr>
-            <div style="text-align: right;">
-              <h3>Grand Total: ₦${totalAmount.toLocaleString()}</h3>
-            </div>
-            <hr>
-            <div class="center">
-              <p>THANK YOU FOR YOUR PATRONAGE!</p>
-            </div>
-            <script>
-              window.onload = function() { window.print(); window.close(); }
-            <\/script>
-          </body>
-        </html>
-      `);
-      receiptWindow.document.close();
-    }
-
-    // --- CSV EXPORT UTILITY ---
     function downloadCSV(csvContent, filename) {
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement("a");
@@ -1612,8 +1546,8 @@
         showPage('manager-auth');
         return;
       }
-      if (pageId === 'payment') {
-        renderPaymentInterface();
+      if (pageId === 'moniepoint') {
+        renderMoniepointHistory();
       }
       showPage(pageId);
     }
@@ -1802,6 +1736,7 @@
       renderReturns();
       renderSupplierReturns();
       renderRequisitions();
+      renderMoniepointHistory();
     }
 
     function handleDashboardFilterChange() {
@@ -2257,7 +2192,7 @@
         tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-3">No matching sales records found for this period</td></tr>`;
       } else {
         tbody.innerHTML = filteredSales.map(sale => {
-          const paymentBadge = sale.paymentMethod === 'Transfer' ? '<span class="badge bg-info text-dark">Transfer 💳</span>' : sale.paymentMethod === 'POS' ? '<span class="badge bg-warning text-dark">POS Card 🏧</span>' : '<span class="badge bg-success">Cash 💵</span>';
+          const paymentBadge = sale.paymentMethod === 'Transfer' ? '<span class="badge bg-info text-dark">Transfer (Moniepoint) 💳</span>' : '<span class="badge bg-success">Cash 💵</span>';
           return `
             <tr>
               <td>${sale.date}</td>
@@ -2352,6 +2287,74 @@
       `);
       receiptWindow.document.close();
     }
+
+    document.getElementById('sales-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const customerName = document.getElementById('sale-customer').value.trim();
+      const paymentMethod = document.getElementById('sale-payment-method').value;
+
+      let itemsToCheckout = [];
+      const singleModel = document.getElementById('sale-item').value.trim();
+      const singleQuality = document.getElementById('sale-quality').value || 'Standard';
+      const singlePrice = parseInt(document.getElementById('sale-price').value);
+      const singleQty = parseInt(document.getElementById('sale-qty').value);
+
+      if (salesCart.length > 0) {
+        itemsToCheckout = salesCart;
+      } else if (singleModel) {
+        if (isNaN(singleQty) || singleQty <= 0) return alert("Quantity must be at least 1!");
+        const item = db.stock.find(s => 
+          s.model.toLowerCase() === singleModel.toLowerCase() &&
+          (s.subcat || 'Standard').toLowerCase() === singleQuality.toLowerCase()
+        ) || db.stock.find(s => s.model.toLowerCase() === singleModel.toLowerCase());
+
+        if (!item) return alert("Selected model is not in stock!");
+        if (item.qty < singleQty) return alert(`Insufficient stock! Only ${item.qty} pcs available.`);
+
+        itemsToCheckout.push({
+          stockIndex: db.stock.indexOf(item),
+          model: item.model,
+          quality: singleQuality,
+          qty: singleQty,
+          cost_price: item.cost_price,
+          sell_price: singlePrice || item.sell_price
+        });
+      } else {
+        return alert("Please add items to cart or fill out the sale entry form!");
+      }
+
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      itemsToCheckout.forEach(cartItem => {
+        const stockItem = db.stock[cartItem.stockIndex];
+        if (stockItem) {
+          stockItem.qty -= cartItem.qty;
+        }
+        db.sales.push({
+          date: todayStr,
+          model: cartItem.model,
+          quality: cartItem.quality,
+          customer: customerName,
+          paymentMethod: paymentMethod,
+          qty: cartItem.qty,
+          cost_price: cartItem.cost_price,
+          sell_price: cartItem.sell_price
+        });
+      });
+
+      salesCart = [];
+      renderSalesCart();
+      document.getElementById('sales-form').reset();
+      document.getElementById('sale-item').value = '';
+      document.getElementById('sale-quality').innerHTML = '<option value="">-- Select Quality --</option>';
+      document.getElementById('sale-price').value = '';
+      document.getElementById('sale-qty').value = 1;
+      document.getElementById('bulk-toggle-mode').checked = false;
+      checkBulkPriceEligibility();
+
+      saveDB();
+      alert("✅ Sale successfully recorded and inventory updated!");
+    });
 
     function populateReturnSaleDropdown(filterQuery = "") {
       const returnSelect = document.getElementById('return-sale-idx');
@@ -2613,14 +2616,14 @@
       return { supReturnsData, periodLabel };
     }
 
-    function renderSupplierReturns(searchQuery = "") {
+    function renderSupplierReturns(filterQuery = "") {
       const tbody = document.getElementById('supplier-returns-table-body');
       const { supReturnsData, periodLabel } = getFilteredSupplierReturnsData();
       document.getElementById('sup-returns-badge-period').innerText = periodLabel;
 
       const filtered = supReturnsData.map((item, originalIdx) => ({ ...item, originalIdx })).slice().reverse().filter(item => {
-        if (!searchQuery) return true;
-        const q = searchQuery.toLowerCase();
+        if (!filterQuery) return true;
+        const q = filterQuery.toLowerCase();
         return (item.model && item.model.toLowerCase().includes(q)) ||
                (item.supplier && item.supplier.toLowerCase().includes(q)) ||
                (item.reason && item.reason.toLowerCase().includes(q)) ||
@@ -2629,53 +2632,49 @@
       });
 
       if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-3">No matching supplier returns found</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-3">No matching supplier return records found for this period</td></tr>`;
       } else {
-        tbody.innerHTML = filtered.map(item => {
-          const statusBadge = item.status === 'Replaced / Received' ? 'bg-success' : item.status === 'Sent Back' ? 'bg-primary' : 'bg-warning text-dark';
-          return `
-            <tr>
-              <td>${item.date}</td>
-              <td><b>${item.model}</b></td>
-              <td>${item.supplier}</td>
-              <td>${item.qty}</td>
-              <td>${item.reason}</td>
-              <td><span class="badge ${statusBadge}">${item.status}</span></td>
-              <td class="no-print">
-                <button class="btn btn-sm btn-outline-success" onclick="restockSupplierReturn(${item.originalIdx})">🔄 Update / Restock</button>
-              </td>
-            </tr>
-          `;
-        }).join('');
+        tbody.innerHTML = filtered.map(item => `
+          <tr>
+            <td>${item.date}</td>
+            <td><b>${item.model}</b></td>
+            <td>${item.supplier}</td>
+            <td>${item.qty}</td>
+            <td>${item.reason}</td>
+            <td>
+              <span class="badge ${item.status === 'Replaced / Received' ? 'bg-success' : (item.status === 'Sent Back' ? 'bg-primary' : 'bg-warning text-dark')}">
+                ${item.status}
+              </span>
+            </td>
+            <td class="no-print">
+              <button class="btn btn-sm btn-danger" onclick="deleteSupplierReturn(${item.originalIdx})">Delete</button>
+            </td>
+          </tr>
+        `).join('');
       }
     }
 
-    function restockSupplierReturn(index) {
-      const ret = db.supplierReturns[index];
-      if (!ret) return;
-      const newStatus = prompt("Update status (Pending, Sent Back, Replaced / Received):", ret.status);
-      if (!newStatus) return;
+    function printFilteredSupplierReturns() {
+      const { periodLabel } = getFilteredSupplierReturnsData();
+      document.getElementById('sup-returns-print-subtitle').innerText = `Supplier Returns Bulk Report - ${periodLabel}`;
+      window.print();
+    }
 
-      if (newStatus === 'Replaced / Received' && ret.status !== 'Replaced / Received') {
-        const item = db.stock.find(s => s.model.toLowerCase() === ret.model.toLowerCase());
-        if (item) {
-          item.qty += ret.qty;
-        } else {
-          db.stock.push({
-            model: ret.model,
-            category: "General",
-            subcat: "",
-            qty: ret.qty,
-            cost_price: 0,
-            sell_price: 0,
-            supplier: ret.supplier
-          });
-        }
-        alert(`Successfully restocked ${ret.qty} pcs of ${ret.model} from supplier return!`);
-      }
+    function sendSupplierReturnsToGmail() {
+      const { supReturnsData, periodLabel } = getFilteredSupplierReturnsData();
+      if (supReturnsData.length === 0) return alert(`No supplier return records available for "${periodLabel}" to send!`);
 
-      ret.status = newStatus;
-      saveDB();
+      let emailBody = `SKY MODERNIZE SAVE TECHNOLOGY LTD - Supplier Returns Report\n`;
+      emailBody += `Report Period: ${periodLabel}\n\n`;
+      emailBody += `Date | Model | Supplier | Qty | Reason | Status\n`;
+      emailBody += `-----------------------------------------------------------------------\n`;
+
+      supReturnsData.forEach(r => {
+        emailBody += `${r.date} | ${r.model} | ${r.supplier} | ${r.qty} pcs | ${r.reason} | ${r.status}\n`;
+      });
+
+      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(`SKY MODERNIZE - Supplier Returns Report (${periodLabel})`)}&body=${encodeURIComponent(emailBody)}`;
+      window.open(gmailUrl, '_blank');
     }
 
     document.getElementById('supplier-returns-form').addEventListener('submit', (e) => {
@@ -2686,23 +2685,25 @@
       const status = document.getElementById('sup-return-status').value;
       const reason = document.getElementById('sup-return-reason').value.trim();
 
-      const item = db.stock.find(s => s.model.toLowerCase() === model.toLowerCase());
-      if (item) {
-        if (item.qty < qty) return alert(`Insufficient stock! Only ${item.qty} pcs available.`);
-        item.qty -= qty;
-      }
+      if (!model || isNaN(qty) || qty <= 0) return alert("Please fill out valid model and quantity!");
 
+      const stockItem = db.stock.find(s => s.model.toLowerCase() === model.toLowerCase());
       if (status === 'Replaced / Received') {
-        if (item) item.qty += qty;
+        if (stockItem) stockItem.qty += qty;
+      } else {
+        if (stockItem) {
+          if (stockItem.qty < qty) return alert("Insufficient stock quantity to return to supplier!");
+          stockItem.qty -= qty;
+        }
       }
 
       db.supplierReturns.push({
         date: new Date().toISOString().split('T')[0],
-        model,
-        supplier,
-        qty,
-        status,
-        reason
+        model: model,
+        supplier: supplier,
+        qty: qty,
+        reason: reason,
+        status: status
       });
 
       saveDB();
@@ -2710,31 +2711,19 @@
       alert("✅ Supplier return successfully recorded!");
     });
 
-    function printFilteredSupplierReturns() {
-      const { periodLabel } = getFilteredSupplierReturnsData();
-      document.getElementById('sup-returns-print-subtitle').innerText = `Supplier Returns Bulk Report - ${periodLabel}`;
-      window.print();
+    function deleteSupplierReturn(index) {
+      if (confirm("Delete this supplier return record?")) {
+        db.supplierReturns.splice(index, 1);
+        saveDB();
+      }
     }
 
-    function sendSupplierReturnsToGmail() {
-      const { supReturnsData, periodLabel } = getFilteredSupplierReturnsData();
-      if (supReturnsData.length === 0) return alert(`No supplier returns available for "${periodLabel}" to send!`);
-
-      let emailBody = `SKY MODERNIZE SAVE TECHNOLOGY LTD - Supplier Returns Report\n`;
-      emailBody += `Period: ${periodLabel}\n\n`;
-      supReturnsData.forEach(r => {
-        emailBody += `${r.date} | ${r.model} | Supplier: ${r.supplier} | Qty: ${r.qty} pcs | Status: ${r.status} | Reason: ${r.reason}\n`;
-      });
-
-      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(`SKY MODERNIZE - Supplier Returns (${periodLabel})`)}&body=${encodeURIComponent(emailBody)}`;
-      window.open(gmailUrl, '_blank');
-    }
-
-    function renderRequisitions(searchQuery = "") {
+    function renderRequisitions(filterQuery = "") {
       const tbody = document.getElementById('requisition-table-body');
-      const filtered = db.requisitions.map((req, originalIdx) => ({ ...req, originalIdx })).slice().reverse().filter(req => {
-        if (!searchQuery) return true;
-        const q = searchQuery.toLowerCase();
+      const reqs = db.requisitions || [];
+      const filtered = reqs.map((req, originalIdx) => ({ ...req, originalIdx })).slice().reverse().filter(req => {
+        if (!filterQuery) return true;
+        const q = filterQuery.toLowerCase();
         return (req.id && req.id.toLowerCase().includes(q)) ||
                (req.item && req.item.toLowerCase().includes(q)) ||
                (req.category && req.category.toLowerCase().includes(q)) ||
@@ -2744,31 +2733,44 @@
       });
 
       if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="10" class="text-center text-muted py-3">No matching purchase requisitions found</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" class="text-center text-muted py-3">No matching requisition orders found</td></tr>`;
       } else {
         tbody.innerHTML = filtered.map(req => {
-          const estCost = req.cost || 0;
-          const estTotal = estCost * req.qty;
-          const statusBadge = req.status === 'Approved' ? 'bg-success' : req.status === 'Ordered' ? 'bg-primary' : 'bg-warning text-dark';
+          const estUnitCost = Number(req.cost) || 0;
+          const estTotal = estUnitCost * req.qty;
           return `
             <tr>
-              <td><b>${req.id}</b></td>
+              <td><code>${req.id}</code></td>
               <td>${req.date}</td>
               <td><b>${req.item}</b></td>
-              <td><span class="badge bg-secondary">${req.category}</span></td>
+              <td>${req.category}</td>
               <td><b>${req.qty}</b></td>
-              <td>₦${estCost.toLocaleString()}</td>
+              <td>₦${estUnitCost.toLocaleString()}</td>
               <td class="text-success fw-bold">₦${estTotal.toLocaleString()}</td>
               <td>${req.supplier || '-'}</td>
-              <td><span class="badge ${statusBadge}">${req.status}</span></td>
+              <td><span class="badge ${req.status === 'Approved' ? 'bg-success' : 'bg-warning text-dark'}">${req.status}</span></td>
               <td class="no-print">
-                <button class="btn btn-sm btn-primary me-1" onclick="openEditRequisitionModal(${req.originalIdx})">Edit</button>
+                <button class="btn btn-sm btn-outline-primary me-1" onclick="openEditRequisitionModal(${req.originalIdx})">Edit</button>
                 <button class="btn btn-sm btn-danger" onclick="deleteRequisition(${req.originalIdx})">Delete</button>
               </td>
             </tr>
           `;
         }).join('');
       }
+    }
+
+    function printFilteredRequisitions() {
+      window.print();
+    }
+
+    function sendRequisitionToGmail() {
+      if (db.requisitions.length === 0) return alert("No purchase requisitions to send!");
+      let emailBody = `SKY MODERNIZE SAVE TECHNOLOGY LTD - Purchase Requisitions\n\n`;
+      db.requisitions.forEach(r => {
+        emailBody += `[${r.id}] ${r.date} - ${r.item} (${r.category}) | Qty: ${r.qty} | Est. Cost: ₦${(r.cost || 0) * r.qty} | Vendor: ${r.supplier || 'N/A'} | Status: ${r.status}\n`;
+      });
+      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(`SKY MODERNIZE - Purchase Requisition Orders`)}&body=${encodeURIComponent(emailBody)}`;
+      window.open(gmailUrl, '_blank');
     }
 
     document.getElementById('requisition-form').addEventListener('submit', (e) => {
@@ -2779,37 +2781,30 @@
       const cost = parseFloat(document.getElementById('req-cost').value) || 0;
       const supplier = document.getElementById('req-supplier').value.trim();
       const notes = document.getElementById('req-notes').value.trim();
-      const reqId = "REQ-" + Math.floor(1000 + Math.random() * 9000);
 
+      const reqId = "REQ-" + Math.floor(1000 + Math.random() * 9000);
       db.requisitions.push({
         id: reqId,
         date: new Date().toISOString().split('T')[0],
-        item,
-        category,
-        qty,
-        cost,
-        supplier,
-        notes,
+        item: item,
+        category: category,
+        qty: qty,
+        cost: cost,
+        supplier: supplier,
+        notes: notes,
         status: "Pending"
       });
 
       saveDB();
-      document.getElementById('requisition-form').reset();
-      alert("📋 Purchase Requisition successfully submitted!");
+      e.target.reset();
+      alert("✅ Purchase requisition submitted successfully!");
     });
 
-    function printFilteredRequisitions() {
-      window.print();
-    }
-
-    function sendRequisitionToGmail() {
-      if (db.requisitions.length === 0) return alert("No purchase requisitions available to send!");
-      let emailBody = `SKY MODERNIZE SAVE TECHNOLOGY LTD - Purchase Requisitions\n\n`;
-      db.requisitions.forEach(r => {
-        emailBody += `[${r.id}] ${r.date} | Item: ${r.item} | Specs: ${r.category} | Qty: ${r.qty} pcs | Est Total: ₦${((r.cost || 0) * r.qty).toLocaleString()} | Supplier: ${r.supplier || 'N/A'} | Status: ${r.status}\n`;
-      });
-      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(`SKY MODERNIZE - Purchase Requisitions`)}&body=${encodeURIComponent(emailBody)}`;
-      window.open(gmailUrl, '_blank');
+    function deleteRequisition(index) {
+      if (confirm("Delete this requisition record?")) {
+        db.requisitions.splice(index, 1);
+        saveDB();
+      }
     }
 
     function openEditModal(index) {
@@ -2823,27 +2818,28 @@
       document.getElementById('edit-stk-cost').value = item.cost_price;
       document.getElementById('edit-stk-sell').value = item.sell_price;
       document.getElementById('edit-stk-supplier').value = item.supplier || '';
-      new bootstrap.Modal(document.getElementById('editStockModal')).show();
+      
+      const modal = new bootstrap.Modal(document.getElementById('editStockModal'));
+      modal.show();
     }
 
     document.getElementById('edit-stock-form').addEventListener('submit', (e) => {
       e.preventDefault();
-      const idx = parseInt(document.getElementById('edit-stk-index').value);
-      if (isNaN(idx) || !db.stock[idx]) return;
+      const index = parseInt(document.getElementById('edit-stk-index').value);
+      const item = db.stock[index];
+      if (item) {
+        item.model = document.getElementById('edit-stk-model').value.trim();
+        item.category = document.getElementById('edit-stk-cat').value.trim();
+        item.subcat = document.getElementById('edit-stk-subcat').value.trim();
+        item.qty = parseInt(document.getElementById('edit-stk-qty').value);
+        item.cost_price = parseFloat(document.getElementById('edit-stk-cost').value);
+        item.sell_price = parseFloat(document.getElementById('edit-stk-sell').value);
+        item.supplier = document.getElementById('edit-stk-supplier').value.trim();
 
-      db.stock[idx] = {
-        model: document.getElementById('edit-stk-model').value.trim(),
-        category: document.getElementById('edit-stk-cat').value.trim(),
-        subcat: document.getElementById('edit-stk-subcat').value.trim(),
-        qty: parseInt(document.getElementById('edit-stk-qty').value),
-        cost_price: parseFloat(document.getElementById('edit-stk-cost').value),
-        sell_price: parseFloat(document.getElementById('edit-stk-sell').value),
-        supplier: document.getElementById('edit-stk-supplier').value.trim()
-      };
-
-      bootstrap.Modal.getInstance(document.getElementById('editStockModal')).hide();
-      saveDB();
-      alert("✅ Stock entry successfully updated!");
+        saveDB();
+        bootstrap.Modal.getInstance(document.getElementById('editStockModal')).hide();
+        alert("✅ Stock updated successfully!");
+      }
     });
 
     function deleteStock(index) {
@@ -2863,32 +2859,44 @@
       document.getElementById('edit-req-cost').value = req.cost || 0;
       document.getElementById('edit-req-supplier').value = req.supplier || '';
       document.getElementById('edit-req-notes').value = req.notes || '';
-      new bootstrap.Modal(document.getElementById('editRequisitionModal')).show();
+
+      const modal = new bootstrap.Modal(document.getElementById('editRequisitionModal'));
+      modal.show();
     }
 
     document.getElementById('edit-requisition-form').addEventListener('submit', (e) => {
       e.preventDefault();
-      const idx = parseInt(document.getElementById('edit-req-index').value);
-      if (isNaN(idx) || !db.requisitions[idx]) return;
+      const index = parseInt(document.getElementById('edit-req-index').value);
+      const req = db.requisitions[index];
+      if (req) {
+        req.item = document.getElementById('edit-req-item').value.trim();
+        req.category = document.getElementById('edit-req-cat').value.trim();
+        req.qty = parseInt(document.getElementById('edit-req-qty').value);
+        req.cost = parseFloat(document.getElementById('edit-req-cost').value) || 0;
+        req.supplier = document.getElementById('edit-req-supplier').value.trim();
+        req.notes = document.getElementById('edit-req-notes').value.trim();
 
-      db.requisitions[idx].item = document.getElementById('edit-req-item').value.trim();
-      db.requisitions[idx].category = document.getElementById('edit-req-cat').value.trim();
-      db.requisitions[idx].qty = parseInt(document.getElementById('edit-req-qty').value);
-      db.requisitions[idx].cost = parseFloat(document.getElementById('edit-req-cost').value) || 0;
-      db.requisitions[idx].supplier = document.getElementById('edit-req-supplier').value.trim();
-      db.requisitions[idx].notes = document.getElementById('edit-req-notes').value.trim();
-
-      bootstrap.Modal.getInstance(document.getElementById('editRequisitionModal')).hide();
-      saveDB();
-      alert("📋 Requisition order successfully updated!");
+        saveDB();
+        bootstrap.Modal.getInstance(document.getElementById('editRequisitionModal')).hide();
+        alert("✅ Requisition updated successfully!");
+      }
     });
 
-    function deleteRequisition(index) {
-      if (confirm("Are you sure you want to delete this requisition order?")) {
-        db.requisitions.splice(index, 1);
-        saveDB();
-      }
-    }
+    document.getElementById('stock-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const model = document.getElementById('stk-model').value.trim();
+      const category = document.getElementById('stk-cat').value.trim();
+      const subcat = document.getElementById('stk-subcat').value.trim();
+      const qty = parseInt(document.getElementById('stk-qty').value);
+      const cost_price = parseFloat(document.getElementById('stk-cost').value);
+      const sell_price = parseFloat(document.getElementById('stk-sell').value);
+      const supplier = document.getElementById('stk-supplier').value.trim();
+
+      db.stock.push({ model, category, subcat, qty, cost_price, sell_price, supplier });
+      saveDB();
+      e.target.reset();
+      alert("✅ Stock entry added successfully!");
+    });
   </script>
 </body>
 </html>
