@@ -2822,27 +2822,23 @@
       alert("✅ Purchase requisition updated successfully!")
     });
  // --- SUPABASE REAL-TIME MONIEPOINT LISTENER ---
-const SUPABASE_URL = 'https://puktzlekeoojrlxrkziu.supabase.co';       // Replace with your Supabase URL
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB1a3R6bGVrZW9vanJseHJreml1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1NTI5MzAsImV4cCI6MjEwMDEyODkzMH0.uSH3tcofOW-LiBHraIb_eDi2hI3_ZUN1b9JjIJ42Z-Q'; // Replace with your Supabase Anon Key
-
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
+// Reuse your existing 'supabaseClient' instance
 supabaseClient
     .channel('public:payments')
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'payments' }, payload => {
         const newPayment = payload.new;
 
-        // 1. Trigger the built-in Bootstrap ToaId('toast-message');
+        // 1. Trigger the Bootstrap Toast Popup
+        const toastMessage = document.getElementById('toast-message');
         if (toastMessage) {
             toastMessage.innerText = `${newPayment.customer_name} paid ₦${Number(newPayment.amount).toLocaleString()}!`;
             const toastElement = new bootstrap.Toast(document.getElementById('moniepoint-toast'));
             toastElement.show();
         }
 
-        // 2. Dynamically update your Moniepoint Payment History table if available
+        // 2. Dynamically add the new transaction to your Moniepoint Payment table
         const tbody = document.getElementById('moniepoint-table-body');
         if (tbody) {
-            // Remove 'No payments recorded' placeholder if present
             if (tbody.querySelector('.text-muted')) {
                 tbody.innerHTML = '';
             }
@@ -2860,7 +2856,7 @@ supabaseClient
         }
     })
     .subscribe();
-    
+
   </script>
 </body>
 </html>
