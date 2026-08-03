@@ -2819,8 +2819,49 @@
 
       bootstrap.Modal.getInstance(document.getElementById('editRequisitionModal')).hide();
       saveDB();
-      alert("✅ Purchase requisition updated successfully!");
+      alert("✅ Purchase requisition updated successfully!")
     });
+ // --- SUPABASE REAL-TIME MONIEPOINT LISTENER ---
+const SUPABASE_URL = 'YOUR_SUPABASE_URL';       // Replace with your Supabase URL
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY'; // Replace with your Supabase Anon Key
+
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+supabaseClient
+    .channel('public:payments')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'payments' }, payload => {
+        const newPayment = payload.new;
+
+        // 1. Trigger the built-in Bootstrap Toast Popup
+        const toastMessage = document.getElementById('toast-message');
+        if (toastMessage) {
+            toastMessage.innerText = `${newPayment.customer_name} paid ₦${Number(newPayment.amount).toLocaleString()}!`;
+            const toastElement = new bootstrap.Toast(document.getElementById('moniepoint-toast'));
+            toastElement.show();
+        }
+
+        // 2. Dynamically update your Moniepoint Payment History table if available
+        const tbody = document.getElementById('moniepoint-table-body');
+        if (tbody) {
+            // Remove 'No payments recorded' placeholder if present
+            if (tbody.querySelector('.text-muted')) {
+                tbody.innerHTML = '';
+            }
+            
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${new Date().toLocaleString()}</td>
+                <td>${newPayment.reference || 'N/A'}</td>
+                <td>${newPayment.customer_name}</td>
+                <td>N/A</td>
+                <td class="fw-bold text-success">₦${Number(newPayment.amount).toLocaleString()}</td>
+                <td><span class="badge bg-success">Successful</span></td>
+            `;
+            tbody.prepend(row);
+        }
+    })
+    .subscribe();
+    
   </script>
 </body>
 </html>
