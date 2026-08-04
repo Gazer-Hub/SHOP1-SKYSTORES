@@ -15,15 +15,14 @@ exports.handler = async function(event, context) {
         const payload = JSON.parse(event.body || '{}');
         console.log('📥 Received Webhook Payload:', JSON.stringify(payload));
 
-        // Fallback-friendly extraction so it never crashes if fields are nested differently
         const eventData = payload.eventData || payload.data || payload;
 
         const amount = eventData.amount || eventData.transactionAmount || eventData.totalAmount || 0;
         const customer_name = eventData.accountName || eventData.customerName || eventData.senderName || 'Valued Customer';
         const reference = eventData.paymentReference || eventData.reference || eventData.transactionReference || 'REF-' + Date.now();
 
-        // Insert into Supabase table 'payments'
-        const { error } = await supabase.from('payments').insert([{
+        // CHANGED FROM 'payments' TO 'transactions' TO MATCH YOUR SUPABASE TABLE
+        const { error } = await supabase.from('transactions').insert([{
             amount: amount,
             customer_name: customer_name,
             reference: reference
@@ -34,7 +33,7 @@ exports.handler = async function(event, context) {
             return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
         }
 
-        console.log('✅ Payment successfully saved to Supabase:', { amount, customer_name, reference });
+        console.log('✅ Payment successfully saved to transactions table:', { amount, customer_name, reference });
 
         return {
             statusCode: 200,
