@@ -1,4 +1,3 @@
-const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 
 const supabase = createClient(
@@ -7,41 +6,85 @@ const supabase = createClient(
 );
 
 exports.handler = async function(event, context) {
+    // Allow both POST and GET (GET makes it easy to test in your browser if the URL works)
+    if (event.httpMethod === 'GET') {
+        return { 
+            statusCode: 200, 
+            body: JSON.stringify({ status: 'Webhook endpoint is active and online!' }) 
+        };
+    }
+
     if (event.httpMethod !== 'POST') {
         return { statusCode: 405, body: 'Method Not Allowed' };
     }
 
     try {
-        const payload = JSON.parse(event.body || '{}');
-        console.log('📥 Received Webhook Payload:', JSON.stringify(payload));
-
-        const eventData = payload.eventData || payload.data || payload;
-
-        const amount = eventData.amount || eventData.transactionAmount || eventData.totalAmount || 0;
-        const customer_name = eventData.accountName || eventData.customerName || eventData.senderName || 'Valued Customer';
-        const reference = eventData.paymentReference || eventData.reference || eventData.transactionReference || 'REF-' + Date.now();
-
-        // CHANGED FROM 'payments' TO 'transactions' TO MATCH YOUR SUPABASE TABLE
-        const { error } = await supabase.from('transactions').insert([{
-            amount: amount,
-            customer_name: customer_name,
-            reference: reference
-        }]);
-
-        if (error) {
-            console.error('❌ Supabase insert error:', error);
-            return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
+        let payload = {};
+        try {
+            payload = JSON.parse(event.body || '{}');
+        } catch (e) {
+            console.warn('⚠️ Raw body text received instead of strict JSON');
         }
 
-        console.log('✅ Payment successfully saved to transactions table:', { amount, customer_name, reference });
+        console.log('📥 INCOMING WEBHOOK PAYLOAD:', JSON.stringify(payload));
+
+        // Deep search for fields across any variation Moniepoint might use
+        const data = payload.eventData || payload.data || payload;
+
+        const amount = Number(
+            data.amount || 
+            data.transactionAmount || 
+            data.totalAmount || 
+            payload.amount || 
+            0
+        );
+
+        const customer_name = 
+            data.accountName || 
+            data.customerName || 
+            data.senderName || 
+            payload.customerName || 
+            'Direct Bank Transfer';
+
+        const reference = 
+            data.paymentReference || 
+            data.reference || 
+            data.transactionReference || 
+            payload.reference || 
+            ('TXN-' + Date.now());
+
+        console.log(`Parsed Data -> Amount: ${amount}, Customer: ${customer_name}, Ref: ${reference}`);
+
+        // Insert into your 'transactions' table
+        const { data: insertedData, error } = await supabase
+            .from('transactions')
+            .insert([{
+                amount: amount,
+                customer_name: customer_name,
+                reference: reference
+            }])
+            .select();
+
+        if (error) {
+            console.error('❌ Supabase Database Insert Failed:', error);
+            return { 
+                statusCode: 500, 
+                body: JSON.stringify({ success: false, error: error.message }) 
+            };
+        }
+
+        console.log('✅ Successfully inserted into Supabase transactions table!', insertedData);
 
         return {
             statusCode: 200,
-            body: JSON.stringify({ message: 'Webhook processed and saved successfully' })
+            body: JSON.stringify({ success: true, message: 'Processed & saved successfully' })
         };
 
-    } catch (error) {
-        console.error('❌ Error processing webhook:', error);
-        return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
+    } catch (err) {
+        console.error('❌ Critical Webhook Error:', err);
+        return { 
+            statusCode: 500, 
+            body: JSON.stringify({ success: false, error: err.message }) 
+        };
     }
 };
