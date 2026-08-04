@@ -1,0 +1,9 @@
+{
+  "name": "SHOP1-SKYSTORES",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Top-level package.json to ensure Netlify Functions dependencies are installed",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.8"
+  }
+}
