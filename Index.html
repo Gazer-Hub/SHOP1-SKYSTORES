@@ -2824,8 +2824,8 @@
  // --- SUPABASE REAL-TIME MONIEPOINT LISTENER ---
 // Reuse your existing 'supabaseClient' instance
 supabaseClient
-    .channel('public:payments')
-    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'payments' }, payload => {
+    .channel('public:transactions')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'transactions' }, payload => {
         const newPayment = payload.new;
 
         // 1. Trigger the Bootstrap Toast Popup
