@@ -28,7 +28,7 @@ exports.handler = async (event) => {
 
     const data = payload.data || {};
     const reference = data.reference || data.transaction_ref || data.tx_ref || data.ref;
-    const status = data.status || payload.event || 'unknown';
+    const status = (data.status || payload.event || 'unknown').toString();
     const amount = data.amount ?? null;
 
     if (!reference) {
@@ -44,7 +44,7 @@ exports.handler = async (event) => {
 
     if (MONIEPOINT_VERIFY_URL && MONIEPOINT_API_KEY) {
       try {
-        const verifyRes = await fetch(`${MONIEPOINT_VERIFY_URL}/${encodeURIComponent(reference)}`, {
+        const verifyRes = await fetch(`${MONIEPOINT_VERIFY_URL.replace(/\/+$/, '')}/${encodeURIComponent(reference)}`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${MONIEPOINT_API_KEY}`,
@@ -53,7 +53,6 @@ exports.handler = async (event) => {
         });
         if (verifyRes.ok) {
           verifyInfo = await verifyRes.json();
-          // You may need to adjust the checks according to Moniepoint verify response shape
           if (verifyInfo && (verifyInfo.status === 'success' || verifyInfo.data?.status === 'success' || verifyInfo.data?.transaction_status === 'success')) {
             verified = true;
           }
@@ -74,10 +73,15 @@ exports.handler = async (event) => {
       return { statusCode: 500, body: 'Server not configured' };
     }
 
+    // Map incoming payload fields to the payments table columns expected by the frontend
     const paymentRow = {
       reference: reference,
       status: status,
       amount: amount,
+      // frontend expects these fields: datetime, senderName, accountNumber
+      datetime: data.datetime || new Date().toISOString(),
+      sender_name: data.senderName || data.sender_name || data.sender || data.payer_name || null,
+      account_number: data.accountNumber || data.account_number || data.account || data.payer_account || null,
       metadata: Object.assign({}, data, { verified }),
     };
 

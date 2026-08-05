@@ -1,89 +1,89 @@
 (function(){
-  // Realtime subscription helper using Supabase Realtime.
-  // Usage (example):
-  // <script src="/js/payment-realtime.js"></script>
-  // <script>
-  //   window.startPaymentRealtime('ORDER_REF', 'payment-status', 'https://<project>.supabase.co', '<ANON_KEY>');
-  // </script>
-  
-  async function loadSupabaseUmd() {
-    if (window.supabase && window.supabase.createClient) return;
-    return new Promise((resolve, reject) => {
-      const s = document.createElement('script');
-      s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/dist/umd/supabase.min.js';
-      s.onload = () => resolve();
-      s.onerror = (e) => reject(e);
-      document.head.appendChild(s);
-    });
-  }
+  // Supabase Realtime helper that subscribes to all inserts/updates on the 'payments' table
+  // It requires the Supabase client library to already be loaded on the page (window.supabase)
+  // and the globals SUPABASE_URL and SUPABASE_ANON_KEY to be defined in the page.
 
-  async function startPaymentRealtime(reference, elementId, supabaseUrl, supabaseAnonKey) {
-    const el = document.getElementById(elementId || 'payment-status');
-    if (!el) return console.warn('No element found with id', elementId);
-    if (!reference) return console.warn('Missing reference');
-    if (!supabaseUrl || !supabaseAnonKey) return console.error('Missing Supabase config for realtime (supabaseUrl, supabaseAnonKey)');
-
+  async function startPaymentRealtimeAll(supabaseUrl, supabaseAnonKey) {
     try {
-      await loadSupabaseUmd();
-    } catch (err) {
-      console.error('Failed to load Supabase client', err);
-      return;
-    }
-
-    const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
-
-    // Fetch current status once
-    try {
-      const { data, error } = await supabase.from('payments').select('*').eq('reference', reference).single();
-      if (error && error.code !== 'PGRST116') {
-        // PGRST116 = "The resource was not found" sometimes; ignore not found
-        console.warn('Supabase select error', error);
+      if (!window.supabase || !window.supabase.createClient) {
+        console.warn('Supabase client not found on page. Ensure <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script> is included.');
+        return;
       }
-      if (data) {
-        el.textContent = data.status || 'unknown';
-      }
-    } catch (err) {
-      console.warn('Error fetching initial payment row', err);
-    }
 
-    // Subscribe to inserts and updates for this reference
-    try {
-      const insertSub = supabase
-        .from(`payments:reference=eq.${reference}`)
-        .on('INSERT', payload => {
-          const row = payload.new || payload.record || payload;
-          el.textContent = row.status || 'unknown';
+      const sup = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+
+      // Fetch current payments once and merge into local DB
+      try {
+        const { data, error } = await sup.from('payments').select('*');
+        if (error) console.warn('Initial payments fetch error', error);
+        if (Array.isArray(data)) {
+          window.db = window.db || {};
+          window.db.moniepointPayments = window.db.moniepointPayments || [];
+          data.forEach(row => {
+            const p = mapRowToFrontend(row);
+            if (!window.db.moniepointPayments.some(x => x.reference === p.reference)) {
+              window.db.moniepointPayments.push(p);
+            }
+          });
+          if (typeof saveDB === 'function') saveDB();
+        }
+      } catch (err) {
+        console.warn('Error fetching initial payments', err);
+      }
+
+      // Subscribe to postgres changes on payments table
+      const channel = sup.channel('public:payments')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'payments' }, payload => {
+          const row = payload?.new || payload?.record || payload;
+          handleRow(row);
+        })
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'payments' }, payload => {
+          const row = payload?.new || payload?.record || payload;
+          handleRow(row);
         })
         .subscribe();
 
-      const updateSub = supabase
-        .from(`payments:reference=eq.${reference}`)
-        .on('UPDATE', payload => {
-          const row = payload.new || payload.record || payload;
-          el.textContent = row.status || 'unknown';
-        })
-        .subscribe();
-
-      // store so the page can unsubscribe later if needed
-      window._supabasePaymentRealtime = { insertSub, updateSub, client: supabase };
+      window._paymentsRealtime = { sup, channel };
 
     } catch (err) {
-      console.error('Error subscribing to Supabase realtime', err);
+      console.error('Failed to start realtime subscription', err);
     }
   }
 
-  function stopPaymentRealtime() {
-    try {
-      const s = window._supabasePaymentRealtime;
-      if (!s || !s.client) return;
-      if (s.insertSub) s.client.removeSubscription(s.insertSub);
-      if (s.updateSub) s.client.removeSubscription(s.updateSub);
-      window._supabasePaymentRealtime = null;
-    } catch (err) {
-      console.warn('Error stopping realtime subscription', err);
+  function mapRowToFrontend(row) {
+    return {
+      datetime: row.datetime || row.created_at || new Date().toISOString(),
+      reference: row.reference,
+      senderName: row.metadata?.senderName || row.sender_name || row.metadata?.sender_name || '',
+      accountNumber: row.metadata?.accountNumber || row.account_number || row.metadata?.account_number || '',
+      amount: row.amount,
+      status: row.status || (row.metadata && row.metadata.status) || 'unknown'
+    };
+  }
+
+  function handleRow(row) {
+    if (!row || !row.reference) return;
+    const p = mapRowToFrontend(row);
+    window.db = window.db || {};
+    window.db.moniepointPayments = window.db.moniepointPayments || [];
+    const exists = window.db.moniepointPayments.some(x => x.reference === p.reference);
+    if (!exists) {
+      window.db.moniepointPayments.push(p);
+      if (typeof saveDB === 'function') saveDB();
+      if (typeof showMoniepointToast === 'function') {
+        try {
+          showMoniepointToast(`Payment of ₦${Number(p.amount).toLocaleString()} received from ${p.senderName || 'Moniepoint'} (Ref: ${p.reference})`);
+        } catch (e) { console.warn(e); }
+      }
+    } else {
+      // update existing
+      const idx = window.db.moniepointPayments.findIndex(x => x.reference === p.reference);
+      if (idx !== -1) {
+        window.db.moniepointPayments[idx] = p;
+        if (typeof saveDB === 'function') saveDB();
+      }
     }
   }
 
-  window.startPaymentRealtime = startPaymentRealtime;
-  window.stopPaymentRealtime = stopPaymentRealtime;
+  window.startPaymentRealtimeAll = startPaymentRealtimeAll;
 })();
