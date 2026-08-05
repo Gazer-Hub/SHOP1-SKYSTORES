@@ -1076,7 +1076,6 @@
       const tbody = document.getElementById('moniepoint-table-body');
       const payments = db.moniepointPayments || [];
       
-      const totalAmount = payments.reduce((sum, p) => sum + (Number(p.amount) || 0), document.getElementById('moniepoint-total-amount').innerText = `₦${totalAmount.toLocaleString()}` ? 0 : 0);
       document.getElementById('moniepoint-total-amount').innerText = `₦${payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0).toLocaleString()}`;
       document.getElementById('moniepoint-total-count').innerText = payments.length;
 
@@ -2807,7 +2806,10 @@
       new bootstrap.Modal(document.getElementById('editRequisitionModal')).show();
     }
 
-    document.getElementById('edit-requisition-form').addEventListener('submit', (e) => {
+    const targetElement = document.getElementById('your-element-id');
+if (targetElement) {
+    targetElement.addEventListener('click', handlerFunction);
+   }
       e.preventDefault();
       const index = parseInt(document.getElementById('edit-req-index').value);
       db.requisitions[index].item = document.getElementById('edit-req-item').value.trim();
