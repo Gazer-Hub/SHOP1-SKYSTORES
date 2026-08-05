@@ -2806,23 +2806,23 @@
       new bootstrap.Modal(document.getElementById('editRequisitionModal')).show();
     }
 
-    const targetElement = document.getElementById('your-element-id');
+  const targetElement = document.getElementById('your-element-id'); // Or your form's ID
 if (targetElement) {
-    targetElement.addEventListener('click', handlerFunction);
-   }
-      e.preventDefault();
-      const index = parseInt(document.getElementById('edit-req-index').value);
-      db.requisitions[index].item = document.getElementById('edit-req-item').value.trim();
-      db.requisitions[index].category = document.getElementById('edit-req-cat').value.trim();
-      db.requisitions[index].qty = parseInt(document.getElementById('edit-req-qty').value);
-      db.requisitions[index].cost = parseFloat(document.getElementById('edit-req-cost').value) || 0;
-      db.requisitions[index].supplier = document.getElementById('edit-req-supplier').value.trim();
-      db.requisitions[index].notes = document.getElementById('edit-req-notes').value.trim();
+    targetElement.addEventListener('click', function(e) {
+        e.preventDefault();
+        const index = parseInt(document.getElementById('edit-req-index').value);
+        db.requisitions[index].item = document.getElementById('edit-req-item').value.trim();
+        db.requisitions[index].category = document.getElementById('edit-req-cat').value.trim();
+        db.requisitions[index].qty = parseInt(document.getElementById('edit-req-qty').value);
+        db.requisitions[index].cost = parseFloat(document.getElementById('edit-req-cost').value) || 0;
+        db.requisitions[index].supplier = document.getElementById('edit-req-supplier').value.trim();
+        db.requisitions[index].notes = document.getElementById('edit-req-notes').value.trim();
 
-      bootstrap.Modal.getInstance(document.getElementById('editRequisitionModal')).hide();
-      saveDB();
-      alert("✅ Purchase requisition updated successfully!")
+        bootstrap.Modal.getInstance(document.getElementById('editRequisitionModal')).hide();
+        saveDB();
+        alert("✅ Purchase requisition updated successfully!");
     });
+}
  // --- SUPABASE REAL-TIME MONIEPOINT LISTENER ---
 // Reuse your existing 'supabaseClient' instance
 supabaseClient
