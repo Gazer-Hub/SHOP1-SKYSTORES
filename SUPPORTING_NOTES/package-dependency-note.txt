@@ -1,0 +1,7 @@
+This repository's Netlify functions require node-fetch (CommonJS) at runtime. node-fetch v2 is installed as a dependency for compatibility with existing require() calls in the serverless functions.
+
+Notes:
+- We set the Node engine to 18.x so Netlify uses a modern runtime that supports fetch and other features.
+- After this commit Netlify will run npm install during the build and include node-fetch for function packaging.
+
+If you prefer a different fetch implementation (undici or native fetch), we can switch the code instead; this change is quick and conservative.
