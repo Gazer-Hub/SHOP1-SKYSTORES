@@ -2,6 +2,98 @@
 // We'll replace repeated direct getElementById(...).addEventListener calls with guarded versions.
 
 document.addEventListener('DOMContentLoaded', function(){
+  // login-form
+  const loginForm = document.getElementById('login-form');
+  if (loginForm) {
+    loginForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const userEl = document.getElementById('login-username');
+      const passEl = document.getElementById('login-password');
+      const alertBox = document.getElementById('login-alert');
+      const user = userEl ? userEl.value : '';
+      const pass = passEl ? passEl.value : '';
+      if (user === auth.username && pass === auth.password) {
+        isLoggedIn = true;
+        if (alertBox) alertBox.classList.add('d-none');
+        if (e.target && typeof e.target.reset === 'function') e.target.reset();
+        navigateTo('dashboard');
+      } else {
+        if (alertBox) {
+          alertBox.innerText = "Invalid credentials";
+          alertBox.classList.remove('d-none');
+        }
+      }
+    });
+  }
+
+  // manager-form
+  const managerForm = document.getElementById('manager-form');
+  if (managerForm) {
+    managerForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const pinEl = document.getElementById('manager-pin');
+      const alertBox = document.getElementById('manager-alert');
+      const pin = pinEl ? pinEl.value : '';
+      if (pin === MANAGER_PIN) {
+        isManagerUnlocked = true;
+        if (alertBox) alertBox.classList.add('d-none');
+        if (e.target && typeof e.target.reset === 'function') e.target.reset();
+        navigateTo('stock');
+      } else {
+        if (alertBox) {
+          alertBox.innerText = "Invalid Manager PIN";
+          alertBox.classList.remove('d-none');
+        }
+      }
+    });
+  }
+
+  // password-form
+  const passwordForm = document.getElementById('password-form');
+  if (passwordForm) {
+    passwordForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const managerPin = document.getElementById('pwd-manager-pin') ? document.getElementById('pwd-manager-pin').value : '';
+      const current = document.getElementById('pwd-current') ? document.getElementById('pwd-current').value : '';
+      const newPwd = document.getElementById('pwd-new') ? document.getElementById('pwd-new').value : '';
+      const confirmPwd = document.getElementById('pwd-confirm') ? document.getElementById('pwd-confirm').value : '';
+      const alertBox = document.getElementById('password-alert');
+
+      if (managerPin !== MANAGER_PIN) {
+        if (alertBox) {
+          alertBox.className = "alert alert-danger py-2";
+          alertBox.innerText = "Invalid Manager PIN.";
+          alertBox.classList.remove('d-none');
+        }
+        return;
+      }
+      if (current !== auth.password) {
+        if (alertBox) {
+          alertBox.className = "alert alert-danger py-2";
+          alertBox.innerText = "Current password is incorrect.";
+          alertBox.classList.remove('d-none');
+        }
+        return;
+      }
+      if (newPwd !== confirmPwd) {
+        if (alertBox) {
+          alertBox.className = "alert alert-danger py-2";
+          alertBox.innerText = "New passwords do not match.";
+          alertBox.classList.remove('d-none');
+        }
+        return;
+      }
+      auth.password = newPwd;
+      saveAuth();
+      if (alertBox) {
+        alertBox.className = "alert alert-success py-2";
+        alertBox.innerText = "Password updated successfully!";
+        alertBox.classList.remove('d-none');
+      }
+      if (e.target && typeof e.target.reset === 'function') e.target.reset();
+    });
+  }
+
   // stock-form
   const stockForm = document.getElementById('stock-form');
   if (stockForm) {
@@ -25,7 +117,7 @@ document.addEventListener('DOMContentLoaded', function(){
 
       db.stock.push({ model, category, subcat, qty, cost_price, sell_price, supplier });
       saveDB();
-      e.target.reset();
+      if (e.target && typeof e.target.reset === 'function') e.target.reset();
       alert("✅ New stock entry added successfully!");
     });
   }
