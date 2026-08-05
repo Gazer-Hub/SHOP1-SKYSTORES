@@ -191,16 +191,18 @@ exports.handler = async (event) => {
     const senderName = data.senderName || data.sender_name || data.payer_name || data.customer_name || data.username || null;
     const accountNumber = data.accountNumber || data.account_number || data.payer_account || data.msisdn || null;
 
+    // Normalize datetime but store in metadata to avoid schema mismatch (some DBs may not have datetime column)
+    const normalizedDatetime = data.datetime || data.date || data.time || new Date().toISOString();
+
     // Build paymentRow mapping to our payments table
-    // IMPORTANT: do not reference optional top-level columns that may not exist in older DB schemas (account_number, sender_name).
+    // IMPORTANT: do not reference optional top-level columns that may not exist in older DB schemas (account_number, sender_name, datetime).
     // Instead store those values inside metadata so the upsert won't fail if the column is missing.
     const paymentRow = {
       reference: reference,
       provider: provider || 'unknown',
       status: status,
       amount: amount,
-      datetime: data.datetime || data.date || data.time || new Date().toISOString(),
-      metadata: Object.assign({}, data, { provider_detected: provider, verified, verifyInfo, sender_name: senderName, account_number: accountNumber }),
+      metadata: Object.assign({}, data, { provider_detected: provider, verified, verifyInfo, sender_name: senderName, account_number: accountNumber, normalized_datetime: normalizedDatetime }),
     };
 
     // Upsert into Supabase via REST (service role key required)
