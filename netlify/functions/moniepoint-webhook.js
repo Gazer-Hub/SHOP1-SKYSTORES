@@ -187,16 +187,20 @@ exports.handler = async (event) => {
       }
     }
 
+    // Extract sender/account values into local vars (we'll keep them in metadata to avoid DB schema mismatch)
+    const senderName = data.senderName || data.sender_name || data.payer_name || data.customer_name || data.username || null;
+    const accountNumber = data.accountNumber || data.account_number || data.payer_account || data.msisdn || null;
+
     // Build paymentRow mapping to our payments table
+    // IMPORTANT: do not reference optional top-level columns that may not exist in older DB schemas (account_number, sender_name).
+    // Instead store those values inside metadata so the upsert won't fail if the column is missing.
     const paymentRow = {
       reference: reference,
       provider: provider || 'unknown',
       status: status,
       amount: amount,
       datetime: data.datetime || data.date || data.time || new Date().toISOString(),
-      sender_name: data.senderName || data.sender_name || data.payer_name || data.customer_name || data.username || null,
-      account_number: data.accountNumber || data.account_number || data.payer_account || data.msisdn || null,
-      metadata: Object.assign({}, data, { provider_detected: provider, verified, verifyInfo }),
+      metadata: Object.assign({}, data, { provider_detected: provider, verified, verifyInfo, sender_name: senderName, account_number: accountNumber }),
     };
 
     // Upsert into Supabase via REST (service role key required)
