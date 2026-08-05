@@ -1,49 +1,39 @@
 Moniepoint webhook & Supabase integration
 
-Files added:
-- netlify/functions/moniepoint-webhook.js  # webhook receiver (Netlify Function)
-- netlify/functions/payment-status.js     # simple lookup function to read payment status
-- supabase/migrations/0001_create_payments.sql  # create payments table
-- web/js/payment-status.js                 # frontend polling helper
+Files added in previous commit (summary):
+- netlify/functions/moniepoint-webhook.js
+- netlify/functions/payment-status.js
+- supabase/migrations/0001_create_payments.sql
+- web/js/payment-status.js
+- DEPLOYMENT.md
 
-Required environment variables (set in Netlify and Supabase as appropriate):
-- SUPABASE_URL = https://<project-ref>.supabase.co
-- SUPABASE_SERVICE_ROLE_KEY = <service_role_key>   # server-side only
-- MONIEPOINT_WEBHOOK_SECRET = <optional HMAC secret if Moniepoint provides one>
-- MONIEPOINT_VERIFY_URL = <optional verify endpoint base, e.g. https://api.moniepoint.com/v1/transactions>
-- MONIEPOINT_API_KEY = <optional API key for verify endpoint>
+Added now:
+- web/js/payment-realtime.js  # client-side Supabase Realtime helper
 
-Notes:
-1) Do NOT commit any keys or secrets to the repository. Add the variables in Netlify's dashboard (Site settings > Build & deploy > Environment) and in Supabase (for migrations you can run the SQL in the SQL editor).
+Realtime usage
+- This uses Supabase Realtime (Postgres WAL replication) to push changes to browsers when payments rows are inserted or updated.
+- You need to expose your Supabase anon (public) key to the frontend so the browser can subscribe. This key is safe to expose in the browser only if your RLS/policies restrict access appropriately. Consider creating a Row Level Security policy that allows clients to select payments rows only for the reference they are authorized to view.
 
-2) Deploying:
-- Netlify functions are deployed automatically when pushed to the repo connected to Netlify.
-- Ensure Netlify builds your site and that functions are enabled.
+Example client usage (add to your payment page):
 
-3) Supabase migration:
-- Run the SQL file in Supabase SQL editor to create the payments table.
-- Alternatively, use Supabase CLI if you have CI configured.
-
-4) Webhook URL:
-- Configure Moniepoint to POST webhooks to: https://<your-site-domain>/.netlify/functions/moniepoint-webhook
-- If Moniepoint requires a signature header name other than 'x-mon-signature', set MONIEPOINT_WEBHOOK_SECRET but the function will accept header 'x-mon-signature' or 'x-signature'. Adjust if needed.
-
-5) Frontend usage:
-- Include the JS on your payment page (example):
-
-<script src="/js/payment-status.js"></script>
-<div id="payment-status">waiting</div>
+<script src="/js/payment-realtime.js"></script>
 <script>
-  // Replace ORDER_REF with your transaction reference available on the page
-  window.startPaymentStatusPoll('ORDER_REF', 'payment-status', 3000);
+  // Replace these with your values (or inject at build time):
+  const SUPABASE_URL = 'https://<project-ref>.supabase.co';
+  const SUPABASE_ANON_KEY = '<anon-public-key>';
+  const ORDER_REF = 'ORDER_REF_HERE';
+
+  // start realtime subscription and update element with id payment-status
+  window.startPaymentRealtime(ORDER_REF, 'payment-status', SUPABASE_URL, SUPABASE_ANON_KEY);
 </script>
 
-Security & idempotency:
-- The payments table uses reference as PRIMARY KEY. The webhook upserts using Supabase REST ?on_conflict=reference to avoid duplicates.
-- The function verifies HMAC if configured, and can optionally call Moniepoint's verify endpoint if MONIEPOINT_VERIFY_URL and MONIEPOINT_API_KEY are provided.
+Security notes
+- When exposing the anon key to the browser, ensure you have Row Level Security (RLS) policies in Supabase that prevent data leaks. For example, for the payments table, create a policy that allows SELECT only when reference = auth.jwt() claim or use a custom token-based approach.
+- If you cannot expose the anon key, an alternative is to keep subscriptions server-side and push updates to clients via WebSockets/SSE (requires more infra).
 
-If you want I can now:
-- adjust the function to call Supabase via @supabase/supabase-js (requires adding the dependency and package.json changes), or
-- modify the functions to use a different runtime (Supabase Edge Functions) if you prefer.
+If you want, I can:
+- Add an HTML snippet to a specific page in the repo that includes the realtime script and initializes with a page-specific ORDER_REF.
+- Add RLS example policies for Supabase to secure the anon key usage.
+- Convert frontend to use a server-sent events endpoint instead of exposing anon key.
 
-Let me know if you want any additional changes or if I should update an existing HTML file in the repo to include the frontend script (I did not modify your HTML to avoid interfering with your current UI).
+Tell me which option you prefer and I will commit the changes.
