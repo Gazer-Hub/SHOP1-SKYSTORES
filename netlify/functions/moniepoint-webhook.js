@@ -43,6 +43,23 @@ async function tryVerifyWithSecret(header, secret, rawBody) {
   return false;
 }
 
+function findReferenceRecursive(obj) {
+  if (!obj || typeof obj !== 'object') return null;
+  const queue = [obj];
+  const keyRegex = /(ref|order|trx|transaction|payment|txnid|tx_ref|transaction_id|order_no|orderid)/i;
+  while (queue.length) {
+    const cur = queue.shift();
+    for (const k of Object.keys(cur)) {
+      const v = cur[k];
+      if (keyRegex.test(k) && (typeof v === 'string' || typeof v === 'number')) {
+        return String(v);
+      }
+      if (v && typeof v === 'object') queue.push(v);
+    }
+  }
+  return null;
+}
+
 exports.handler = async (event) => {
   try {
     const rawBody = event.body || '';
@@ -104,20 +121,25 @@ exports.handler = async (event) => {
     // Normalize data object if wrapped (some providers use { data: {...} })
     const data = payload.data && typeof payload.data === 'object' ? payload.data : payload;
 
-    // Extract a reference from many common keys
+    // Extract a reference from many common keys, and fallback to recursive search
     const referenceCandidates = [
       data.reference, data.transaction_ref, data.tx_ref, data.ref, data.order_no, data.orderNo, data.orderId, data.txnRef, data.trxref, data.transactionId, data.payment_ref
     ];
-    const reference = referenceCandidates.find(x => x);
+    let reference = referenceCandidates.find(x => x);
+    if (!reference) reference = findReferenceRecursive(payload);
 
     // Extract status and amount using common keys
     const status = (data.status || data.transaction_status || data.state || payload.event || 'unknown').toString();
     const amount = data.amount || data.total_amount || data.value || data.amt || null;
 
+    // If still no reference, generate a fallback unique reference rather than rejecting request
     if (!reference) {
-      console.warn('No transaction reference in webhook');
-      // still allow if provider and other keys exist? For safety, require a reference
-      return { statusCode: 400, body: 'Missing reference' };
+      const fallback = `${provider || 'unknown'}-${Date.now()}-${Math.floor(Math.random()*900000+100000)}`;
+      console.warn('No transaction reference in webhook — generating fallback reference', fallback);
+      reference = fallback;
+      // preserve the original payload in metadata for debugging
+      if (!data.metadata) data.metadata = {};
+      data.metadata._generated_reference = true;
     }
 
     // If not verified via signature earlier and provider has verify API configured, call it
