@@ -1,5 +1,20 @@
 const crypto = require('crypto');
 
+// safeFetch wrapper: use global fetch when available, otherwise require node-fetch
+let safeFetch;
+try {
+  if (typeof fetch === 'function') safeFetch = fetch;
+  else {
+    // node environment without global fetch
+    // require lazily to avoid failing in environments where it's not available
+    const nodeFetch = require('node-fetch');
+    safeFetch = nodeFetch;
+  }
+} catch (e) {
+  // last-resort: create a minimal fetch shim that throws (will be caught later)
+  safeFetch = async () => { throw new Error('no fetch available in runtime'); };
+}
+
 function normalizeHeaderValue(v) {
   if (!v) return '';
   return v.toString().trim();
@@ -106,6 +121,7 @@ exports.handler = async (event) => {
         for (const [k,v] of params) payload[k] = v;
       } catch (e) {
         console.warn('Invalid JSON payload and not urlencoded');
+        console.error('payload-parse-error', { message: e?.message, rawBody: rawBody?.slice?.(0,200) });
         return { statusCode: 400, body: 'Invalid JSON' };
       }
     }
@@ -140,34 +156,34 @@ exports.handler = async (event) => {
       // preserve the original payload in metadata for debugging
       if (!data.metadata) data.metadata = {};
       data.metadata._generated_reference = true;
+      data.metadata._raw_body_excerpt = rawBody?.slice?.(0,200);
     }
 
     // If not verified via signature earlier and provider has verify API configured, call it
     let verifyInfo = null;
     if (!verified) {
-      if (provider === 'moniepoint' && process.env.MONIEPOINT_VERIFY_URL && process.env.MONIEPOINT_API_KEY) {
-        try {
-          const verifyRes = await fetch(`${process.env.MONIEPOINT_VERIFY_URL.replace(/\/+$/, '')}/${encodeURIComponent(reference)}`, {
+      try {
+        if (provider === 'moniepoint' && process.env.MONIEPOINT_VERIFY_URL && process.env.MONIEPOINT_API_KEY) {
+          const url = `${process.env.MONIEPOINT_VERIFY_URL.replace(/\/+$/, '')}/${encodeURIComponent(reference)}`;
+          const verifyRes = await safeFetch(url, {
             method: 'GET',
             headers: { 'Authorization': `Bearer ${process.env.MONIEPOINT_API_KEY}`, 'Content-Type': 'application/json' }
           });
-          if (verifyRes.ok) {
-            verifyInfo = await verifyRes.json();
-            if (verifyInfo && (verifyInfo.status === 'success' || verifyInfo.data?.status === 'success' || verifyInfo.data?.transaction_status === 'success')) verified = true;
-          }
-        } catch (e) { console.warn('Moniepoint verify error', e); }
-      } else if (!verified && provider === 'opay' && process.env.OPAY_VERIFY_URL && process.env.OPAY_API_KEY) {
-        try {
-          const verifyRes = await fetch(`${process.env.OPAY_VERIFY_URL.replace(/\/+$/, '')}/${encodeURIComponent(reference)}`, {
+          const txt = await verifyRes.text();
+          try { verifyInfo = JSON.parse(txt); } catch(e){ verifyInfo = txt; }
+          if (verifyRes.ok && (verifyInfo.status === 'success' || verifyInfo.data?.status === 'success' || verifyInfo.data?.transaction_status === 'success')) verified = true;
+        } else if (provider === 'opay' && process.env.OPAY_VERIFY_URL && process.env.OPAY_API_KEY) {
+          const url = `${process.env.OPAY_VERIFY_URL.replace(/\/+$/, '')}/${encodeURIComponent(reference)}`;
+          const verifyRes = await safeFetch(url, {
             method: 'GET',
             headers: { 'Authorization': `Bearer ${process.env.OPAY_API_KEY}`, 'Content-Type': 'application/json' }
           });
-          if (verifyRes.ok) {
-            verifyInfo = await verifyRes.json();
-            // heuristics for opay verify shape
-            if (verifyInfo && (verifyInfo.status === 'SUCCESS' || verifyInfo.success === true || verifyInfo.data?.status === 'success')) verified = true;
-          }
-        } catch (e) { console.warn('OPay verify error', e); }
+          const txt = await verifyRes.text();
+          try { verifyInfo = JSON.parse(txt); } catch(e){ verifyInfo = txt; }
+          if (verifyRes.ok && (verifyInfo.status === 'SUCCESS' || verifyInfo.success === true || verifyInfo.data?.status === 'success')) verified = true;
+        }
+      } catch (e) {
+        console.warn('verify-api-call-error', { message: e?.message });
       }
     }
 
@@ -180,7 +196,7 @@ exports.handler = async (event) => {
       datetime: data.datetime || data.date || data.time || new Date().toISOString(),
       sender_name: data.senderName || data.sender_name || data.payer_name || data.customer_name || data.username || null,
       account_number: data.accountNumber || data.account_number || data.payer_account || data.msisdn || null,
-      metadata: Object.assign({}, data, { provider_detected: provider, verified }),
+      metadata: Object.assign({}, data, { provider_detected: provider, verified, verifyInfo }),
     };
 
     // Upsert into Supabase via REST (service role key required)
@@ -193,7 +209,8 @@ exports.handler = async (event) => {
     }
 
     try {
-      const res = await fetch(`${SUPABASE_URL.replace(/\/+$/, '')}/rest/v1/payments?on_conflict=reference`, {
+      const url = `${SUPABASE_URL.replace(/\/+$/, '')}/rest/v1/payments?on_conflict=reference`;
+      const res = await safeFetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -206,17 +223,17 @@ exports.handler = async (event) => {
 
       if (!res.ok) {
         const txt = await res.text();
-        console.error('Supabase upsert failed', res.status, txt);
+        console.error('Supabase upsert failed', { status: res.status, body: txt });
         return { statusCode: 500, body: 'DB upsert failed' };
       }
     } catch (err) {
-      console.error('Error saving to Supabase', err);
+      console.error('Error saving to Supabase', err && err.stack ? err.stack : String(err));
       return { statusCode: 500, body: 'DB error' };
     }
 
     return { statusCode: 200, body: 'OK' };
   } catch (err) {
-    console.error('Unexpected error in webhook', err);
+    console.error('Unexpected error in webhook', err && err.stack ? err.stack : String(err));
     return { statusCode: 500, body: 'Internal error' };
   }
 };
