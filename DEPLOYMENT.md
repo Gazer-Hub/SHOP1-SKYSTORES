@@ -1,39 +1,26 @@
-Moniepoint webhook & Supabase integration
+Deployment & Providers
 
-Files added in previous commit (summary):
-- netlify/functions/moniepoint-webhook.js
-- netlify/functions/payment-status.js
-- supabase/migrations/0001_create_payments.sql
-- web/js/payment-status.js
-- DEPLOYMENT.md
+This project now supports receiving webhooks from both Moniepoint and OPay. The webhook handler will:
+- Detect provider via signature headers or payload shape.
+- Verify HMAC signatures if you provide provider-specific webhook secrets.
+- Optionally call provider verify endpoints if configured.
+- Upsert a normalized payments row into the Supabase `payments` table with `provider`, `reference`, `status`, `amount`, `datetime`, `sender_name`, `account_number`, and `metadata`.
 
-Added now:
-- web/js/payment-realtime.js  # client-side Supabase Realtime helper
+Environment variables to set in Netlify (server-side):
+- SUPABASE_URL = https://<project-ref>.supabase.co
+- SUPABASE_SERVICE_ROLE_KEY = <service_role_key>
+- MONIEPOINT_WEBHOOK_SECRET = <moniepoint_webhook_hmac_secret>  # optional but recommended
+- MONIEPOINT_VERIFY_URL = https://api.moniepoint.com/v1/transactions  # optional
+- MONIEPOINT_API_KEY = <moniepoint_api_key>  # optional
+- OPAY_WEBHOOK_SECRET = <opay_webhook_hmac_secret>  # optional but recommended
+- OPAY_VERIFY_URL = https://api.opay.com/v1/transactions  # replace with OPAY's verify endpoint if available
+- OPAY_API_KEY = <opay_api_key>  # optional
 
-Realtime usage
-- This uses Supabase Realtime (Postgres WAL replication) to push changes to browsers when payments rows are inserted or updated.
-- You need to expose your Supabase anon (public) key to the frontend so the browser can subscribe. This key is safe to expose in the browser only if your RLS/policies restrict access appropriately. Consider creating a Row Level Security policy that allows clients to select payments rows only for the reference they are authorized to view.
+Frontend (Realtime)
+- The frontend subscribes to Supabase Realtime and merges payment rows into the in-browser DB and shows toast notifications. That requires the SUPABASE_ANON_KEY in the site (already present in Index.html). Make sure Realtime is enabled for your Supabase project and that RLS or appropriate policies are in place if you expose anon key publicly.
 
-Example client usage (add to your payment page):
+Testing
+- To test Moniepoint or OPay webhook handling you can POST a sample JSON to the webhook URL which contains a reference and amount. The function will upsert into Supabase and your frontend should receive the update via Realtime.
 
-<script src="/js/payment-realtime.js"></script>
-<script>
-  // Replace these with your values (or inject at build time):
-  const SUPABASE_URL = 'https://<project-ref>.supabase.co';
-  const SUPABASE_ANON_KEY = '<anon-public-key>';
-  const ORDER_REF = 'ORDER_REF_HERE';
-
-  // start realtime subscription and update element with id payment-status
-  window.startPaymentRealtime(ORDER_REF, 'payment-status', SUPABASE_URL, SUPABASE_ANON_KEY);
-</script>
-
-Security notes
-- When exposing the anon key to the browser, ensure you have Row Level Security (RLS) policies in Supabase that prevent data leaks. For example, for the payments table, create a policy that allows SELECT only when reference = auth.jwt() claim or use a custom token-based approach.
-- If you cannot expose the anon key, an alternative is to keep subscriptions server-side and push updates to clients via WebSockets/SSE (requires more infra).
-
-If you want, I can:
-- Add an HTML snippet to a specific page in the repo that includes the realtime script and initializes with a page-specific ORDER_REF.
-- Add RLS example policies for Supabase to secure the anon key usage.
-- Convert frontend to use a server-sent events endpoint instead of exposing anon key.
-
-Tell me which option you prefer and I will commit the changes.
+Security note
+- Do not commit any secret keys to the repo. Use Netlify environment variables for server-side keys. If exposing SUPABASE_ANON_KEY to the browser, enable RLS and create policies so users can only read rows they should access.

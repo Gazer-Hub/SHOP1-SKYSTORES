@@ -1,68 +1,165 @@
 const crypto = require('crypto');
 
+function normalizeHeaderValue(v) {
+  if (!v) return '';
+  return v.toString().trim();
+}
+
+function hmacHex(secret, payload) {
+  return crypto.createHmac('sha256', secret).update(payload).digest('hex');
+}
+
+function hmacBase64(secret, payload) {
+  return crypto.createHmac('sha256', secret).update(payload).digest('base64');
+}
+
+function safeCompare(a, b) {
+  try {
+    if (!a || !b) return false;
+    const ab = Buffer.from(a);
+    const bb = Buffer.from(b);
+    if (ab.length !== bb.length) return false;
+    return crypto.timingSafeEqual(ab, bb);
+  } catch (e) {
+    return false;
+  }
+}
+
+async function tryVerifyWithSecret(header, secret, rawBody) {
+  if (!header || !secret) return false;
+  const h = normalizeHeaderValue(header);
+  // header may be like "sha256=abcd" or just hex or base64
+  const parts = h.split('=');
+  const candidate = parts.length > 1 ? parts[1] : parts[0];
+
+  // compare hex
+  const hex = hmacHex(secret, rawBody);
+  if (safeCompare(hex, candidate)) return true;
+
+  // compare base64
+  const b64 = hmacBase64(secret, rawBody);
+  if (safeCompare(b64, candidate)) return true;
+
+  return false;
+}
+
 exports.handler = async (event) => {
   try {
     const rawBody = event.body || '';
     const headers = Object.fromEntries(Object.entries(event.headers || {}).map(([k,v]) => [k.toLowerCase(), v]));
 
-    const sigHeader = headers['x-mon-signature'] || headers['x-signature'];
-    const MONIEPOINT_WEBHOOK_SECRET = process.env.MONIEPOINT_WEBHOOK_SECRET;
+    // possible signature header names from providers
+    const signatureHeaders = [
+      headers['x-mon-signature'],
+      headers['x-signature'],
+      headers['x-opay-signature'],
+      headers['x-opay-sign'],
+      headers['x-pay-signature'],
+      headers['x-hook-signature']
+    ];
 
-    // Verify signature if secret & header present
-    if (MONIEPOINT_WEBHOOK_SECRET && sigHeader) {
-      const computed = crypto.createHmac('sha256', MONIEPOINT_WEBHOOK_SECRET).update(rawBody).digest('hex');
-      const ok = crypto.timingSafeEqual(Buffer.from(computed), Buffer.from(sigHeader));
-      if (!ok) {
-        console.warn('Invalid webhook signature');
-        return { statusCode: 400, body: 'Invalid signature' };
+    const MONIEPOINT_WEBHOOK_SECRET = process.env.MONIEPOINT_WEBHOOK_SECRET;
+    const OPAY_WEBHOOK_SECRET = process.env.OPAY_WEBHOOK_SECRET;
+
+    // Try to detect provider by signature verification first (if secrets present)
+    let provider = null;
+    let verified = false;
+
+    for (const sig of signatureHeaders) {
+      if (!sig) continue;
+      if (MONIEPOINT_WEBHOOK_SECRET) {
+        const ok = await tryVerifyWithSecret(sig, MONIEPOINT_WEBHOOK_SECRET, rawBody);
+        if (ok) { provider = 'moniepoint'; verified = true; break; }
+      }
+      if (OPAY_WEBHOOK_SECRET) {
+        const ok = await tryVerifyWithSecret(sig, OPAY_WEBHOOK_SECRET, rawBody);
+        if (ok) { provider = 'opay'; verified = true; break; }
       }
     }
 
+    // Parse payload
     let payload;
     try {
       payload = JSON.parse(rawBody);
     } catch (err) {
-      console.warn('Invalid JSON payload');
-      return { statusCode: 400, body: 'Invalid JSON' };
+      // Some providers send application/x-www-form-urlencoded; try to parse URL-encoded
+      try {
+        const params = new URLSearchParams(rawBody);
+        payload = {};
+        for (const [k,v] of params) payload[k] = v;
+      } catch (e) {
+        console.warn('Invalid JSON payload and not urlencoded');
+        return { statusCode: 400, body: 'Invalid JSON' };
+      }
     }
 
-    const data = payload.data || {};
-    const reference = data.reference || data.transaction_ref || data.tx_ref || data.ref;
-    const status = (data.status || payload.event || 'unknown').toString();
-    const amount = data.amount ?? null;
+    // If provider not detected via signature, attempt guess by payload shape
+    if (!provider) {
+      const p = payload || {};
+      const lowercaseKeys = Object.keys(p).map(k => k.toLowerCase()).join(' ');
+      if (lowercaseKeys.includes('monie') || lowercaseKeys.includes('moniepoint')) provider = 'moniepoint';
+      else if (lowercaseKeys.includes('opay') || lowercaseKeys.includes('order_no') || lowercaseKeys.includes('trxref') || lowercaseKeys.includes('orderid')) provider = 'opay';
+    }
+
+    // Normalize data object if wrapped (some providers use { data: {...} })
+    const data = payload.data && typeof payload.data === 'object' ? payload.data : payload;
+
+    // Extract a reference from many common keys
+    const referenceCandidates = [
+      data.reference, data.transaction_ref, data.tx_ref, data.ref, data.order_no, data.orderNo, data.orderId, data.txnRef, data.trxref, data.transactionId, data.payment_ref
+    ];
+    const reference = referenceCandidates.find(x => x);
+
+    // Extract status and amount using common keys
+    const status = (data.status || data.transaction_status || data.state || payload.event || 'unknown').toString();
+    const amount = data.amount || data.total_amount || data.value || data.amt || null;
 
     if (!reference) {
       console.warn('No transaction reference in webhook');
+      // still allow if provider and other keys exist? For safety, require a reference
       return { statusCode: 400, body: 'Missing reference' };
     }
 
-    // Optional: verify with Moniepoint verify endpoint if configured
-    const MONIEPOINT_VERIFY_URL = process.env.MONIEPOINT_VERIFY_URL; // e.g. https://api.moniepoint.com/v1/transactions
-    const MONIEPOINT_API_KEY = process.env.MONIEPOINT_API_KEY;
-    let verified = false;
+    // If not verified via signature earlier and provider has verify API configured, call it
     let verifyInfo = null;
-
-    if (MONIEPOINT_VERIFY_URL && MONIEPOINT_API_KEY) {
-      try {
-        const verifyRes = await fetch(`${MONIEPOINT_VERIFY_URL.replace(/\/+$/, '')}/${encodeURIComponent(reference)}`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${MONIEPOINT_API_KEY}`,
-            'Content-Type': 'application/json'
+    if (!verified) {
+      if (provider === 'moniepoint' && process.env.MONIEPOINT_VERIFY_URL && process.env.MONIEPOINT_API_KEY) {
+        try {
+          const verifyRes = await fetch(`${process.env.MONIEPOINT_VERIFY_URL.replace(/\/+$/, '')}/${encodeURIComponent(reference)}`, {
+            method: 'GET',
+            headers: { 'Authorization': `Bearer ${process.env.MONIEPOINT_API_KEY}`, 'Content-Type': 'application/json' }
+          });
+          if (verifyRes.ok) {
+            verifyInfo = await verifyRes.json();
+            if (verifyInfo && (verifyInfo.status === 'success' || verifyInfo.data?.status === 'success' || verifyInfo.data?.transaction_status === 'success')) verified = true;
           }
-        });
-        if (verifyRes.ok) {
-          verifyInfo = await verifyRes.json();
-          if (verifyInfo && (verifyInfo.status === 'success' || verifyInfo.data?.status === 'success' || verifyInfo.data?.transaction_status === 'success')) {
-            verified = true;
+        } catch (e) { console.warn('Moniepoint verify error', e); }
+      } else if (!verified && provider === 'opay' && process.env.OPAY_VERIFY_URL && process.env.OPAY_API_KEY) {
+        try {
+          const verifyRes = await fetch(`${process.env.OPAY_VERIFY_URL.replace(/\/+$/, '')}/${encodeURIComponent(reference)}`, {
+            method: 'GET',
+            headers: { 'Authorization': `Bearer ${process.env.OPAY_API_KEY}`, 'Content-Type': 'application/json' }
+          });
+          if (verifyRes.ok) {
+            verifyInfo = await verifyRes.json();
+            // heuristics for opay verify shape
+            if (verifyInfo && (verifyInfo.status === 'SUCCESS' || verifyInfo.success === true || verifyInfo.data?.status === 'success')) verified = true;
           }
-        } else {
-          console.warn('Moniepoint verify returned non-200', verifyRes.status);
-        }
-      } catch (err) {
-        console.error('Error calling Moniepoint verify API', err);
+        } catch (e) { console.warn('OPay verify error', e); }
       }
     }
+
+    // Build paymentRow mapping to our payments table
+    const paymentRow = {
+      reference: reference,
+      provider: provider || 'unknown',
+      status: status,
+      amount: amount,
+      datetime: data.datetime || data.date || data.time || new Date().toISOString(),
+      sender_name: data.senderName || data.sender_name || data.payer_name || data.customer_name || data.username || null,
+      account_number: data.accountNumber || data.account_number || data.payer_account || data.msisdn || null,
+      metadata: Object.assign({}, data, { provider_detected: provider, verified }),
+    };
 
     // Upsert into Supabase via REST (service role key required)
     const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -72,18 +169,6 @@ exports.handler = async (event) => {
       console.error('Missing Supabase configuration (SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY)');
       return { statusCode: 500, body: 'Server not configured' };
     }
-
-    // Map incoming payload fields to the payments table columns expected by the frontend
-    const paymentRow = {
-      reference: reference,
-      status: status,
-      amount: amount,
-      // frontend expects these fields: datetime, senderName, accountNumber
-      datetime: data.datetime || new Date().toISOString(),
-      sender_name: data.senderName || data.sender_name || data.sender || data.payer_name || null,
-      account_number: data.accountNumber || data.account_number || data.account || data.payer_account || null,
-      metadata: Object.assign({}, data, { verified }),
-    };
 
     try {
       const res = await fetch(`${SUPABASE_URL.replace(/\/+$/, '')}/rest/v1/payments?on_conflict=reference`, {
@@ -102,15 +187,12 @@ exports.handler = async (event) => {
         console.error('Supabase upsert failed', res.status, txt);
         return { statusCode: 500, body: 'DB upsert failed' };
       }
-
     } catch (err) {
       console.error('Error saving to Supabase', err);
       return { statusCode: 500, body: 'DB error' };
     }
 
-    // Return 200 quickly
     return { statusCode: 200, body: 'OK' };
-
   } catch (err) {
     console.error('Unexpected error in webhook', err);
     return { statusCode: 500, body: 'Internal error' };

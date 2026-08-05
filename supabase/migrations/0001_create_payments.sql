@@ -2,6 +2,7 @@
 
 CREATE TABLE IF NOT EXISTS payments (
   reference text PRIMARY KEY,
+  provider text,
   status text,
   amount numeric,
   datetime timestamptz,
