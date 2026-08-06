@@ -291,7 +291,18 @@
           <button class="btn btn-outline-success btn-sm" onclick="simulateMoniepointWebhookTest()">🧪 Test Webhook Pop-up</button>
         </div>
       </div>
-      
+
+        <div class="d-flex align-items-center mb-3 gap-2">
+          <label for="moniepoint-date-filter" class="fw-bold">Filter Period:</label>
+         <select id="moniepoint-date-filter" class="form-select w-auto" onchange="filterMoniepointPayments()">
+         <option value="today">Today</option>
+         <option value="yesterday">Yesterday</option>
+        <option value="this_week">This Week</option>
+       <option value="last_month">Last Month</option>
+      <option value="all">All Time / Custom</option>
+    </select>
+ </div>  
+    
       <div class="row g-3 mb-4">
         <div class="col-md-6">
           <div class="card text-center border-success shadow-sm">
