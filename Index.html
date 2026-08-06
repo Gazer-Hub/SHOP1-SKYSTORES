@@ -286,7 +286,7 @@
       <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <h3>💳 Moniepoint Payment History & Webhook Logs</h3>
         <div class="no-print d-flex align-items-center gap-2 flex-wrap">
-          <span class="badge bg-secondary">Webhook URL: sky-moniepoint-webhook.netlify.app</span>[cite: 1]
+          <span class="badge bg-secondary">Webhook URL: sky-modernize.netlify.app</span>[cite: 1]
           <button class="btn btn-outline-primary btn-sm" onclick="exportMoniepointToCSV()">📥 Export Moniepoint CSV</button>
           <button class="btn btn-outline-success btn-sm" onclick="simulateMoniepointWebhookTest()">🧪 Test Webhook Pop-up</button>
         </div>
@@ -319,7 +319,14 @@
           <button class="btn btn-sm btn-outline-secondary" type="button" onclick="clearMoniepointSearch()">Clear</button>
         </div>
       </div>
-
+   
+     <div class="payment-header">
+      <h3>Moniepoint Payment History</h3>
+       <button id="refresh-payments-btn" class="refresh-btn">
+        <i class="fas fa-sync-alt"></i> Refresh
+        </button>
+     </div> 
+      
       <table class="table table-striped align-middle">
         <thead class="table-dark">
           <tr>
@@ -1161,7 +1168,25 @@ document.addEventListener('DOMContentLoaded', loadPaymentHistory);
         `).join('');
       }
     }
+document.getElementById('refresh-payments-btn').addEventListener('click', async () => {
+    const refreshBtn = document.getElementById('refresh-payments-btn');
+    
+    // Optional: Add a loading class or disable button to prevent spamming
+    refreshBtn.disabled = true;
+    refreshBtn.textContent = 'Refreshing...';
 
+    try {
+        // Call your existing function that fetches data from the payments table
+        await fetchPaymentHistory(); 
+    } catch (error) {
+        console.error('Failed to refresh payment history:', error);
+    } finally {
+        // Reset button state
+        refreshBtn.disabled = false;
+        refreshBtn.textContent = 'Refresh';
+    }
+});
+    
     function exportSalesToCSV() {
       const { salesData, periodLabel } = getFilteredSalesData();
       if (salesData.length === 0) return alert("No sales records available to export for this period.");
