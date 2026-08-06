@@ -168,6 +168,7 @@
             <option value="yesterday">Yesterday</option>
             <option value="this-week">This Week (Weekly Report)</option>
             <option value="this-month">This Month</option>
+            <option value="last-month">Last Month</option>
             <option value="this-year">This Year (Yearly Report - Grouped by Month)</option>
             <option value="all-time">All Time</option>
             <option value="custom">Custom Specific Date...</option>
@@ -178,7 +179,7 @@
       </div>
       
       <div id="dashboard-summary-container">
-        <div class="row g-3 mb-4">
+        <div class="row g-3 mb-3">
           <div class="col-md-2">
             <div class="card text-center"><div class="card-body"><h6 class="text-muted">Sales Revenue</h6><h4 class="text-success" id="dash-sales">₦0</h4></div></div>
           </div>
@@ -198,6 +199,16 @@
             <div class="card text-center border-success"><div class="card-body"><h6 class="text-muted">Net Profit</h6><h4 class="text-success" id="dash-net">₦0</h4></div></div>
           </div>
         </div>
+        <!-- Expenses Input Row for CAC Tax Deduction -->
+        <div class="row mb-4 no-print">
+          <div class="col-md-4 offset-md-8">
+            <div class="input-group input-group-sm">
+              <span class="input-group-text bg-warning fw-bold">Period Expenses (₦)</span>
+              <input type="number" id="dash-period-expenses" class="form-control" min="0" value="0" placeholder="Enter expenses to deduct" oninput="renderDashboard()">
+              <button class="btn btn-outline-secondary" type="button" onclick="document.getElementById('dash-period-expenses').value=0; renderDashboard();">Reset</button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="cac-print-section mb-4">
@@ -211,6 +222,7 @@
             <tr><td><b>Total Cost Price:</b></td><td id="print-val-cost">₦0</td></tr>
             <tr><td><b>Total Customer Refunds:</b></td><td id="print-val-returns">₦0</td></tr>
             <tr><td><b>Gross Profit:</b></td><td id="print-val-gross">₦0</td></tr>
+            <tr><td><b>Period Operating Expenses:</b></td><td id="print-val-expenses">₦0</td></tr>
             <tr class="table-danger"><td><b>CAC Tax Deduction Amount (7.5%):</b></td><td id="print-val-cac">₦0</td></tr>
             <tr class="table-success"><td><b>Final Net Profit:</b></td><td id="print-val-net">₦0</td></tr>
           </table>
@@ -284,7 +296,7 @@
         <div class="col-md-6">
           <div class="card text-center border-success shadow-sm">
             <div class="card-body py-2">
-              <h6 class="text-muted mb-1">Total Moniepoint Inflows</h6>
+              <h6 class="text-muted mb-1">Total Moniepoint Inflows (Today)</h6>
               <h3 class="text-success fw-bold mb-0" id="moniepoint-total-amount">₦0</h3>
             </div>
           </div>
@@ -292,7 +304,7 @@
         <div class="col-md-6">
           <div class="card text-center border-primary shadow-sm">
             <div class="card-body py-2">
-              <h6 class="text-muted mb-1">Total Successful Transactions</h6>
+              <h6 class="text-muted mb-1">Total Successful Transactions (Today)</h6>
               <h3 class="text-primary fw-bold mb-0" id="moniepoint-total-count">0</h3>
             </div>
           </div>
@@ -320,7 +332,7 @@
           </tr>
         </thead>
         <tbody id="moniepoint-table-body">
-          <tr><td colspan="6" class="text-center text-muted py-3">No Moniepoint payments recorded yet.</td></tr>
+          <tr><td colspan="6" class="text-center text-muted py-3">No Moniepoint payments recorded yet for today.</td></tr>
         </tbody>
       </table>
     </div>
@@ -1049,9 +1061,9 @@
     }
 
     function simulateMoniepointWebhookTest() {
-      // Test simulation simulating a webhook received from sky-moniepoint-webhook.netlify.app
+      const todayStr = new Date().toISOString().split('T')[0];
       const testPayment = {
-        datetime: new Date().toISOString().replace('T', ' ').substring(0, 19),
+        datetime: todayStr + " " + new Date().toTimeString().split(' ')[0],
         reference: "MP-TXN-" + Math.floor(100000 + Math.random() * 900000),
         senderName: "TEST CUSTOMER",
         accountNumber: "99" + Math.floor(10000000 + Math.random() * 90000000),
@@ -1075,9 +1087,13 @@
     function renderMoniepointPayments(filterQuery = "") {
       const tbody = document.getElementById('moniepoint-table-body');
       const payments = db.moniepointPayments || [];
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      // Filter Moniepoint payments for today so totals refresh to 0 on a new day
+      const todaysPayments = payments.filter(p => p.datetime && p.datetime.startsWith(todayStr));
       
-      document.getElementById('moniepoint-total-amount').innerText = `₦${payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0).toLocaleString()}`;
-      document.getElementById('moniepoint-total-count').innerText = payments.length;
+      document.getElementById('moniepoint-total-amount').innerText = `₦${todaysPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0).toLocaleString()}`;
+      document.getElementById('moniepoint-total-count').innerText = todaysPayments.length;
 
       const filtered = payments.slice().reverse().filter(p => {
         if (!filterQuery) return true;
@@ -1272,25 +1288,28 @@
     function printCACReport() {
       const { periodLabel, filteredSales, filteredReturns } = getFilteredDashboardPeriod();
       const filterType = document.getElementById('dash-date-filter').value;
+      const periodExpenses = parseInt(document.getElementById('dash-period-expenses').value) || 0;
       document.getElementById('printout-period-label').innerText = periodLabel;
 
       const dynamicContentContainer = document.getElementById('cac-print-dynamic-content');
 
-      if (filterType === 'this-week') {
+      if (filterType === 'this-week' || filterType === 'this-month' || filterType === 'last-month') {
         let totalSales = filteredSales.reduce((sum, s) => sum + (s.sell_price * s.qty), 0);
         let totalCost = filteredSales.reduce((sum, s) => sum + (s.cost_price * s.qty), 0);
         let totalReturns = filteredReturns.reduce((sum, r) => sum + (r.sell_price * r.qty), 0);
         let grossProfit = totalSales - totalCost - totalReturns;
-        let cacFee = grossProfit > 0 ? Math.floor(grossProfit * 0.075) : 0;
-        let netProfit = grossProfit - cacFee;
+        let taxableProfit = grossProfit - periodExpenses;
+        let cacFee = taxableProfit > 0 ? Math.floor(taxableProfit * 0.075) : 0;
+        let netProfit = taxableProfit - cacFee;
 
         dynamicContentContainer.innerHTML = `
-          <h6 class="text-center fw-bold mb-3">Weekly CAC Audit & Tax Summary</h6>
+          <h6 class="text-center fw-bold mb-3">CAC Audit & Tax Summary</h6>
           <table class="table table-bordered">
-            <tr><td><b>Total Weekly Sales Revenue:</b></td><td>₦${totalSales.toLocaleString()}</td></tr>
+            <tr><td><b>Total Sales Revenue:</b></td><td>₦${totalSales.toLocaleString()}</td></tr>
             <tr><td><b>Total Cost Price:</b></td><td>₦${totalCost.toLocaleString()}</td></tr>
             <tr><td><b>Total Customer Refunds:</b></td><td>₦${totalReturns.toLocaleString()}</td></tr>
             <tr><td><b>Gross Profit:</b></td><td>₦${grossProfit.toLocaleString()}</td></tr>
+            <tr><td><b>Period Operating Expenses:</b></td><td>₦${periodExpenses.toLocaleString()}</td></tr>
             <tr class="table-danger"><td><b>Official CAC Tax Deduction (7.5%):</b></td><td><b>₦${cacFee.toLocaleString()}</b></td></tr>
             <tr class="table-success"><td><b>Final Net Profit:</b></td><td>₦${netProfit.toLocaleString()}</td></tr>
           </table>
@@ -1332,7 +1351,8 @@
 
         for (const [mKey, data] of Object.entries(monthlyGroups)) {
           const gross = data.sales - data.cost - data.returns;
-          const cacAmt = gross > 0 ? Math.floor(gross * 0.075) : 0;
+          const taxable = gross - periodExpenses;
+          const cacAmt = taxable > 0 ? Math.floor(taxable * 0.075) : 0;
           annualTotalCAC += cacAmt;
           tableRows += `
             <tr>
@@ -1366,6 +1386,7 @@
             <tr><td><b>Total Cost Price:</b></td><td>${document.getElementById('dash-cost').innerText}</td></tr>
             <tr><td><b>Total Customer Refunds:</b></td><td>${document.getElementById('dash-returns').innerText}</td></tr>
             <tr><td><b>Gross Profit:</b></td><td>${document.getElementById('dash-gross').innerText}</td></tr>
+            <tr><td><b>Period Operating Expenses:</b></td><td>₦${periodExpenses.toLocaleString()}</td></tr>
             <tr class="table-danger"><td><b>CAC Tax Deduction Amount (7.5%):</b></td><td><b>${document.getElementById('dash-cac').innerText}</b></td></tr>
             <tr class="table-success"><td><b>Final Net Profit:</b></td><td>${document.getElementById('dash-net').innerText}</td></tr>
           </table>
@@ -1695,6 +1716,14 @@
         periodLabel = `This Month (${currentYearMonth})`;
         filteredSales = db.sales.filter(s => s.date && s.date.startsWith(currentYearMonth));
         filteredReturns = db.returns.filter(r => r.date && r.date.startsWith(currentYearMonth));
+      } else if (filterType === 'last-month') {
+        const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const lastMonthYear = lastMonthDate.getFullYear();
+        const lastMonthNum = String(lastMonthDate.getMonth() + 1).padStart(2, '0');
+        const lastMonthStr = `${lastMonthYear}-${lastMonthNum}`;
+        periodLabel = `Last Month (${lastMonthStr})`;
+        filteredSales = db.sales.filter(s => s.date && s.date.startsWith(lastMonthStr));
+        filteredReturns = db.returns.filter(r => r.date && r.date.startsWith(lastMonthStr));
       } else if (filterType === 'this-year') {
         const currentYear = now.getFullYear().toString();
         periodLabel = `Yearly Report (Grouped by Month - ${currentYear})`;
@@ -1727,10 +1756,12 @@
       let totalSales = filteredSales.reduce((sum, s) => sum + (s.sell_price * s.qty), 0);
       let totalCost = filteredSales.reduce((sum, s) => sum + (s.cost_price * s.qty), 0);
       let totalReturns = filteredReturns.reduce((sum, r) => sum + (r.sell_price * r.qty), 0);
+      let periodExpenses = parseInt(document.getElementById('dash-period-expenses').value) || 0;
 
       let grossProfit = totalSales - totalCost - totalReturns;
-      let cacFee = grossProfit > 0 ? Math.floor(grossProfit * 0.075) : 0;
-      let netProfit = grossProfit - cacFee;
+      let taxableProfit = grossProfit - periodExpenses;
+      let cacFee = taxableProfit > 0 ? Math.floor(taxableProfit * 0.075) : 0;
+      let netProfit = taxableProfit - cacFee;
 
       document.getElementById('dash-sales').innerText = `₦${totalSales.toLocaleString()}`;
       document.getElementById('dash-cost').innerText = `₦${totalCost.toLocaleString()}`;
@@ -2344,14 +2375,14 @@
       return { returnsData, periodLabel };
     }
 
-    function renderReturns(filterQuery = "") {
+    function renderReturns(searchQuery = "") {
       const tbody = document.getElementById('returns-table-body');
       const { returnsData, periodLabel } = getFilteredReturnsData();
       document.getElementById('returns-badge-period').innerText = periodLabel;
 
-      const filteredReturns = returnsData.map((ret, originalIdx) => ({ ...ret, originalIdx })).slice().reverse().filter(ret => {
-        if (!filterQuery) return true;
-        const q = filterQuery.toLowerCase();
+      let filteredReturns = returnsData.slice().reverse().filter(ret => {
+        if (!searchQuery) return true;
+        const q = searchQuery.toLowerCase();
         return (ret.model && ret.model.toLowerCase().includes(q)) ||
                (ret.customer && ret.customer.toLowerCase().includes(q)) ||
                (ret.reason && ret.reason.toLowerCase().includes(q)) ||
@@ -2359,31 +2390,19 @@
       });
 
       if (filteredReturns.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-3">No matching return records found for this period</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-3">No customer returns recorded for this period</td></tr>`;
       } else {
-        tbody.innerHTML = filteredReturns.map(ret => {
-          const isExchanged = ret.isExchanged || false;
-          return `
-            <tr>
-              <td>${ret.date}</td>
-              <td><b>${ret.model}</b></td>
-              <td>${ret.customer}</td>
-              <td>${ret.qty}</td>
-              <td>${ret.reason}</td>
-              <td>
-                <span class="badge ${isExchanged ? 'bg-primary' : 'bg-secondary'} p-2">
-                  ${isExchanged ? '🔄 Exchanged (Stock Deducted)' : '💵 Refund / Credit'}
-                </span>
-              </td>
-              <td class="no-print">
-                ${!isExchanged ? 
-                  `<button class="btn btn-sm btn-outline-danger" onclick="deductExchangeStock(${ret.originalIdx})">🔄 Deduct Replacement</button>` : 
-                  `<button class="btn btn-sm btn-outline-secondary" disabled>✅ Replacement Handed Out</button>`
-                }
-              </td>
-            </tr>
-          `;
-        }).join('');
+        tbody.innerHTML = filteredReturns.map(ret => `
+          <tr>
+            <td>${ret.date}</td>
+            <td><b>${ret.model}</b></td>
+            <td>${ret.customer}</td>
+            <td>${ret.qty}</td>
+            <td>${ret.reason}</td>
+            <td>${ret.isExchanged ? '<span class="badge bg-danger">Replacement Issued 🔄</span>' : '<span class="badge bg-secondary">Refund</span>'}</td>
+            <td class="no-print">-</td>
+          </tr>
+        `).join('');
       }
     }
 
@@ -2396,88 +2415,49 @@
     function sendReturnsToGmail() {
       const { returnsData, periodLabel } = getFilteredReturnsData();
       if (returnsData.length === 0) return alert(`No customer return records available for "${periodLabel}" to send!`);
-
-      let emailBody = `SKY MODERNIZE SAVE TECHNOLOGY LTD - Customer Returns Report\n`;
-      emailBody += `Report Period: ${periodLabel}\n\n`;
-      emailBody += `--- CUSTOMER RETURNS ---\n`;
-      emailBody += `Date | Model | Customer | Qty | Reason | Type\n`;
-      emailBody += `-----------------------------------------------------------------------\n`;
-
+      let emailBody = `SKY MODERNIZE SAVE TECHNOLOGY LTD - Customer Returns Report\nReport Period: ${periodLabel}\n\n`;
       returnsData.forEach(r => {
-        const exchangeText = r.isExchanged ? 'Replacement Issued' : 'Refund / Credit';
-        emailBody += `${r.date} | ${r.model} | ${r.customer} | ${r.qty} pcs | ${r.reason} | ${exchangeText}\n`;
+        emailBody += `${r.date} | ${r.model} | Customer: ${r.customer} | Qty: ${r.qty} | Reason: ${r.reason} | ${r.isExchanged ? 'Replacement' : 'Refund'}\n`;
       });
-
-      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(`SKY MODERNIZE - Customer Returns Report (${periodLabel})`)}&body=${encodeURIComponent(emailBody)}`;
+      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(`SKY MODERNIZE - Customer Returns (${periodLabel})`)}&body=${encodeURIComponent(emailBody)}`;
       window.open(gmailUrl, '_blank');
-    }
-
-    function deductExchangeStock(returnIdx) {
-      const ret = db.returns[returnIdx];
-      if (!ret) return;
-      const item = db.stock.find(s => s.model.toLowerCase() === ret.model.toLowerCase());
-      if (!item) return alert("Stock item model not found in stock inventory!");
-      if (item.qty < ret.qty) return alert("Insufficient stock available to issue replacement!");
-
-      if (confirm(`Deduct ${ret.qty} unit(s) of "${ret.model}" from stock for customer exchange?`)) {
-        item.qty -= ret.qty;
-        ret.isExchanged = true;
-        saveDB();
-        alert(`Successfully deducted ${ret.qty} pc(s) from stock for replacement exchange.`);
-      }
     }
 
     document.getElementById('returns-form').addEventListener('submit', (e) => {
       e.preventDefault();
-      const saleIdx = parseInt(document.getElementById('return-sale-idx').value);
+      const saleIdx = document.getElementById('return-sale-idx').value;
       const qty = parseInt(document.getElementById('return-qty').value);
       const reason = document.getElementById('return-reason').value.trim();
       const isExchanged = document.getElementById('return-is-exchanged').checked;
 
-      if (isNaN(saleIdx)) return alert("Please select a valid sale record!");
-      const soldItem = db.sales[saleIdx];
-      if (!soldItem) return alert("Selected sale record not found!");
-      if (qty > soldItem.qty) return alert(`Return quantity cannot exceed sold quantity (${soldItem.qty} pcs)!`);
+      if (saleIdx === "") return alert("Please select a sale to return!");
+      const originalSale = db.sales[saleIdx];
+      if (!originalSale) return alert("Invalid sale record selected!");
+      if (qty <= 0 || qty > originalSale.qty) return alert(`Invalid return quantity! Max available to return from this sale is ${originalSale.qty} pcs.`);
 
-      const rawModelName = soldItem.model.split(' [')[0].trim();
-      const stockItem = db.stock.find(s => s.model.toLowerCase() === rawModelName.toLowerCase());
-
-      if (!isExchanged) {
-        if (stockItem) {
-          stockItem.qty += qty;
-        } else {
-          db.stock.push({
-            model: rawModelName,
-            category: "General",
-            subcat: soldItem.quality || "",
-            qty: qty,
-            cost_price: soldItem.cost_price || 0,
-            sell_price: soldItem.sell_price || 0,
-            supplier: ""
-          });
-        }
-      } else {
-        if (stockItem && stockItem.qty < qty) {
-          return alert("Insufficient stock available to issue replacement item!");
-        }
-        if (stockItem) {
-          stockItem.qty -= qty;
-        }
-      }
-
+      const todayStr = new Date().toISOString().split('T')[0];
       db.returns.push({
-        date: new Date().toISOString().split('T')[0],
-        model: soldItem.model,
-        customer: soldItem.customer,
+        date: todayStr,
+        model: originalSale.model,
+        customer: originalSale.customer,
         qty: qty,
-        sell_price: soldItem.sell_price,
+        sell_price: originalSale.sell_price,
+        cost_price: originalSale.cost_price,
         reason: reason,
         isExchanged: isExchanged
       });
 
+      if (!isExchanged) {
+        const matchingStock = db.stock.find(s => s.model.toLowerCase() === originalSale.model.toLowerCase() && (s.subcat || 'Standard').toLowerCase() === (originalSale.quality || 'Standard').toLowerCase()) ||
+                              db.stock.find(s => s.model.toLowerCase() === originalSale.model.toLowerCase());
+        if (matchingStock) {
+          matchingStock.qty += qty;
+        }
+      }
+
       saveDB();
       clearCustomerReturnForm();
-      alert("✅ Customer return successfully processed!");
+      alert("✅ Customer return successfully processed and recorded!");
     });
 
     function handleSupplierReturnsFilterChange() {
@@ -2497,11 +2477,7 @@
       const todayStr = now.toISOString().split('T')[0];
       let supReturnsData = [], periodLabel = "This Month";
 
-      if (filterType === 'this-month') {
-        const currentYearMonth = todayStr.substring(0, 7);
-        periodLabel = `This Month (${currentYearMonth})`;
-        supReturnsData = db.supplierReturns.filter(r => r.date && r.date.startsWith(currentYearMonth));
-      } else if (filterType === 'today') {
+      if (filterType === 'today') {
         periodLabel = `Today (${todayStr})`;
         supReturnsData = db.supplierReturns.filter(r => r.date === todayStr);
       } else if (filterType === 'yesterday') {
@@ -2516,14 +2492,18 @@
         const startOfWeek = new Date(current.setDate(firstDay)).toISOString().split('T')[0];
         periodLabel = `This Week (${startOfWeek} to ${todayStr})`;
         supReturnsData = db.supplierReturns.filter(r => r.date && r.date >= startOfWeek && r.date <= todayStr);
+      } else if (filterType === 'this-month') {
+        const currentYearMonth = todayStr.substring(0, 7);
+        periodLabel = `This Month (${currentYearMonth})`;
+        supReturnsData = db.supplierReturns.filter(r => r.date && r.date.startsWith(currentYearMonth));
       } else if (filterType === 'all-time') {
         periodLabel = "All Time History";
         supReturnsData = db.supplierReturns;
       } else if (filterType === 'custom') {
         const customDate = document.getElementById('sup-returns-custom-date').value;
         if (customDate) {
-          periodLabel = `Date / Month: ${customDate}`;
-          supReturnsData = db.supplierReturns.filter(r => r.date && r.date.includes(customDate));
+          periodLabel = `Date/Month: ${customDate}`;
+          supReturnsData = db.supplierReturns.filter(r => r.date && r.date.startsWith(customDate));
         } else {
           periodLabel = "Select Date...";
           supReturnsData = [];
@@ -2532,75 +2512,43 @@
       return { supReturnsData, periodLabel };
     }
 
-    function renderSupplierReturns(filterQuery = "") {
+    function renderSupplierReturns(searchQuery = "") {
       const tbody = document.getElementById('supplier-returns-table-body');
       const { supReturnsData, periodLabel } = getFilteredSupplierReturnsData();
       document.getElementById('sup-returns-badge-period').innerText = periodLabel;
 
-      const filtered = supReturnsData.map((ret, originalIdx) => ({ ...ret, originalIdx })).slice().reverse().filter(ret => {
-        if (!filterQuery) return true;
-        const q = filterQuery.toLowerCase();
-        return (ret.model && ret.model.toLowerCase().includes(q)) ||
-               (ret.supplier && ret.supplier.toLowerCase().includes(q)) ||
-               (ret.reason && ret.reason.toLowerCase().includes(q)) ||
-               (ret.status && ret.status.toLowerCase().includes(q)) ||
-               (ret.date && ret.date.includes(q));
+      let filtered = supReturnsData.slice().reverse().filter(r => {
+        if (!searchQuery) return true;
+        const q = searchQuery.toLowerCase();
+        return (r.model && r.model.toLowerCase().includes(q)) ||
+               (r.supplier && r.supplier.toLowerCase().includes(q)) ||
+               (r.reason && r.reason.toLowerCase().includes(q)) ||
+               (r.status && r.status.toLowerCase().includes(q));
       });
 
       if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-3">No matching supplier return records found</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-3">No supplier returns recorded for this period</td></tr>`;
       } else {
-        tbody.innerHTML = filtered.map(ret => `
+        tbody.innerHTML = filtered.map((r, idx) => `
           <tr>
-            <td>${ret.date}</td>
-            <td><b>${ret.model}</b></td>
-            <td>${ret.supplier}</td>
-            <td>${ret.qty}</td>
-            <td>${ret.reason}</td>
-            <td><span class="badge ${ret.status === 'Replaced / Received' ? 'bg-success' : (ret.status === 'Sent Back' ? 'bg-primary' : 'bg-warning text-dark')}">${ret.status}</span></td>
+            <td>${r.date}</td>
+            <td><b>${r.model}</b></td>
+            <td>${r.supplier}</td>
+            <td>${r.qty}</td>
+            <td>${r.reason}</td>
+            <td><span class="badge ${r.status === 'Replaced / Received' ? 'bg-success' : (r.status === 'Sent Back' ? 'bg-warning text-dark' : 'bg-secondary')}">${r.status}</span></td>
             <td class="no-print">
-              <button class="btn btn-sm btn-outline-success" onclick="restockSupplierReturn(${ret.originalIdx})">🔄 Restock</button>
+              <button class="btn btn-sm btn-outline-danger" onclick="deleteSupplierReturn(${db.supplierReturns.indexOf(r)})">Delete</button>
             </td>
           </tr>
         `).join('');
       }
     }
 
-    function printFilteredSupplierReturns() {
-      const { periodLabel } = getFilteredSupplierReturnsData();
-      document.getElementById('sup-returns-print-subtitle').innerText = `Supplier Returns Bulk Report - ${periodLabel}`;
-      window.print();
-    }
-
-    function sendSupplierReturnsToGmail() {
-      const { supReturnsData, periodLabel } = getFilteredSupplierReturnsData();
-      if (supReturnsData.length === 0) return alert(`No supplier returns available for "${periodLabel}" to send!`);
-
-      let emailBody = `SKY MODERNIZE SAVE TECHNOLOGY LTD - Supplier Returns Report\n`;
-      emailBody += `Report Period: ${periodLabel}\n\n`;
-      emailBody += `--- SUPPLIER RETURNS ---\n`;
-      emailBody += `Date | Model | Supplier | Qty | Reason | Status\n`;
-      emailBody += `-----------------------------------------------------------------------\n`;
-
-      supReturnsData.forEach(r => {
-        emailBody += `${r.date} | ${r.model} | ${r.supplier} | ${r.qty} pcs | ${r.reason} | ${r.status}\n`;
-      });
-
-      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(`SKY MODERNIZE - Supplier Returns Report (${periodLabel})`)}&body=${encodeURIComponent(emailBody)}`;
-      window.open(gmailUrl, '_blank');
-    }
-
-    function restockSupplierReturn(idx) {
-      const ret = db.supplierReturns[idx];
-      if (!ret) return;
-      const item = db.stock.find(s => s.model.toLowerCase() === ret.model.toLowerCase());
-      if (item) {
-        item.qty += ret.qty;
-        ret.status = "Replaced / Received";
+    function deleteSupplierReturn(index) {
+      if (confirm("Delete this supplier return record?")) {
+        db.supplierReturns.splice(index, 1);
         saveDB();
-        alert(`Successfully restocked ${ret.qty} units of "${ret.model}" back into inventory!`);
-      } else {
-        alert("Stock model not found in inventory. Please add it back manually.");
       }
     }
 
@@ -2613,101 +2561,77 @@
       const reason = document.getElementById('sup-return-reason').value.trim();
 
       const item = db.stock.find(s => s.model.toLowerCase() === model.toLowerCase());
-      if (!item) return alert("Model not found in stock inventory!");
-      if (item.qty < qty) return alert(`Insufficient stock! Only ${item.qty} pcs available.`);
-
-      item.qty -= qty;
+      if (item) {
+        if (item.qty < qty) return alert(`Insufficient stock! Only ${item.qty} pcs available.`);
+        item.qty -= qty;
+        if (status === 'Replaced / Received') {
+          item.qty += qty;
+        }
+      }
 
       db.supplierReturns.push({
         date: new Date().toISOString().split('T')[0],
-        model: model,
-        supplier: supplier,
-        qty: qty,
-        status: status,
-        reason: reason
+        model,
+        supplier,
+        qty,
+        status,
+        reason
       });
 
       saveDB();
       clearSupplierReturnForm();
-      alert("✅ Supplier return successfully recorded and stock adjusted!");
+      alert("✅ Supplier return successfully recorded!");
     });
 
-    function renderRequisitions(filterQuery = "") {
+    function printFilteredSupplierReturns() {
+      window.print();
+    }
+
+    function sendSupplierReturnsToGmail() {
+      const { supReturnsData, periodLabel } = getFilteredSupplierReturnsData();
+      if (supReturnsData.length === 0) return alert("No supplier returns to send.");
+      let body = `Supplier Returns Report (${periodLabel})\n\n`;
+      supReturnsData.forEach(r => {
+        body += `${r.date} | ${r.model} | Supplier: ${r.supplier} | Qty: ${r.qty} | Status: ${r.status} | Reason: ${r.reason}\n`;
+      });
+      window.open(`https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(`Supplier Returns (${periodLabel})`)}&body=${encodeURIComponent(body)}`, '_blank');
+    }
+
+    function renderRequisitions(searchQuery = "") {
       const tbody = document.getElementById('requisition-table-body');
-      const filtered = db.requisitions.map((req, originalIdx) => ({ ...req, originalIdx })).slice().reverse().filter(req => {
-        if (!filterQuery) return true;
-        const q = filterQuery.toLowerCase();
-        return (req.item && req.item.toLowerCase().includes(q)) ||
-               (req.category && req.category.toLowerCase().includes(q)) ||
-               (req.supplier && req.supplier.toLowerCase().includes(q)) ||
-               (req.id && req.id.toLowerCase().includes(q)) ||
-               (req.status && req.status.toLowerCase().includes(q));
+      const reqs = db.requisitions || [];
+      const filtered = reqs.slice().reverse().filter(r => {
+        if (!searchQuery) return true;
+        const q = searchQuery.toLowerCase();
+        return (r.item && r.item.toLowerCase().includes(q)) ||
+               (r.category && r.category.toLowerCase().includes(q)) ||
+               (r.supplier && r.supplier.toLowerCase().includes(q)) ||
+               (r.id && r.id.toLowerCase().includes(q));
       });
 
       if (filtered.length === 0) {
         tbody.innerHTML = `<tr><td colspan="10" class="text-center text-muted py-3">No purchase requisitions found</td></tr>`;
       } else {
-        tbody.innerHTML = filtered.map(req => {
-          const estCost = req.cost || 0;
-          const estTotal = estCost * req.qty;
+        tbody.innerHTML = filtered.map(r => {
+          const estTotal = (Number(r.cost) || 0) * Number(r.qty);
           return `
             <tr>
-              <td><code>${req.id}</code></td>
-              <td>${req.date}</td>
-              <td><b>${req.item}</b></td>
-              <td>${req.category}</td>
-              <td><b>${req.qty}</b></td>
-              <td>₦${estCost.toLocaleString()}</td>
+              <td><code>${r.id}</code></td>
+              <td>${r.date}</td>
+              <td><b>${r.item}</b></td>
+              <td>${r.category}</td>
+              <td><b>${r.qty}</b></td>
+              <td>₦${(Number(r.cost) || 0).toLocaleString()}</td>
               <td class="text-success fw-bold">₦${estTotal.toLocaleString()}</td>
-              <td>${req.supplier || '-'}</td>
-              <td><span class="badge ${req.status === 'Completed' ? 'bg-success' : 'bg-warning text-dark'}">${req.status}</span></td>
+              <td>${r.supplier || '-'}</td>
+              <td><span class="badge ${r.status === 'Approved' ? 'bg-success' : 'bg-warning text-dark'}">${r.status}</span></td>
               <td class="no-print">
-                <button class="btn btn-sm btn-outline-primary me-1" onclick="openEditRequisitionModal(${req.originalIdx})">Edit</button>
-                <button class="btn btn-sm btn-success" onclick="completeRequisition(${req.originalIdx})">✅ Receive</button>
+                <button class="btn btn-sm btn-outline-danger" onclick="deleteRequisition(${db.requisitions.indexOf(r)})">Delete</button>
               </td>
             </tr>
           `;
         }).join('');
       }
-    }
-
-    function printFilteredRequisitions() {
-      window.print();
-    }
-
-    function sendRequisitionToGmail() {
-      if (db.requisitions.length === 0) return alert("No purchase requisitions to send!");
-      let emailBody = `SKY MODERNIZE SAVE TECHNOLOGY LTD - Purchase Requisitions\n\n`;
-      db.requisitions.forEach(r => {
-        emailBody += `[${r.id}] ${r.date} | ${r.item} (${r.category}) | Qty: ${r.qty} | Supplier: ${r.supplier || 'N/A'} | Status: ${r.status}\n`;
-      });
-      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(`SKY MODERNIZE - Purchase Requisitions Report`)}&body=${encodeURIComponent(emailBody)}`;
-      window.open(gmailUrl, '_blank');
-    }
-
-    function completeRequisition(idx) {
-      const req = db.requisitions[idx];
-      if (!req) return;
-      if (req.status === 'Completed') return alert("Requisition is already marked completed!");
-
-      const stockItem = db.stock.find(s => s.model.toLowerCase() === req.item.toLowerCase());
-      if (stockItem) {
-        stockItem.qty += req.qty;
-      } else {
-        db.stock.push({
-          model: req.item,
-          category: req.category.split('/')[0].trim() || "General",
-          subcat: req.category.includes('/') ? req.category.split('/')[1].trim() : "",
-          qty: req.qty,
-          cost_price: req.cost || 0,
-          sell_price: Math.floor((req.cost || 0) * 1.3),
-          supplier: req.supplier || ""
-        });
-      }
-
-      req.status = 'Completed';
-      saveDB();
-      alert(`✅ Requisition ${req.id} fulfilled! ${req.qty} units of "${req.item}" added to stock inventory.`);
     }
 
     document.getElementById('requisition-form').addEventListener('submit', (e) => {
@@ -2719,50 +2643,44 @@
       const supplier = document.getElementById('req-supplier').value.trim();
       const notes = document.getElementById('req-notes').value.trim();
 
-      const reqId = "REQ-" + Math.floor(1000 + Math.random() * 9000);
       db.requisitions.push({
-        id: reqId,
+        id: "REQ-" + Math.floor(1000 + Math.random() * 9000),
         date: new Date().toISOString().split('T')[0],
-        item: item,
-        category: category,
-        qty: qty,
-        cost: cost,
-        supplier: supplier,
-        notes: notes,
+        item,
+        category,
+        qty,
+        cost,
+        supplier,
+        notes,
         status: "Pending"
       });
 
       saveDB();
-      document.getElementById('requisition-form').reset();
-      alert("📋 Purchase requisition submitted successfully!");
-    });
-
-    document.getElementById('stock-form').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const model = document.getElementById('stk-model').value.trim();
-      const category = document.getElementById('stk-cat').value.trim();
-      const subcat = document.getElementById('stk-subcat').value.trim();
-      const qty = parseInt(document.getElementById('stk-qty').value);
-      const cost_price = parseInt(document.getElementById('stk-cost').value);
-      const sell_price = parseInt(document.getElementById('stk-sell').value);
-      const supplier = document.getElementById('stk-supplier').value.trim();
-
-      db.stock.push({ model, category, subcat, qty, cost_price, sell_price, supplier });
-      saveDB();
       e.target.reset();
-      alert("✅ New stock entry added successfully!");
+      alert("✅ Purchase requisition successfully submitted!");
     });
 
-    function deleteStock(index) {
-      if (!isManagerUnlocked) return navigateTo('manager-auth');
-      if (confirm("Are you sure you want to delete this stock item?")) {
-        db.stock.splice(index, 1);
+    function deleteRequisition(index) {
+      if (confirm("Delete this requisition order?")) {
+        db.requisitions.splice(index, 1);
         saveDB();
       }
     }
 
+    function printFilteredRequisitions() {
+      window.print();
+    }
+
+    function sendRequisitionToGmail() {
+      if (db.requisitions.length === 0) return alert("No purchase requisitions to send.");
+      let body = `Purchase Requisition Orders\n\n`;
+      db.requisitions.forEach(r => {
+        body += `${r.id} | ${r.date} | Item: ${r.item} (${r.category}) | Qty: ${r.qty} | Est Cost: ₦${(r.cost || 0) * r.qty} | Supplier: ${r.supplier || 'N/A'}\n`;
+      });
+      window.open(`https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(`Purchase Requisitions Report`)}&body=${encodeURIComponent(body)}`, '_blank');
+    }
+
     function openEditModal(index) {
-      if (!isManagerUnlocked) return navigateTo('manager-auth');
       const item = db.stock[index];
       if (!item) return;
       document.getElementById('edit-stk-index').value = index;
@@ -2773,92 +2691,53 @@
       document.getElementById('edit-stk-cost').value = item.cost_price;
       document.getElementById('edit-stk-sell').value = item.sell_price;
       document.getElementById('edit-stk-supplier').value = item.supplier || '';
-      new bootstrap.Modal(document.getElementById('editStockModal')).show();
+      
+      const modal = new bootstrap.Modal(document.getElementById('editStockModal'));
+      modal.show();
     }
 
     document.getElementById('edit-stock-form').addEventListener('submit', (e) => {
       e.preventDefault();
-      const index = parseInt(document.getElementById('edit-stk-index').value);
-      db.stock[index] = {
+      const idx = parseInt(document.getElementById('edit-stk-index').value);
+      if (isNaN(idx) || !db.stock[idx]) return;
+
+      db.stock[idx] = {
         model: document.getElementById('edit-stk-model').value.trim(),
         category: document.getElementById('edit-stk-cat').value.trim(),
         subcat: document.getElementById('edit-stk-subcat').value.trim(),
         qty: parseInt(document.getElementById('edit-stk-qty').value),
-        cost_price: parseInt(document.getElementById('edit-stk-cost').value),
-        sell_price: parseInt(document.getElementById('edit-stk-sell').value),
+        cost_price: parseFloat(document.getElementById('edit-stk-cost').value),
+        sell_price: parseFloat(document.getElementById('edit-stk-sell').value),
         supplier: document.getElementById('edit-stk-supplier').value.trim()
       };
-      bootstrap.Modal.getInstance(document.getElementById('editStockModal')).hide();
+
       saveDB();
-      alert("✅ Stock details updated successfully!");
+      bootstrap.Modal.getInstance(document.getElementById('editStockModal')).hide();
+      alert("✅ Stock item successfully updated!");
     });
 
-    function openEditRequisitionModal(index) {
-      const req = db.requisitions[index];
-      if (!req) return;
-      document.getElementById('edit-req-index').value = index;
-      document.getElementById('edit-req-item').value = req.item;
-      document.getElementById('edit-req-cat').value = req.category;
-      document.getElementById('edit-req-qty').value = req.qty;
-      document.getElementById('edit-req-cost').value = req.cost || '';
-      document.getElementById('edit-req-supplier').value = req.supplier || '';
-      document.getElementById('edit-req-notes').value = req.notes || '';
-      new bootstrap.Modal(document.getElementById('editRequisitionModal')).show();
+    function deleteStock(index) {
+      if (confirm("Are you sure you want to delete this stock item?")) {
+        db.stock.splice(index, 1);
+        saveDB();
+      }
     }
 
-  const targetElement = document.getElementById('your-element-id'); // Or your form's ID
-if (targetElement) {
-    targetElement.addEventListener('click', function(e) {
-        e.preventDefault();
-        const index = parseInt(document.getElementById('edit-req-index').value);
-        db.requisitions[index].item = document.getElementById('edit-req-item').value.trim();
-        db.requisitions[index].category = document.getElementById('edit-req-cat').value.trim();
-        db.requisitions[index].qty = parseInt(document.getElementById('edit-req-qty').value);
-        db.requisitions[index].cost = parseFloat(document.getElementById('edit-req-cost').value) || 0;
-        db.requisitions[index].supplier = document.getElementById('edit-req-supplier').value.trim();
-        db.requisitions[index].notes = document.getElementById('edit-req-notes').value.trim();
+    document.getElementById('stock-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const model = document.getElementById('stk-model').value.trim();
+      const category = document.getElementById('stk-cat').value.trim();
+      const subcat = document.getElementById('stk-subcat').value.trim();
+      const qty = parseInt(document.getElementById('stk-qty').value);
+      const cost_price = parseFloat(document.getElementById('stk-cost').value);
+      const sell_price = parseFloat(document.getElementById('stk-sell').value);
+      const supplier = document.getElementById('stk-supplier').value.trim();
 
-        bootstrap.Modal.getInstance(document.getElementById('editRequisitionModal')).hide();
-        saveDB();
-        alert("✅ Purchase requisition updated successfully!");
+      db.stock.push({ model, category, subcat, qty, cost_price, sell_price, supplier });
+      saveDB();
+      e.target.reset();
+      alert("✅ New stock entry successfully added!");
     });
-}
- // --- SUPABASE REAL-TIME MONIEPOINT LISTENER ---
-// Reuse your existing 'supabaseClient' instance
-supabaseClient
-    .channel('public:payments')
-    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'payments' }, payload => {
-        const newPayment = payload.new;
-
-        // 1. Trigger the Bootstrap Toast Popup
-        const toastMessage = document.getElementById('toast-message');
-        if (toastMessage) {
-            toastMessage.innerText = `${newPayment.customer_name} paid ₦${Number(newPayment.amount).toLocaleString()}!`;
-            const toastElement = new bootstrap.Toast(document.getElementById('moniepoint-toast'));
-            toastElement.show();
-        }
-
-        // 2. Dynamically add the new transaction to your Moniepoint Payment table
-        const tbody = document.getElementById('moniepoint-table-body');
-        if (tbody) {
-            if (tbody.querySelector('.text-muted')) {
-                tbody.innerHTML = '';
-            }
-            
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${new Date().toLocaleString()}</td>
-                <td>${newPayment.reference || 'N/A'}</td>
-                <td>${newPayment.customer_name}</td>
-                <td>N/A</td>
-                <td class="fw-bold text-success">₦${Number(newPayment.amount).toLocaleString()}</td>
-                <td><span class="badge bg-success">Successful</span></td>
-            `;
-            tbody.prepend(row);
-        }
-    })
-    .subscribe();
-
   </script>
 </body>
 </html>
