@@ -1032,14 +1032,12 @@
       initTripleSavingSync();
     });
 
-  // Function to load and display payments on your site
-async function loadPaymentHistory() {
+async function fetchPaymentHistory() {
   try {
-    // 1. Fetch data from your Supabase payments table
     const { data: payments, error } = await supabaseClient
       .from('payments')
       .select('*')
-      .order('datetime', { ascending: false }); // Shows newest payments first
+      .order('datetime', { ascending: false });
 
     if (error) {
       console.error('Error fetching payments:', error.message);
@@ -1048,18 +1046,22 @@ async function loadPaymentHistory() {
 
     console.log('Payments loaded successfully:', payments);
 
-    // 2. Select your HTML table body or container element where payments should appear
-    const paymentTableBody = document.getElementById('payment-table-body'); // Replace with your actual HTML element ID
+    // Make sure this matches your exact HTML ID on line 341
+    const paymentTableBody = document.getElementById('moniepoint-table-body');
     
     if (!paymentTableBody) {
-      console.warn('Payment table container element not found in HTML.');
+      console.warn('Payment table container element #moniepoint-table-body not found in HTML.');
       return;
     }
 
-    // 3. Clear existing rows and render the new ones
     paymentTableBody.innerHTML = '';
 
-   payments.forEach((payment) => {
+    if (!payments || payments.length === 0) {
+      paymentTableBody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">No Moniepoint payments recorded yet.</td></tr>`;
+      return;
+    }
+
+    payments.forEach((payment) => {
       const row = document.createElement('tr');
       row.innerHTML = `
         <td>${payment.datetime ? new Date(payment.datetime).toLocaleString() : ''}</td>
@@ -1077,9 +1079,8 @@ async function loadPaymentHistory() {
   }
 }
 
-// Run the function when the page loads
-document.addEventListener('DOMContentLoaded', loadPaymentHistory);
-    
+// Ensure it runs automatically when the page loads
+document.addEventListener('DOMContentLoaded', fetchPaymentHistory);
     // --- CSV EXPORT UTILITY ---
     function downloadCSV(csvContent, filename) {
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
