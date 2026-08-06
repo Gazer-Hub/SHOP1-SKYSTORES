@@ -292,6 +292,17 @@
         </div>
       </div>
 
+   <div class="d-flex align-items-center mb-3 gap-2">
+    <label for="moniepoint-date-filter" class="fw-bold">Filter Period:</label>
+     <select id="moniepoint-date-filter" class="form-select w-auto" onchange="filterMoniepointPayments()">
+    <option value="today">Today</option>
+    <option value="yesterday">Yesterday</option>
+    <option value="this_week">This Week</option>
+    <option value="last_month">Last Month</option>
+    <option value="all">All Time / Custom</option>
+  </select>
+</div>  
+      
       <div class="row g-3 mb-4">
         <div class="col-md-6">
           <div class="card text-center border-success shadow-sm">
@@ -1032,6 +1043,8 @@
       initTripleSavingSync();
     });
 
+let allMoniepointPayments = [];
+
 async function fetchPaymentHistory() {
   try {
     const { data: payments, error } = await supabaseClient
@@ -1044,42 +1057,96 @@ async function fetchPaymentHistory() {
       return;
     }
 
-    console.log('Payments loaded successfully:', payments);
-
-    // Make sure this matches your exact HTML ID on line 341
-    const paymentTableBody = document.getElementById('payment-table-body');
+    // Save all fetched records globally
+    allMoniepointPayments = payments || [];
     
-    if (!paymentTableBody) {
-      console.warn('Payment table container element #moniepoint-table-body not found in HTML.');
-      return;
-    }
-
-    paymentTableBody.innerHTML = '';
-
-    if (!payments || payments.length === 0) {
-      paymentTableBody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">No Moniepoint payments recorded yet.</td></tr>`;
-      return;
-    }
-
-    payments.forEach((payment) => {
-      const row = document.createElement('tr');
-      row.innerHTML = `
-        <td>${payment.datetime ? new Date(payment.datetime).toLocaleString() : ''}</td>
-        <td>${payment.reference || ''}</td>
-        <td>${payment.sender_name || 'unknown'}</td>
-        <td>${payment.account_number || 'unknown'}</td>
-        <td>₦${Number(payment.amount || 0).toLocaleString()}</td>
-        <td>${payment.status || ''}</td>
-      `;
-      paymentTableBody.appendChild(row);
-    });
+    // Run the filter / render logic based on the selected dropdown value
+    filterMoniepointPayments();
 
   } catch (err) {
     console.error('Unexpected error loading payments:', err);
   }
 }
 
-// Ensure it runs automatically when the page loads
+function filterMoniepointPayments() {
+  const filterValue = document.getElementById('moniepoint-date-filter')?.value || 'today';
+  const paymentTableBody = document.getElementById('payment-table-body');
+  if (!paymentTableBody) return;
+
+  paymentTableBody.innerHTML = '';
+
+  const now = new Date();
+  
+  // Define time boundaries based on current date (August 6, 2026)
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  
+  const yesterdayStart = new Date(todayStart);
+  yesterdayStart.setDate(todayStart.getDate() - 1);
+  
+  const thisWeekStart = new Date(todayStart);
+  thisWeekStart.setDate(todayStart.getDate() - todayStart.getDay()); // Start of week (Sunday)
+  
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  // Filter the master list
+  const filteredPayments = allMoniepointPayments.filter(payment => {
+    if (!payment.datetime) return false;
+    const paymentDate = new Date(payment.datetime);
+
+    if (filterValue === 'today') {
+      return paymentDate >= todayStart;
+    } else if (filterValue === 'yesterday') {
+      return paymentDate >= yesterdayStart && paymentDate < todayStart;
+    } else if (filterValue === 'this_week') {
+      return paymentDate >= thisWeekStart;
+    } else if (filterValue === 'last_month') {
+      return paymentDate >= lastMonthStart && paymentDate < lastMonthEnd;
+    } else {
+      return true; // 'all'
+    }
+  });
+
+  if (filteredPayments.length === 0) {
+    paymentTableBody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">No payments recorded for this period.</td></tr>`;
+    document.getElementById('moniepoint-total-amount').innerText = '₦0';
+    document.getElementById('moniepoint-total-count').innerText = '0';
+    return;
+  }
+
+  let totalInflow = 0;
+  let successfulCount = 0;
+
+  filteredPayments.forEach((payment) => {
+    const amount = Number(payment.amount || 0);
+    const status = (payment.status || '').toUpperCase();
+
+    if (status === 'SUCCESSFUL') {
+      totalInflow += amount;
+      successfulCount += 1;
+    }
+
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td>${payment.datetime ? new Date(payment.datetime).toLocaleString() : ''}</td>
+      <td>${payment.reference || ''}</td>
+      <td>${payment.sender_name || 'unknown'}</td>
+      <td>${payment.account_number || 'unknown'}</td>
+      <td>₦${amount.toLocaleString()}</td>
+      <td>${payment.status || ''}</td>
+    `;
+    paymentTableBody.appendChild(row);
+  });
+
+  // Update summary cards dynamically
+  const inflowEl = document.getElementById('moniepoint-total-amount');
+  const countEl = document.getElementById('moniepoint-total-count');
+  
+  if (inflowEl) inflowEl.innerText = `₦${totalInflow.toLocaleString()}`;
+  if (countEl) countEl.innerText = successfulCount;
+}
+
+// Run on page load
 document.addEventListener('DOMContentLoaded', fetchPaymentHistory);
     // --- CSV EXPORT UTILITY ---
     function downloadCSV(csvContent, filename) {
