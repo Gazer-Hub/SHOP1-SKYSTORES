@@ -113,7 +113,9 @@ exports.handler = async (event) => {
     let payload;
     try {
       payload = JSON.parse(rawBody);
+   console.log('Incoming Moniepoint Payload:', JSON.stringify(payload, null, 2));
     } catch (err) {
+    
       // Some providers send application/x-www-form-urlencoded; try to parse URL-encoded
       try {
         const params = new URLSearchParams(rawBody);
