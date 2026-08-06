@@ -1047,7 +1047,7 @@ async function fetchPaymentHistory() {
     console.log('Payments loaded successfully:', payments);
 
     // Make sure this matches your exact HTML ID on line 341
-    const paymentTableBody = document.getElementById('moniepoint-table-body');
+    const paymentTableBody = document.getElementById('payment-table-body');
     
     if (!paymentTableBody) {
       console.warn('Payment table container element #moniepoint-table-body not found in HTML.');
@@ -1137,7 +1137,7 @@ document.addEventListener('DOMContentLoaded', fetchPaymentHistory);
     }
 
     function renderMoniepointPayments(filterQuery = "") {
-      const tbody = document.getElementById('moniepoint-table-body');
+      const tbody = document.getElementById('payment-table-body');
       const payments = db.moniepointPayments || [];
       const todayStr = new Date().toISOString().split('T')[0];
 
