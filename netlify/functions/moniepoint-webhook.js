@@ -144,12 +144,15 @@ exports.handler = async (event) => {
     let reference = referenceCandidates.find(x => x);
     if (!reference) reference = findReferenceRecursive(payload);
 
-    // Extract status and amount using common keys
-    const status = (data.status || data.transaction_status || data.state || payload.event || 'unknown').toString();
-    const amount = data.amount || data.total_amount || data.value || data.amt || null;
+  // Extract and normalize status and amount
+    const rawStatus = (data.status || data.transaction_status || data.state || payload.event || 'UNKNOWN').toString();
+    const status = rawStatus.toUpperCase();
 
+    const rawAmount = data.amount || data.total_amount || data.value || data.amt || 0;
+    const amount = Number(rawAmount) / 100; // Converts kobo to Naira (e.g. 1030000 -> 10300)
+  
     // If still no reference, generate a fallback unique reference rather than rejecting request
-    if (!reference) {
+   if (!reference) {
       const fallback = `${provider || 'unknown'}-${Date.now()}-${Math.floor(Math.random()*900000+100000)}`;
       console.warn('No transaction reference in webhook — generating fallback reference', fallback);
       reference = fallback;
@@ -202,7 +205,9 @@ exports.handler = async (event) => {
       provider: provider || 'unknown',
       status: status,
       amount: amount,
-      metadata: Object.assign({}, data, { provider_detected: provider, verified, verifyInfo, sender_name: senderName, account_number: accountNumber, normalized_datetime: normalizedDatetime }),
+      sender_name: senderName,         // Move this to top-level
+      account_number: accountNumber,   // Move this to top-level
+      metadata: Object.assign({}, data, { provider_detected: provider, verified, verifyInfo, normalized_datetime: normalizedDatetime }),
     };
 
     // Upsert into Supabase via REST (service role key required)
