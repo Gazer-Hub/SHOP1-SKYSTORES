@@ -1652,6 +1652,8 @@ document.getElementById('refresh-payments-btn').addEventListener('click', async 
         alertBox.classList.add('d-none');
         e.target.reset();
         navigateTo('dashboard');
+      fetchPaymentHistory();
+      });
       } else {
         alertBox.innerText = "Invalid credentials";
         alertBox.classList.remove('d-none');
