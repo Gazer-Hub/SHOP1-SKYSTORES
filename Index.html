@@ -281,60 +281,53 @@
       </div>
     </div>
 
-   <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
-  <div>
-    <h4 class="mb-1"><i class="bi bi-wallet2"></i> Moniepoint Payment History & Webhook Logs</h4>
-    <small class="text-muted">Webhook URL: <span class="badge bg-secondary">sky-modernize.netlify.app</span></small>
-  </div>
-  <div class="d-flex align-items-center gap-2 flex-wrap">
-    <!-- Filter Period Dropdown moved to top bar -->
-    <select id="moniepoint-date-filter" class="form-select form-select-sm w-auto" onchange="filterMoniepointPayments()">
-      <option value="today">Today</option>
-      <option value="yesterday">Yesterday</option>
-      <option value="this_week">This Week</option>
-      <option value="last_month">Last Month</option>
-      <option value="all">All Time</option>
-    </select>
-    <button class="btn btn-outline-primary btn-sm" onclick="exportMoniepointToCsv()">📥 Export CSV</button>
-    <button class="btn btn-outline-success btn-sm" onclick="simulateMoniepointWebhookTest()">⚡ Test Popup</button>
-    <button class="btn btn-dark btn-sm" onclick="fetchPaymentHistory()">🔄 Refresh</button>
-  </div>
-</div>
-
-<!-- Summary Cards -->
-<div class="row g-3 mb-4">
-  <div class="col-md-6">
-    <div class="card text-center border-success shadow-sm">
-      <div class="card-body py-3">
-        <h6 class="text-muted mb-1">Total Moniepoint Inflows</h6>
-        <h3 class="text-success fw-bold mb-0" id="moniepoint-total-amount">₦0</h3>
+    <!-- Moniepoint Payment History Interface Tab -->
+    <div id="page-moniepoint" class="page">
+      <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <h3>💳 Moniepoint Payment History & Webhook Logs</h3>
+        <div class="no-print d-flex align-items-center gap-2 flex-wrap">
+          <span class="badge bg-secondary">Webhook URL: sky-modernize.netlify.app</span>[cite: 1]
+          <button class="btn btn-outline-primary btn-sm" onclick="exportMoniepointToCSV()">📥 Export Moniepoint CSV</button>
+          <button class="btn btn-outline-success btn-sm" onclick="simulateMoniepointWebhookTest()">🧪 Test Webhook Pop-up</button>
+        </div>
       </div>
-    </div>
-  </div>
-  <div class="col-md-6">
-    <div class="card text-center border-primary shadow-sm">
-      <div class="card-body py-3">
-        <h6 class="text-muted mb-1">Total Successful Transactions</h6>
-        <h3 class="text-primary fw-bold mb-0" id="moniepoint-total-count">0</h3>
+      
+      <div class="row g-3 mb-4">
+        <div class="col-md-6">
+          <div class="card text-center border-success shadow-sm">
+            <div class="card-body py-2">
+              <h6 class="text-muted mb-1">Total Moniepoint Inflows (Today)</h6>
+              <h3 class="text-success fw-bold mb-0" id="moniepoint-total-amount">₦0</h3>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="card text-center border-primary shadow-sm">
+            <div class="card-body py-2">
+              <h6 class="text-muted mb-1">Total Successful Transactions (Today)</h6>
+              <h3 class="text-primary fw-bold mb-0" id="moniepoint-total-count">0</h3>
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
-</div>
 
-<!-- Search & Table Section -->
-<div class="card shadow-sm border-0">
-  <div class="card-body">
-    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-      <h5 class="card-title mb-0">Received Transfer Transactions</h5>
-      <div class="input-group w-auto">
-        <input type="text" id="moniepoint-search-input" class="form-control form-control-sm" placeholder="Search sender, reference...">
-        <button class="btn btn-outline-primary btn-sm" type="button" id="moniepoint-search-btn">Search</button>
-        <button class="btn btn-outline-secondary btn-sm" type="button" id="moniepoint-clear-btn">Clear</button>
+      <div class="d-flex justify-content-between align-items-center mb-3 no-print">
+        <h5 class="mb-0">Received Transfer Transactions</h5>
+        <div class="input-group" style="max-width: 400px;">
+          <input type="text" id="moniepoint-search-input" class="form-control form-control-sm" placeholder="Search sender, reference or amount..." onkeyup="searchMoniepointPayments()">
+          <button class="btn btn-sm btn-primary" type="button" onclick="searchMoniepointPayments()">🔍 Search</button>
+          <button class="btn btn-sm btn-outline-secondary" type="button" onclick="clearMoniepointSearch()">Clear</button>
+        </div>
       </div>
-    </div>
-
-    <div class="table-responsive">
-      <table class="table table-striped table-hover align-middle mb-0">
+   
+     <div class="payment-header">
+      <h3>Moniepoint Payment History</h3>
+       <button id="refresh-payments-btn" class="refresh-btn">
+        <i class="fas fa-sync-alt"></i> Refresh
+        </button>
+     </div> 
+      
+      <table class="table table-striped align-middle">
         <thead class="table-dark">
           <tr>
             <th>Date & Time</th>
@@ -345,13 +338,11 @@
             <th>Status</th>
           </tr>
         </thead>
-        <tbody id="moniepoint-table-body">
-          <tr><td colspan="6" class="text-center text-muted py-3">Loading payments...</td></tr>
+        <tbody id="payment-table-body">
+          <tr><td colspan="6" class="text-center text-muted py-3">No Moniepoint payments recorded yet for today.</td></tr>
         </tbody>
       </table>
     </div>
-  </div>
-</div>
 
          <div class="d-flex align-items-center mb-3 gap-2">
           <label for="moniepoint-date-filter" class="fw-bold">Filter Period:</label>
