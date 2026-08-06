@@ -281,7 +281,7 @@
       </div>
     </div>
 
-    <!-- NEW: Dedicated Moniepoint Payment History Interface Tab -->
+    <!-- Moniepoint Payment History Interface Tab -->
     <div id="page-moniepoint" class="page">
       <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <h3>💳 Moniepoint Payment History & Webhook Logs</h3>
@@ -929,11 +929,11 @@
     </div>
   </div>
 
- <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script>
     // --- TRIPLE SAVING METHOD CONFIGURATION (SUPABASE + LOCALSTORAGE) ---
-    const SUPABASE_URL = 'https://puktzlekeoojrlxrkziu.supabase.co'; // Your Supabase Project URL
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB1a3R6bGVrZW9vanJseHJreml1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1NTI5MzAsImV4cCI6MjEwMDEyODkzMH0.uSH3tcofOW-LiBHraIb_eDi2hI3_ZUN1b9JjIJ42Z-Q'; // Your Supabase Anon/Public Key
+    const SUPABASE_URL = 'https://puktzlekeoojrlxrkziu.supabase.co'; 
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB1a3R6bGVrZW9vanJseHJreml1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1NTI5MzAsImV4cCI6MjEwMDEyODkzMH0.uSH3tcofOW-LiBHraIb_eDi2hI3_ZUN1b9JjIJ42Z-Q'; 
     const supabaseClient = (window.supabase && SUPABASE_URL !== 'YOUR_SUPABASE_URL_HERE') 
       ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) 
       : null;
@@ -979,10 +979,8 @@
 
     // --- TRIPLE SAVING METHOD IMPLEMENTATION ---
     async function saveDB() {
-      // 1. Save to local browser storage
       localStorage.setItem(DB_KEY, JSON.stringify(db));
 
-      // 2. Save concurrently to Supabase database (Cloud persistent storage)
       if (supabaseClient) {
         try {
           const { error } = await supabaseClient
@@ -1000,7 +998,6 @@
       renderAll();
     }
 
-    // Initial load sync check from Supabase on startup
     async function initTripleSavingSync() {
       if (supabaseClient) {
         try {
@@ -1024,7 +1021,6 @@
       renderAll();
     }
 
-    // --- AUTO-INITIALIZE ON PHONE & LAPTOP BOOT ---
     window.addEventListener('DOMContentLoaded', () => {
       initTripleSavingSync();
     });
@@ -1089,7 +1085,6 @@
       const payments = db.moniepointPayments || [];
       const todayStr = new Date().toISOString().split('T')[0];
 
-      // Filter Moniepoint payments for today so totals refresh to 0 on a new day
       const todaysPayments = payments.filter(p => p.datetime && p.datetime.startsWith(todayStr));
       
       document.getElementById('moniepoint-total-amount').innerText = `₦${todaysPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0).toLocaleString()}`;
@@ -2305,6 +2300,7 @@
 
     function populateReturnSaleDropdown(filterQuery = "") {
       const returnSelect = document.getElementById('return-sale-idx');
+      if (!returnSelect) return;
       const filteredSalesWithIdx = db.sales.map((s, idx) => ({ ...s, originalIdx: idx })).filter(s => {
         if (!filterQuery) return true;
         const q = filterQuery.toLowerCase();
@@ -2314,14 +2310,56 @@
       });
 
       if (filteredSalesWithIdx.length === 0) {
-        returnSelect.innerHTML = '<option value="">-- No matching sales found --</option>';
+        returnSelect.innerHTML = '<option value="">-- No sales available --</option>';
       } else {
-        returnSelect.innerHTML = '<option value="">-- Select Sale --</option>' +
-          filteredSalesWithIdx.map(s => 
-            `<option value="${s.originalIdx}">${s.date} - ${s.model} [${s.quality || 'Standard'}] (${s.customer}) - ${s.qty} pcs</option>`
-          ).join('');
+        returnSelect.innerHTML = filteredSalesWithIdx.slice().reverse().map(s => `
+          <option value="${s.originalIdx}">[${s.date}] ${s.model} (${s.quality || 'Standard'}) - Qty: ${s.qty} - Customer: ${s.customer}</option>
+        `).join('');
       }
     }
+
+    document.getElementById('returns-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const saleIdx = parseInt(document.getElementById('return-sale-idx').value);
+      const returnQty = parseInt(document.getElementById('return-qty').value);
+      const reason = document.getElementById('return-reason').value.trim();
+      const isExchanged = document.getElementById('return-is-exchanged').checked;
+
+      if (isNaN(saleIdx) || db.sales[saleIdx] === undefined) return alert("Please select a valid sold item to return.");
+      const originalSale = db.sales[saleIdx];
+
+      if (isNaN(returnQty) || returnQty <= 0 || returnQty > originalSale.qty) {
+        return alert(`Invalid return quantity! Max returnable qty for this sale is ${originalSale.qty}.`);
+      }
+
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      db.returns.push({
+        date: todayStr,
+        model: originalSale.model,
+        customer: originalSale.customer,
+        qty: returnQty,
+        reason: reason,
+        isExchanged: isExchanged,
+        sell_price: originalSale.sell_price,
+        cost_price: originalSale.cost_price
+      });
+
+      if (isExchanged) {
+        const matchingStock = db.stock.find(s => 
+          s.model.toLowerCase() === originalSale.model.toLowerCase() &&
+          (s.subcat || 'Standard').toLowerCase() === (originalSale.quality || 'Standard').toLowerCase()
+        ) || db.stock.find(s => s.model.toLowerCase() === originalSale.model.toLowerCase());
+
+        if (matchingStock) {
+          matchingStock.qty -= returnQty;
+        }
+      }
+
+      clearCustomerReturnForm();
+      saveDB();
+      alert("🔄 Customer return processed successfully!");
+    });
 
     function handleReturnsFilterChange() {
       const filterType = document.getElementById('returns-period-filter').value;
@@ -2390,19 +2428,33 @@
       });
 
       if (filteredReturns.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-3">No customer returns recorded for this period</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-3">No matching customer return records found</td></tr>`;
       } else {
-        tbody.innerHTML = filteredReturns.map(ret => `
-          <tr>
-            <td>${ret.date}</td>
-            <td><b>${ret.model}</b></td>
-            <td>${ret.customer}</td>
-            <td>${ret.qty}</td>
-            <td>${ret.reason}</td>
-            <td>${ret.isExchanged ? '<span class="badge bg-danger">Replacement Issued 🔄</span>' : '<span class="badge bg-secondary">Refund</span>'}</td>
-            <td class="no-print">-</td>
-          </tr>
-        `).join('');
+        tbody.innerHTML = filteredReturns.map((ret, index) => {
+          const exchangeBadge = ret.isExchanged 
+            ? '<span class="badge bg-danger">Replacement Issued 🔄</span>' 
+            : '<span class="badge bg-secondary">Refund 💵</span>';
+          return `
+            <tr>
+              <td>${ret.date}</td>
+              <td><b>${ret.model}</b></td>
+              <td>${ret.customer}</td>
+              <td>${ret.qty}</td>
+              <td>${ret.reason}</td>
+              <td>${exchangeBadge}</td>
+              <td class="no-print">
+                <button class="btn btn-sm btn-danger" onclick="deleteCustomerReturn(${index})">Delete</button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      }
+    }
+
+    function deleteCustomerReturn(index) {
+      if (confirm("Delete this customer return record?")) {
+        db.returns.splice(db.returns.length - 1 - index, 1);
+        saveDB();
       }
     }
 
@@ -2414,50 +2466,49 @@
 
     function sendReturnsToGmail() {
       const { returnsData, periodLabel } = getFilteredReturnsData();
-      if (returnsData.length === 0) return alert(`No customer return records available for "${periodLabel}" to send!`);
-      let emailBody = `SKY MODERNIZE SAVE TECHNOLOGY LTD - Customer Returns Report\nReport Period: ${periodLabel}\n\n`;
+      if (returnsData.length === 0) return alert(`No customer returns available for "${periodLabel}" to send!`);
+
+      let emailBody = `SKY MODERNIZE SAVE TECHNOLOGY LTD - Customer Returns Report\n`;
+      emailBody += `Report Period: ${periodLabel}\n\n`;
       returnsData.forEach(r => {
-        emailBody += `${r.date} | ${r.model} | Customer: ${r.customer} | Qty: ${r.qty} | Reason: ${r.reason} | ${r.isExchanged ? 'Replacement' : 'Refund'}\n`;
+        emailBody += `${r.date} | Model: ${r.model} | Customer: ${r.customer} | Qty: ${r.qty} | Reason: ${r.reason} | Status: ${r.isExchanged ? 'Replacement' : 'Refund'}\n`;
       });
-      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(`SKY MODERNIZE - Customer Returns (${periodLabel})`)}&body=${encodeURIComponent(emailBody)}`;
+
+      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(`SKY MODERNIZE - Customer Returns Report (${periodLabel})`)}&body=${encodeURIComponent(emailBody)}`;
       window.open(gmailUrl, '_blank');
     }
 
-    document.getElementById('returns-form').addEventListener('submit', (e) => {
+    document.getElementById('supplier-returns-form').addEventListener('submit', (e) => {
       e.preventDefault();
-      const saleIdx = document.getElementById('return-sale-idx').value;
-      const qty = parseInt(document.getElementById('return-qty').value);
-      const reason = document.getElementById('return-reason').value.trim();
-      const isExchanged = document.getElementById('return-is-exchanged').checked;
+      const model = document.getElementById('sup-return-item').value.trim();
+      const supplier = document.getElementById('sup-return-supplier').value.trim();
+      const qty = parseInt(document.getElementById('sup-return-qty').value);
+      const status = document.getElementById('sup-return-status').value;
+      const reason = document.getElementById('sup-return-reason').value.trim();
 
-      if (saleIdx === "") return alert("Please select a sale to return!");
-      const originalSale = db.sales[saleIdx];
-      if (!originalSale) return alert("Invalid sale record selected!");
-      if (qty <= 0 || qty > originalSale.qty) return alert(`Invalid return quantity! Max available to return from this sale is ${originalSale.qty} pcs.`);
+      if (!model || !supplier || isNaN(qty) || qty <= 0) return alert("Please fill out all required supplier return fields correctly.");
 
       const todayStr = new Date().toISOString().split('T')[0];
-      db.returns.push({
+
+      db.supplierReturns.push({
         date: todayStr,
-        model: originalSale.model,
-        customer: originalSale.customer,
+        model: model,
+        supplier: supplier,
         qty: qty,
-        sell_price: originalSale.sell_price,
-        cost_price: originalSale.cost_price,
-        reason: reason,
-        isExchanged: isExchanged
+        status: status,
+        reason: reason
       });
 
-      if (!isExchanged) {
-        const matchingStock = db.stock.find(s => s.model.toLowerCase() === originalSale.model.toLowerCase() && (s.subcat || 'Standard').toLowerCase() === (originalSale.quality || 'Standard').toLowerCase()) ||
-                              db.stock.find(s => s.model.toLowerCase() === originalSale.model.toLowerCase());
+      if (status === 'Sent Back' || status === 'Pending') {
+        const matchingStock = db.stock.find(s => s.model.toLowerCase() === model.toLowerCase());
         if (matchingStock) {
-          matchingStock.qty += qty;
+          matchingStock.qty = Math.max(0, matchingStock.qty - qty);
         }
       }
 
+      clearSupplierReturnForm();
       saveDB();
-      clearCustomerReturnForm();
-      alert("✅ Customer return successfully processed and recorded!");
+      alert("📦 Supplier return successfully recorded!");
     });
 
     function handleSupplierReturnsFilterChange() {
@@ -2503,7 +2554,7 @@
         const customDate = document.getElementById('sup-returns-custom-date').value;
         if (customDate) {
           periodLabel = `Date/Month: ${customDate}`;
-          supReturnsData = db.supplierReturns.filter(r => r.date && r.date.startsWith(customDate));
+          supReturnsData = db.supplierReturns.filter(r => r.date.startsWith(customDate));
         } else {
           periodLabel = "Select Date...";
           supReturnsData = [];
@@ -2527,106 +2578,22 @@
       });
 
       if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-3">No supplier returns recorded for this period</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-3">No matching supplier returns found</td></tr>`;
       } else {
-        tbody.innerHTML = filtered.map((r, idx) => `
-          <tr>
-            <td>${r.date}</td>
-            <td><b>${r.model}</b></td>
-            <td>${r.supplier}</td>
-            <td>${r.qty}</td>
-            <td>${r.reason}</td>
-            <td><span class="badge ${r.status === 'Replaced / Received' ? 'bg-success' : (r.status === 'Sent Back' ? 'bg-warning text-dark' : 'bg-secondary')}">${r.status}</span></td>
-            <td class="no-print">
-              <button class="btn btn-sm btn-outline-danger" onclick="deleteSupplierReturn(${db.supplierReturns.indexOf(r)})">Delete</button>
-            </td>
-          </tr>
-        `).join('');
-      }
-    }
-
-    function deleteSupplierReturn(index) {
-      if (confirm("Delete this supplier return record?")) {
-        db.supplierReturns.splice(index, 1);
-        saveDB();
-      }
-    }
-
-    document.getElementById('supplier-returns-form').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const model = document.getElementById('sup-return-item').value.trim();
-      const supplier = document.getElementById('sup-return-supplier').value.trim();
-      const qty = parseInt(document.getElementById('sup-return-qty').value);
-      const status = document.getElementById('sup-return-status').value;
-      const reason = document.getElementById('sup-return-reason').value.trim();
-
-      const item = db.stock.find(s => s.model.toLowerCase() === model.toLowerCase());
-      if (item) {
-        if (item.qty < qty) return alert(`Insufficient stock! Only ${item.qty} pcs available.`);
-        item.qty -= qty;
-        if (status === 'Replaced / Received') {
-          item.qty += qty;
-        }
-      }
-
-      db.supplierReturns.push({
-        date: new Date().toISOString().split('T')[0],
-        model,
-        supplier,
-        qty,
-        status,
-        reason
-      });
-
-      saveDB();
-      clearSupplierReturnForm();
-      alert("✅ Supplier return successfully recorded!");
-    });
-
-    function printFilteredSupplierReturns() {
-      window.print();
-    }
-
-    function sendSupplierReturnsToGmail() {
-      const { supReturnsData, periodLabel } = getFilteredSupplierReturnsData();
-      if (supReturnsData.length === 0) return alert("No supplier returns to send.");
-      let body = `Supplier Returns Report (${periodLabel})\n\n`;
-      supReturnsData.forEach(r => {
-        body += `${r.date} | ${r.model} | Supplier: ${r.supplier} | Qty: ${r.qty} | Status: ${r.status} | Reason: ${r.reason}\n`;
-      });
-      window.open(`https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(`Supplier Returns (${periodLabel})`)}&body=${encodeURIComponent(body)}`, '_blank');
-    }
-
-    function renderRequisitions(searchQuery = "") {
-      const tbody = document.getElementById('requisition-table-body');
-      const reqs = db.requisitions || [];
-      const filtered = reqs.slice().reverse().filter(r => {
-        if (!searchQuery) return true;
-        const q = searchQuery.toLowerCase();
-        return (r.item && r.item.toLowerCase().includes(q)) ||
-               (r.category && r.category.toLowerCase().includes(q)) ||
-               (r.supplier && r.supplier.toLowerCase().includes(q)) ||
-               (r.id && r.id.toLowerCase().includes(q));
-      });
-
-      if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="10" class="text-center text-muted py-3">No purchase requisitions found</td></tr>`;
-      } else {
-        tbody.innerHTML = filtered.map(r => {
-          const estTotal = (Number(r.cost) || 0) * Number(r.qty);
+        tbody.innerHTML = filtered.map((r, index) => {
+          let badgeClass = "bg-warning text-dark";
+          if (r.status === 'Sent Back') badgeClass = "bg-info text-dark";
+          if (r.status === 'Replaced / Received') badgeClass = "bg-success";
           return `
             <tr>
-              <td><code>${r.id}</code></td>
               <td>${r.date}</td>
-              <td><b>${r.item}</b></td>
-              <td>${r.category}</td>
-              <td><b>${r.qty}</b></td>
-              <td>₦${(Number(r.cost) || 0).toLocaleString()}</td>
-              <td class="text-success fw-bold">₦${estTotal.toLocaleString()}</td>
-              <td>${r.supplier || '-'}</td>
-              <td><span class="badge ${r.status === 'Approved' ? 'bg-success' : 'bg-warning text-dark'}">${r.status}</span></td>
+              <td><b>${r.model}</b></td>
+              <td>${r.supplier}</td>
+              <td>${r.qty}</td>
+              <td>${r.reason}</td>
+              <td><span class="badge ${badgeClass}">${r.status}</span></td>
               <td class="no-print">
-                <button class="btn btn-sm btn-outline-danger" onclick="deleteRequisition(${db.requisitions.indexOf(r)})">Delete</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteSupplierReturn(${index})">Delete</button>
               </td>
             </tr>
           `;
@@ -2634,34 +2601,113 @@
       }
     }
 
+    function deleteSupplierReturn(index) {
+      if (confirm("Delete this supplier return record?")) {
+        db.supplierReturns.splice(db.supplierReturns.length - 1 - index, 1);
+        saveDB();
+      }
+    }
+
+    function printFilteredSupplierReturns() {
+      const { periodLabel } = getFilteredSupplierReturnsData();
+      document.getElementById('sup-returns-print-subtitle').innerText = `Supplier Returns Bulk Report - ${periodLabel}`;
+      window.print();
+    }
+
+    function sendSupplierReturnsToGmail() {
+      const { supReturnsData, periodLabel } = getFilteredSupplierReturnsData();
+      if (supReturnsData.length === 0) return alert(`No supplier returns available for "${periodLabel}" to send!`);
+
+      let emailBody = `SKY MODERNIZE SAVE TECHNOLOGY LTD - Supplier Returns Report\n`;
+      emailBody += `Report Period: ${periodLabel}\n\n`;
+      supReturnsData.forEach(r => {
+        emailBody += `${r.date} | Model: ${r.model} | Supplier: ${r.supplier} | Qty: ${r.qty} | Status: ${r.status} | Reason: ${r.reason}\n`;
+      });
+
+      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(`SKY MODERNIZE - Supplier Returns Report (${periodLabel})`)}&body=${encodeURIComponent(emailBody)}`;
+      window.open(gmailUrl, '_blank');
+    }
+
     document.getElementById('requisition-form').addEventListener('submit', (e) => {
       e.preventDefault();
       const item = document.getElementById('req-item').value.trim();
       const category = document.getElementById('req-cat').value.trim();
       const qty = parseInt(document.getElementById('req-qty').value);
-      const cost = parseFloat(document.getElementById('req-cost').value) || 0;
+      const cost = parseInt(document.getElementById('req-cost').value) || 0;
       const supplier = document.getElementById('req-supplier').value.trim();
       const notes = document.getElementById('req-notes').value.trim();
 
+      if (!item || !category || isNaN(qty) || qty <= 0) return alert("Please fill out all required requisition fields.");
+
+      const reqId = "REQ-" + Math.floor(1000 + Math.random() * 9000);
+      const todayStr = new Date().toISOString().split('T')[0];
+
       db.requisitions.push({
-        id: "REQ-" + Math.floor(1000 + Math.random() * 9000),
-        date: new Date().toISOString().split('T')[0],
-        item,
-        category,
-        qty,
-        cost,
-        supplier,
-        notes,
+        id: reqId,
+        date: todayStr,
+        item: item,
+        category: category,
+        qty: qty,
+        cost: cost,
+        supplier: supplier,
+        notes: notes,
         status: "Pending"
       });
 
+      document.getElementById('requisition-form').reset();
       saveDB();
-      e.target.reset();
-      alert("✅ Purchase requisition successfully submitted!");
+      alert("📋 Purchase requisition submitted successfully!");
     });
 
+    function renderRequisitions(searchQuery = "") {
+      const tbody = document.getElementById('requisition-table-body');
+      let filtered = db.requisitions.slice().reverse().filter(r => {
+        if (!searchQuery) return true;
+        const q = searchQuery.toLowerCase();
+        return (r.item && r.item.toLowerCase().includes(q)) ||
+               (r.category && r.category.toLowerCase().includes(q)) ||
+               (r.supplier && r.supplier.toLowerCase().includes(q)) ||
+               (r.id && r.id.toLowerCase().includes(q)) ||
+               (r.status && r.status.toLowerCase().includes(q));
+      });
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="10" class="text-center text-muted py-3">No purchase requisitions found</td></tr>`;
+      } else {
+        tbody.innerHTML = filtered.map((r, index) => {
+          const estTotal = (r.cost || 0) * r.qty;
+          let badgeClass = "bg-warning text-dark";
+          if (r.status === 'Approved') badgeClass = "bg-success";
+          if (r.status === 'Declined') badgeClass = "bg-danger";
+          return `
+            <tr>
+              <td><code>${r.id}</code></td>
+              <td>${r.date}</td>
+              <td><b>${r.item}</b></td>
+              <td><span class="badge bg-secondary">${r.category}</span></td>
+              <td><b>${r.qty}</b></td>
+              <td>₦${(r.cost || 0).toLocaleString()}</td>
+              <td class="text-success fw-bold">₦${estTotal.toLocaleString()}</td>
+              <td>${r.supplier || '-'}</td>
+              <td><span class="badge ${badgeClass}">${r.status}</span></td>
+              <td class="no-print">
+                <button class="btn btn-sm btn-outline-success me-1" onclick="updateRequisitionStatus(${db.requisitions.length - 1 - index}, 'Approved')">Approve</button>
+                <button class="btn btn-sm btn-outline-danger me-1" onclick="updateRequisitionStatus(${db.requisitions.length - 1 - index}, 'Declined')">Decline</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteRequisition(${db.requisitions.length - 1 - index})">Delete</button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      }
+    }
+
+    function updateRequisitionStatus(index, newStatus) {
+      db.requisitions[index].status = newStatus;
+      saveDB();
+    }
+
     function deleteRequisition(index) {
-      if (confirm("Delete this requisition order?")) {
+      if (confirm("Delete this purchase requisition order?")) {
         db.requisitions.splice(index, 1);
         saveDB();
       }
@@ -2672,13 +2718,34 @@
     }
 
     function sendRequisitionToGmail() {
-      if (db.requisitions.length === 0) return alert("No purchase requisitions to send.");
-      let body = `Purchase Requisition Orders\n\n`;
+      if (db.requisitions.length === 0) return alert("No purchase requisitions available to send!");
+      let emailBody = `SKY MODERNIZE SAVE TECHNOLOGY LTD - Purchase Requisitions\n\n`;
       db.requisitions.forEach(r => {
-        body += `${r.id} | ${r.date} | Item: ${r.item} (${r.category}) | Qty: ${r.qty} | Est Cost: ₦${(r.cost || 0) * r.qty} | Supplier: ${r.supplier || 'N/A'}\n`;
+        emailBody += `Req ID: ${r.id} | Date: ${r.date} | Item: ${r.item} | Qty: ${r.qty} | Est Cost: ₦${((r.cost || 0) * r.qty).toLocaleString()} | Status: ${r.status}\n`;
       });
-      window.open(`https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(`Purchase Requisitions Report`)}&body=${encodeURIComponent(body)}`, '_blank');
+      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent("SKY MODERNIZE - Purchase Requisitions")}&body=${encodeURIComponent(emailBody)}`;
+      window.open(gmailUrl, '_blank');
     }
+
+    document.getElementById('stock-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const model = document.getElementById('stk-model').value.trim();
+      const category = document.getElementById('stk-cat').value.trim();
+      const subcat = document.getElementById('stk-subcat').value.trim();
+      const qty = parseInt(document.getElementById('stk-qty').value);
+      const cost_price = parseInt(document.getElementById('stk-cost').value);
+      const sell_price = parseInt(document.getElementById('stk-sell').value);
+      const supplier = document.getElementById('stk-supplier').value.trim();
+
+      if (!model || !category || isNaN(qty) || isNaN(cost_price) || isNaN(sell_price)) {
+        return alert("Please fill out all required stock fields correctly.");
+      }
+
+      db.stock.push({ model, category, subcat, qty, cost_price, sell_price, supplier });
+      document.getElementById('stock-form').reset();
+      saveDB();
+      alert("✅ Stock entry successfully added!");
+    });
 
     function openEditModal(index) {
       const item = db.stock[index];
@@ -2698,22 +2765,25 @@
 
     document.getElementById('edit-stock-form').addEventListener('submit', (e) => {
       e.preventDefault();
-      const idx = parseInt(document.getElementById('edit-stk-index').value);
-      if (isNaN(idx) || !db.stock[idx]) return;
+      const index = parseInt(document.getElementById('edit-stk-index').value);
+      if (isNaN(index) || !db.stock[index]) return;
 
-      db.stock[idx] = {
+      db.stock[index] = {
         model: document.getElementById('edit-stk-model').value.trim(),
         category: document.getElementById('edit-stk-cat').value.trim(),
         subcat: document.getElementById('edit-stk-subcat').value.trim(),
         qty: parseInt(document.getElementById('edit-stk-qty').value),
-        cost_price: parseFloat(document.getElementById('edit-stk-cost').value),
-        sell_price: parseFloat(document.getElementById('edit-stk-sell').value),
+        cost_price: parseInt(document.getElementById('edit-stk-cost').value),
+        sell_price: parseInt(document.getElementById('edit-stk-sell').value),
         supplier: document.getElementById('edit-stk-supplier').value.trim()
       };
 
+      const modalElement = document.getElementById('editStockModal');
+      const modalInstance = bootstrap.Modal.getInstance(modalElement);
+      modalInstance.hide();
+
       saveDB();
-      bootstrap.Modal.getInstance(document.getElementById('editStockModal')).hide();
-      alert("✅ Stock item successfully updated!");
+      alert("✅ Stock item updated successfully!");
     });
 
     function deleteStock(index) {
@@ -2722,22 +2792,6 @@
         saveDB();
       }
     }
-
-    document.getElementById('stock-form').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const model = document.getElementById('stk-model').value.trim();
-      const category = document.getElementById('stk-cat').value.trim();
-      const subcat = document.getElementById('stk-subcat').value.trim();
-      const qty = parseInt(document.getElementById('stk-qty').value);
-      const cost_price = parseFloat(document.getElementById('stk-cost').value);
-      const sell_price = parseFloat(document.getElementById('stk-sell').value);
-      const supplier = document.getElementById('stk-supplier').value.trim();
-
-      db.stock.push({ model, category, subcat, qty, cost_price, sell_price, supplier });
-      saveDB();
-      e.target.reset();
-      alert("✅ New stock entry successfully added!");
-    });
   </script>
 </body>
 </html>
