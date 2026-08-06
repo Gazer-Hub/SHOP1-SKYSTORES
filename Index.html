@@ -61,6 +61,7 @@
         <button class="btn btn-sm btn-outline-warning" onclick="navigateTo('supplier-returns')">Supplier Returns 📦</button>
         <button class="btn btn-sm btn-outline-info" onclick="navigateTo('purchase-requisition')">Purchase Requisition 📋</button>
         <button class="btn btn-sm btn-outline-light" onclick="navigateTo('change-password')">Password 🔑</button>
+        <button class="btn btn-outline-secondary btn-sm" id="theme-toggle-btn" onclick="toggleTheme()">🌙 Dark Mode</button>
         <button class="btn btn-danger ms-2 btn-sm" onclick="logout()">Logout</button>
       </div>
     </div>
@@ -2933,6 +2934,34 @@ document.getElementById('refresh-payments-btn').addEventListener('click', async 
         saveDB();
       }
     }
+ // Check saved theme on page load
+document.addEventListener('DOMContentLoaded', () => {
+  const savedTheme = localStorage.getItem('app_theme') || 'light';
+  document.documentElement.setAttribute('data-bs-theme', savedTheme);
+  updateThemeButton(savedTheme);
+});
+
+function toggleTheme() {
+  const currentTheme = document.documentElement.getAttribute('data-bs-theme');
+  const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+  
+  document.documentElement.setAttribute('data-bs-theme', newTheme);
+  localStorage.setItem('app_theme', newTheme);
+  updateThemeButton(newTheme);
+}
+
+function updateThemeButton(theme) {
+  const btn = document.getElementById('theme-toggle-btn');
+  if (!btn) return;
+  
+  if (theme === 'dark') {
+    btn.innerHTML = '☀️ Light Mode';
+    btn.classList.replace('btn-outline-secondary', 'btn-outline-warning');
+  } else {
+    btn.innerHTML = '🌙 Dark Mode';
+    btn.classList.replace('btn-outline-warning', 'btn-outline-secondary');
+  }
+}
   </script>
 </body>
 </html>
