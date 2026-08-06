@@ -1059,14 +1059,15 @@ async function loadPaymentHistory() {
     // 3. Clear existing rows and render the new ones
     paymentTableBody.innerHTML = '';
 
-    payments.forEach((payment) => {
+   payments.forEach((payment) => {
       const row = document.createElement('tr');
       row.innerHTML = `
+        <td>${payment.datetime ? new Date(payment.datetime).toLocaleString() : ''}</td>
         <td>${payment.reference || ''}</td>
+        <td>${payment.sender_name || 'unknown'}</td>
+        <td>${payment.account_number || 'unknown'}</td>
         <td>₦${Number(payment.amount || 0).toLocaleString()}</td>
         <td>${payment.status || ''}</td>
-        <td>${payment.provider || ''}</td>
-        <td>${payment.datetime ? new Date(payment.datetime).toLocaleString() : ''}</td>
       `;
       paymentTableBody.appendChild(row);
     });
