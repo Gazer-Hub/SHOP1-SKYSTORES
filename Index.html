@@ -1025,6 +1025,53 @@
       initTripleSavingSync();
     });
 
+  // Function to load and display payments on your site
+async function loadPaymentHistory() {
+  try {
+    // 1. Fetch data from your Supabase payments table
+    const { data: payments, error } = await supabaseClient
+      .from('payments')
+      .select('*')
+      .order('datetime', { ascending: false }); // Shows newest payments first
+
+    if (error) {
+      console.error('Error fetching payments:', error.message);
+      return;
+    }
+
+    console.log('Payments loaded successfully:', payments);
+
+    // 2. Select your HTML table body or container element where payments should appear
+    const paymentTableBody = document.getElementById('payment-table-body'); // Replace with your actual HTML element ID
+    
+    if (!paymentTableBody) {
+      console.warn('Payment table container element not found in HTML.');
+      return;
+    }
+
+    // 3. Clear existing rows and render the new ones
+    paymentTableBody.innerHTML = '';
+
+    payments.forEach((payment) => {
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${payment.reference || ''}</td>
+        <td>₦${Number(payment.amount || 0).toLocaleString()}</td>
+        <td>${payment.status || ''}</td>
+        <td>${payment.provider || ''}</td>
+        <td>${payment.datetime ? new Date(payment.datetime).toLocaleString() : ''}</td>
+      `;
+      paymentTableBody.appendChild(row);
+    });
+
+  } catch (err) {
+    console.error('Unexpected error loading payments:', err);
+  }
+}
+
+// Run the function when the page loads
+document.addEventListener('DOMContentLoaded', loadPaymentHistory);
+    
     // --- CSV EXPORT UTILITY ---
     function downloadCSV(csvContent, filename) {
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
