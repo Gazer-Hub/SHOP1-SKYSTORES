@@ -146,8 +146,8 @@ exports.handler = async (event) => {
     let reference = referenceCandidates.find(x => x);
     if (!reference) reference = findReferenceRecursive(payload);
 
-  // Extract and normalize status and amount
-    const rawStatus = (data.status || data.transaction_status || data.state || payload.event || 'UNKNOWN').toString();
+  // Extract status and amount using correct keys from the payload
+    const rawStatus = (data.transactionStatus || data.status || data.transaction_status || data.state || payload.event || 'UNKNOWN').toString();
     const status = rawStatus.toUpperCase();
 
     const rawAmount = data.amount || data.total_amount || data.value || data.amt || 0;
