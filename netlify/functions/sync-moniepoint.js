@@ -1,16 +1,24 @@
 exports.handler = async function(event, context) {
   const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
   
-  const MONIEPOINT_API_KEY = process.env.MONIEPOINT_API_KEY; 
-  const MONIEPOINT_SECRET_KEY = process.env.MONNIFY_SECRET_KEY;
-  const SUPABASE_URL = process.env.SUPABASE_URL;
-  const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY; 
+  const MONIEPOINT_API_KEY = (process.env.MONIEPOINT_API_KEY || '').trim(); 
+  const MONNIFY_SECRET_KEY = (process.env.MONNIFY_SECRET_KEY || '').trim(); 
+  const SUPABASE_URL = (process.env.SUPABASE_URL || '').trim();
+  const SUPABASE_SERVICE_KEY = (process.env.SUPABASE_SERVICE_KEY || '').trim(); 
+
+  if (!MONIEPOINT_API_KEY || !MONNIFY_SECRET_KEY) {
+    return { statusCode: 500, body: JSON.stringify({ error: "Missing Moniepoint/Monnify API keys in environment variables" }) };
+  }
 
   try {
-    // Step 1: Generate Bearer Token from Monnify/Moniepoint Auth API
-    const credentials = Buffer.from(`${MONIEPOINT_API_KEY}:${MONIEPOINT_SECRET_KEY}`).toString('base64');
+    const isTest = MONIEPOINT_API_KEY.startsWith('MK_TEST');
+    const baseUrl = isTest ? 'https://sandbox.monnify.com' : 'https://api.monnify.com';
+
+    // Step 1: Generate Bearer Token using MONNIFY_SECRET_KEY
+    const rawCredentials = `${MONIEPOINT_API_KEY}:${MONNIFY_SECRET_KEY}`;
+    const credentials = Buffer.from(rawCredentials).toString('base64').replace(/\s+/g, '');
     
-    const authResponse = await fetch('https://api.monnify.com/api/v1/auth/login', {
+    const authResponse = await fetch(`${baseUrl}/api/v1/auth/login`, {
       method: 'POST',
       headers: {
         'Authorization': `Basic ${credentials}`,
@@ -20,13 +28,20 @@ exports.handler = async function(event, context) {
     
     const authResult = await authResponse.json();
     if (!authResult.requestSuccessful) {
-      return { statusCode: 401, body: JSON.stringify({ error: "Monnify authentication failed" }) };
+      return { 
+        statusCode: 401, 
+        body: JSON.stringify({ 
+          error: "Monnify authentication failed", 
+          mode: isTest ? 'TEST' : 'LIVE',
+          details: authResult 
+        }) 
+      };
     }
     
     const accessToken = authResult.responseBody.accessToken;
 
-    // Step 2: Fetch transaction history using the generated token
-    const txResponse = await fetch('https://api.monnify.com/api/v1/transactions/search?page=0&size=50', {
+    // Step 2: Fetch transaction history
+    const txResponse = await fetch(`${baseUrl}/api/v1/transactions/search?page=0&size=50&paymentStatus=PAID`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
@@ -36,7 +51,7 @@ exports.handler = async function(event, context) {
     
     const txResult = await txResponse.json();
     if (!txResult.requestSuccessful) {
-      return { statusCode: 400, body: JSON.stringify({ error: "Failed to fetch transactions list" }) };
+      return { statusCode: 400, body: JSON.stringify({ error: "Failed to fetch transactions list", details: txResult }) };
     }
 
     const externalTransactions = txResult.responseBody.content || [];
@@ -57,7 +72,7 @@ exports.handler = async function(event, context) {
       senderName: tx.customerName || tx.accountName || 'Customer',
       amount: tx.amountPaid,
       status: tx.paymentStatus,
-      timestamp: tx.createdOn
+      timestamp: tx.createdOn || tx.paidOn
     }));
 
     // Step 5: Push updated state back into Supabase cloud
