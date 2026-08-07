@@ -1,22 +1,21 @@
 exports.handler = async function(event, context) {
   const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
   
-  const MONIEPOINT_API_KEY = (process.env.MONIEPOINT_API_KEY || '').trim(); 
-  const MONNIFY_SECRET_KEY = (process.env.MONNIFY_SECRET_KEY || '').trim(); 
+  const apiKey = (process.env.MONIEPOINT_API_KEY || '').trim(); 
+  const secretKey = (process.env.MONNIFY_SECRET_KEY || '').trim(); 
   const SUPABASE_URL = (process.env.SUPABASE_URL || '').trim();
   const SUPABASE_SERVICE_KEY = (process.env.SUPABASE_SERVICE_KEY || '').trim(); 
 
-  if (!MONIEPOINT_API_KEY || !MONNIFY_SECRET_KEY) {
-    return { statusCode: 500, body: JSON.stringify({ error: "Missing Moniepoint/Monnify API keys in environment variables" }) };
+  if (!apiKey || !secretKey) {
+    return { statusCode: 500, body: JSON.stringify({ error: "Missing keys in environment variables" }) };
   }
 
   try {
-    const isTest = MONIEPOINT_API_KEY.startsWith('MK_TEST');
+    const isTest = apiKey.startsWith('MK_TEST');
     const baseUrl = isTest ? 'https://sandbox.monnify.com' : 'https://api.monnify.com';
 
-    // Step 1: Generate Bearer Token using MONNIFY_SECRET_KEY
-    const rawCredentials = `${MONIEPOINT_API_KEY}:${MONNIFY_SECRET_KEY}`;
-    const credentials = Buffer.from(rawCredentials).toString('base64').replace(/\s+/g, '');
+    // Monnify strictly requires: Base64(API_KEY + ":" + SECRET_KEY)
+    const credentials = Buffer.from(`${apiKey}:${secretKey}`).toString('base64').replace(/\s+/g, '');
     
     const authResponse = await fetch(`${baseUrl}/api/v1/auth/login`, {
       method: 'POST',
@@ -40,7 +39,6 @@ exports.handler = async function(event, context) {
     
     const accessToken = authResult.responseBody.accessToken;
 
-    // Step 2: Fetch transaction history
     const txResponse = await fetch(`${baseUrl}/api/v1/transactions/search?page=0&size=50&paymentStatus=PAID`, {
       method: 'GET',
       headers: {
@@ -56,7 +54,6 @@ exports.handler = async function(event, context) {
 
     const externalTransactions = txResult.responseBody.content || [];
 
-    // Step 3: Connect to Supabase to fetch current inventory payload
     const sbFetch = await fetch(`${SUPABASE_URL}/rest/v1/inventory?id=eq.1`, {
       headers: {
         'apikey': SUPABASE_SERVICE_KEY,
@@ -66,7 +63,6 @@ exports.handler = async function(event, context) {
     const sbData = await sbFetch.json();
     let currentDb = sbData[0]?.payload || { stock: [], sales: [], opayPayments: [] };
 
-    // Step 4: Map and merge transactions into your app's array
     currentDb.opayPayments = externalTransactions.map(tx => ({
       orderNo: tx.paymentReference,
       senderName: tx.customerName || tx.accountName || 'Customer',
@@ -75,7 +71,6 @@ exports.handler = async function(event, context) {
       timestamp: tx.createdOn || tx.paidOn
     }));
 
-    // Step 5: Push updated state back into Supabase cloud
     await fetch(`${SUPABASE_URL}/rest/v1/inventory`, {
       method: 'POST',
       headers: {
