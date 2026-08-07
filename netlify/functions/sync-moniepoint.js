@@ -1,22 +1,16 @@
 exports.handler = async function(event, context) {
   const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
   
-  const apiKey = (process.env.MONIEPOINT_API_KEY || '').trim(); 
+  const identifier = (process.env.MONIEPOINT_API_KEY || '').trim(); 
   const secretKey = (process.env.MONNIFY_SECRET_KEY || '').trim(); 
   const SUPABASE_URL = (process.env.SUPABASE_URL || '').trim();
   const SUPABASE_SERVICE_KEY = (process.env.SUPABASE_SERVICE_KEY || '').trim(); 
 
-  console.log("Attempting authentication with API Key length:", apiKey.length, "and Secret Key length:", secretKey.length);
-
-  if (!apiKey || !secretKey) {
-    return { statusCode: 500, body: JSON.stringify({ error: "Missing keys in environment variables" }) };
-  }
-
   try {
-    const isTest = apiKey.startsWith('MK_TEST');
-    const baseUrl = isTest ? 'https://sandbox.monnify.com' : 'https://api.monnify.com';
+    const baseUrl = 'https://api.monnify.com';
 
-    const credentials = Buffer.from(`${apiKey}:${secretKey}`).toString('base64').replace(/\s+/g, '');
+    // If you only have the secret key, some configurations allow passing it directly or paired with your account email/ID
+    const credentials = Buffer.from(`${identifier}:${secretKey}`).toString('base64').replace(/\s+/g, '');
     
     const authResponse = await fetch(`${baseUrl}/api/v1/auth/login`, {
       method: 'POST',
@@ -32,8 +26,7 @@ exports.handler = async function(event, context) {
         statusCode: 401, 
         body: JSON.stringify({ 
           error: "Monnify authentication failed", 
-          mode: isTest ? 'TEST' : 'LIVE',
-          usedApiKeyPrefix: apiKey.substring(0, 5) + '...',
+          message: "Monnify requires both an API Key and a Secret Key. If your dashboard only shows the Secret, please contact Monnify support to retrieve your public API Key.",
           details: authResult 
         }) 
       };
