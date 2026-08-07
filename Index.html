@@ -298,7 +298,6 @@
         <div class="no-print d-flex align-items-center gap-2 flex-wrap">
           <span class="badge bg-secondary">Webhook URL: sky-modernize.netlify.app</span>[cite: 1]
           <button class="btn btn-outline-primary btn-sm" onclick="exportMoniepointToCSV()">📥 Export Moniepoint CSV</button>
-          <button class="btn btn-outline-success btn-sm" onclick="simulateMoniepointWebhookTest()">🧪 Test Webhook Pop-up</button>
         </div>
       </div>
 
@@ -1187,21 +1186,6 @@ document.addEventListener('DOMContentLoaded', fetchPaymentHistory);
         csv += `"${p.datetime}","${p.reference}","${p.senderName}","${p.accountNumber}",${p.amount},"${p.status}"\n`;
       });
       downloadCSV(csv, `Moniepoint_Payments_${new Date().toISOString().split('T')[0]}.csv`);
-    }
-
-    function simulateMoniepointWebhookTest() {
-      const todayStr = new Date().toISOString().split('T')[0];
-      const testPayment = {
-        datetime: todayStr + " " + new Date().toTimeString().split(' ')[0],
-        reference: "MP-TXN-" + Math.floor(100000 + Math.random() * 900000),
-        senderName: "TEST CUSTOMER",
-        accountNumber: "99" + Math.floor(10000000 + Math.random() * 90000000),
-        amount: 55000,
-        status: "SUCCESS"
-      };
-      db.moniepointPayments.push(testPayment);
-      saveDB();
-      showMoniepointToast(`Payment of ₦55,000 received from TEST CUSTOMER!`);
     }
 
     function searchMoniepointPayments() {
