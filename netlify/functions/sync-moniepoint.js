@@ -2,7 +2,7 @@ exports.handler = async function(event, context) {
   const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
   
   const MONIEPOINT_API_KEY = process.env.MONIEPOINT_API_KEY; 
-  const MONIEPOINT_SECRET_KEY = process.env.MONIEPOINT_SECRET_KEY; 
+  const MONIEPOINT_SECRET_KEY = process.env.MONNIFY_SECRET_KEY;
   const SUPABASE_URL = process.env.SUPABASE_URL;
   const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY; 
 
