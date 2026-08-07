@@ -1067,6 +1067,21 @@ async function fetchPaymentHistory() {
       return;
     }
 
+async function triggerCloudTransactionSync() {
+  try {
+    // Calls your Netlify serverless function quietly in the background
+    await fetch('/.netlify/functions/sync-moniepoint');
+  } catch (e) {
+    console.log('Background sync skipped, using local cache.');
+  }
+}
+
+// Run it right alongside your startup sync
+window.addEventListener('DOMContentLoaded', async () => {
+  await triggerCloudTransactionSync();
+  initTripleSavingSync();
+});
+    
     // Save all fetched records globally
     allMoniepointPayments = payments || [];
     
