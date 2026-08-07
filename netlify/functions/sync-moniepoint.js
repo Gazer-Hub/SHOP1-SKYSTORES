@@ -6,6 +6,8 @@ exports.handler = async function(event, context) {
   const SUPABASE_URL = (process.env.SUPABASE_URL || '').trim();
   const SUPABASE_SERVICE_KEY = (process.env.SUPABASE_SERVICE_KEY || '').trim(); 
 
+  console.log("Attempting authentication with API Key length:", apiKey.length, "and Secret Key length:", secretKey.length);
+
   if (!apiKey || !secretKey) {
     return { statusCode: 500, body: JSON.stringify({ error: "Missing keys in environment variables" }) };
   }
@@ -14,7 +16,6 @@ exports.handler = async function(event, context) {
     const isTest = apiKey.startsWith('MK_TEST');
     const baseUrl = isTest ? 'https://sandbox.monnify.com' : 'https://api.monnify.com';
 
-    // Monnify strictly requires: Base64(API_KEY + ":" + SECRET_KEY)
     const credentials = Buffer.from(`${apiKey}:${secretKey}`).toString('base64').replace(/\s+/g, '');
     
     const authResponse = await fetch(`${baseUrl}/api/v1/auth/login`, {
@@ -32,6 +33,7 @@ exports.handler = async function(event, context) {
         body: JSON.stringify({ 
           error: "Monnify authentication failed", 
           mode: isTest ? 'TEST' : 'LIVE',
+          usedApiKeyPrefix: apiKey.substring(0, 5) + '...',
           details: authResult 
         }) 
       };
