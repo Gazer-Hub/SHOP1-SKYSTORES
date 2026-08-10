@@ -1,40 +1,19 @@
-const CACHE_NAME = 'skystores-v2';
-const urlsToCache = [
-  '/',
-  '/index.html'
-];
-
-// Install Event
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(urlsToCache);
+self.addEventListener('install', (e) => {
+  e.waitUntil(
+    caches.use('sky-inventory-v1').then((cache) => {
+      return cache.addAll([
+        '/',
+        '/index.html',
+        // Add your main CSS and JS files here if needed
+      ]);
     })
   );
-  self.skipWaiting();
 });
 
-// Activate Event
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    })
-  );
-  self.clients.claim();
-});
-
-// Fetch Event
-self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request);
+self.addEventListener('fetch', (e) => {
+  e.respondWith(
+    caches.match(e.request).then((response) => {
+      return response || fetch(e.request);
     })
   );
 });
