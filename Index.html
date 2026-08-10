@@ -2989,10 +2989,13 @@ function updateThemeButton(theme) {
     btn.classList.replace('btn-outline-warning', 'btn-outline-secondary');
   }
 }
-
+<script>
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js')
-      .then(() => console.log('Service Worker Registered'));
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js')
+        .then((reg) => console.log('ServiceWorker registration successful'))
+        .catch((err) => console.log('ServiceWorker registration failed: ', err));
+    });
   }
 </script>
 </body>
