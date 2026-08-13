@@ -178,6 +178,7 @@
           <button class="btn btn-sm btn-outline-light nav-link-btn" onclick="navigateTo('returns')"><i class="fa-solid fa-rotate-left me-1"></i> Returns</button>
           <button class="btn btn-sm btn-outline-warning nav-link-btn" onclick="navigateTo('supplier-returns')"><i class="fa-solid fa-truck-ramp-box me-1"></i> Vendor Box</button>
           <button class="btn btn-sm btn-outline-info nav-link-btn" onclick="navigateTo('purchase-requisition')"><i class="fa-solid fa-clipboard-list me-1"></i> Requisition</button>
+          <button class="btn btn-sm btn-outline-light" onclick="navigateTo('change-password')"><i class="fa-solid fa-key me-1"></i>i> password </button>
           
           <div class="vr bg-secondary opacity-50 mx-1"></div>
           
@@ -444,7 +445,6 @@
         <div class="no-print d-flex align-items-center gap-2 flex-wrap">
           <span class="badge bg-secondary px-3 py-2">Webhook Status: Active & Synced</span>[cite: 1]
           <button class="btn btn-outline-primary btn-sm" onclick="exportMoniepointToCSV()"><i class="fa-solid fa-download me-1"></i> Export CSV</button>
-          <button class="btn btn-success btn-sm" onclick="simulateMoniepointWebhookTest()"><i class="fa-solid fa-bolt me-1"></i> Simulate Webhook Alert</button>
         </div>
       </div>
 
@@ -776,7 +776,7 @@
               <label class="form-label small fw-bold text-muted">PAYMENT METHOD</label>
               <select id="sale-payment-method" class="form-select" required>
                 <option value="Cash">Cash 💵</option>
-                <option value="Transfer">Transfer 💳 (Moniepoint)</option>
+                <option value="Transfer">Transfer 💳 </option>
               </select>
             </div>
             <div class="col-md-4 d-flex align-items-end">
