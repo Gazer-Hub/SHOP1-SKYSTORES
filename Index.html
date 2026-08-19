@@ -132,7 +132,7 @@
 
     /* Styling for the Sales Interface Refresh Button */
 #refresh-btn {
-  background-color: transparent;
+  background-color: blue;
   border: 1px solid rgba(255, 255, 255, 0.4);
   color: #fff;
   transition: all 0.2s ease-in-out;
@@ -2723,6 +2723,48 @@ document.getElementById('refresh-payments-btn').addEventListener('click', async 
       alert("✅ Sale successfully recorded and inventory updated!");
     });
 
+// --- MANUAL IN-PAGE REFRESH HANDLER ---
+async function manualAppRefresh() {
+  const btn = document.getElementById('refresh-btn');
+  if (!btn) {
+    console.error("Refresh button element not found!");
+    return;
+  }
+  
+  const originalHtml = btn.innerHTML;
+  
+  // Show loading spinner state
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Refreshing...`;
+
+  try {
+    // 1. Pull latest cloud data from Supabase
+    if (typeof initTripleSavingSync === 'function') {
+      await initTripleSavingSync();
+    }
+    
+    // 2. Pull latest OPay/payment transactions if the function exists
+    if (typeof triggerCloudTransactionSync === 'function') {
+      await triggerCloudTransactionSync();
+    }
+
+    // 3. Re-render all views and tables on your screen
+    if (typeof renderAll === 'function') {
+      renderAll();
+    }
+
+    console.log("App data successfully refreshed from cloud.");
+  } catch (err) {
+    console.error("Refresh failed:", err);
+  } finally {
+    // Restore button back to normal state
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.innerHTML = originalHtml;
+    }, 500);
+  }
+}
+    
     function populateReturnSaleDropdown(filterQuery = "") {
       const returnSelect = document.getElementById('return-sale-idx');
       if (!returnSelect) return;
