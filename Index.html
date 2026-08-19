@@ -130,6 +130,34 @@
       border: none;
     }
 
+    /* Styling for the Sales Interface Refresh Button */
+#refresh-btn {
+  background-color: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  color: #fff;
+  transition: all 0.2s ease-in-out;
+  font-size: 0.85rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.375rem;
+}
+
+#refresh-btn:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.8);
+  color: #fff;
+}
+
+#refresh-btn:active {
+  transform: scale(0.96);
+}
+
+/* Spinner alignment tweaks inside button */
+#refresh-btn .spinner-border {
+  width: 0.9rem;
+  height: 0.9rem;
+  border-width: 0.15em;
+}
+    
     /* Print Formatting */
     @media print {
       .no-print, nav, button, .card-header, form, .input-group, .modal, .sales-filter-container, .returns-filter-container, .sup-filter-container, .req-filter-container { display: none !important; }
@@ -707,6 +735,13 @@
           <input type="date" id="sales-custom-date" class="form-control form-control-sm d-none" style="width: auto;" onchange="renderSales()">
           <button class="btn btn-outline-primary btn-sm" onclick="exportSalesToCSV()"><i class="fa-solid fa-download me-1"></i> Export CSV</button>
           <button class="btn btn-outline-dark btn-sm" onclick="printFilteredSales()"><i class="fa-solid fa-print me-1"></i> Print Report</button>
+          <button id="refresh-btn" class="btn btn-outline-light btn-sm d-flex align-items-center gap-1" onclick="manualAppRefresh()">
+           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-clockwise" viewBox="0 0 16 16">
+            <path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/>
+            <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/>
+              </svg>
+              <span>Refresh Data</span>
+            </button>
         </div>
       </div>
 
@@ -1449,7 +1484,44 @@ document.addEventListener('DOMContentLoaded', fetchPaymentHistory);
     }
 document.getElementById('refresh-payments-btn').addEventListener('click', async () => {
     const refreshBtn = document.getElementById('refresh-payments-btn');
+
+
+  async function manualAppRefresh() {
+  const btn = document.getElementById('refresh-btn');
+  const originalHtml = btn.innerHTML;
+  
+  // Show loading state on button
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Refreshing...`;
+
+  try {
+    // 1. Pull latest cloud data from Supabase
+    if (typeof initTripleSavingSync === 'function') {
+      await initTripleSavingSync();
+    }
     
+    // 2. If you added the automated payment history sync function, call it too
+    if (typeof triggerCloudTransactionSync === 'function') {
+      await triggerCloudTransactionSync();
+    }
+
+    // 3. Re-render all dashboard views, sales panels, and OPay histories
+    if (typeof renderAll === 'function') {
+      renderAll();
+    }
+
+    console.log("App data successfully refreshed from cloud.");
+  } catch (err) {
+    console.error("Refresh failed:", err);
+  } finally {
+    // Restore button back to normal state
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.innerHTML = originalHtml;
+    }, 500); // Small half-second delay for smooth visual feedback
+  }
+}
+  
     // Optional: Add a loading class or disable button to prevent spamming
     refreshBtn.disabled = true;
     refreshBtn.textContent = 'Refreshing...';
