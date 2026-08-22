@@ -3267,6 +3267,93 @@ async function manualAppRefresh() {
       alert("✅ Stock item updated successfully!");
     });
 
+                       // State Management for Inventory and Filters
+let allInventoryItems = []; // Populated from your Supabase/Local storage fetch
+
+// Initialize category filters across interfaces on page load
+document.addEventListener('DOMContentLoaded', () => {
+    setupCategoryEventListeners();
+});
+
+function setupCategoryEventListeners() {
+    // Attach listener to Dashboard Quick Lookup category filter
+    const dashboardFilter = document.getElementById('categoryFilter');
+    if (dashboardFilter) {
+        dashboardFilter.addEventListener('change', filterDashboardInventory);
+    }
+
+    // Attach listener to Sales Interface category filter
+    const salesFilter = document.getElementById('salesCategoryFilter');
+    if (salesFilter) {
+        salesFilter.addEventListener('change', filterSalesInventory);
+    }
+
+    // Attach listener to Supplier Return Interface category filter
+    const returnFilter = document.getElementById('returnCategoryFilter');
+    if (returnFilter) {
+        returnFilter.addEventListener('change', filterSupplierReturns);
+    }
+}
+
+// 1. Quick Inventory Lookup (Dashboard)
+function filterDashboardInventory() {
+    const selectedCategory = document.getElementById('categoryFilter').value.toLowerCase();
+    const searchQuery = document.getElementById('searchQueryInput')?.value.toLowerCase() || '';
+
+    const filtered = allInventoryItems.matchesFilter(selectedCategory, searchQuery);
+    renderDashboardTable(filtered);
+}
+
+// 2. Sales Interface Filtering
+function filterSalesInventory() {
+    const selectedCategory = document.getElementById('salesCategoryFilter').value.toLowerCase();
+    const searchQuery = document.getElementById('salesSearchInput')?.value.toLowerCase() || '';
+
+    const filtered = allInventoryItems.filter(item => {
+        const matchesCategory = !selectedCategory || item.category.toLowerCase() === selectedCategory;
+        const matchesSearch = item.name.toLowerCase().includes(searchQuery) || item.sku.toLowerCase().includes(searchQuery);
+        return matchesCategory && matchesSearch;
+    });
+
+    renderSalesProductGrid(filtered);
+}
+
+// 3. Supplier Return Interface Filtering
+function filterSupplierReturns() {
+    const selectedCategory = document.getElementById('returnCategoryFilter').value.toLowerCase();
+    const searchQuery = document.getElementById('returnSearchInput')?.value.toLowerCase() || '';
+
+    const filtered = allInventoryItems.filter(item => {
+        const matchesCategory = !selectedCategory || item.category.toLowerCase() === selectedCategory;
+        const matchesSearch = item.name.toLowerCase().includes(searchQuery);
+        return matchesCategory && matchesSearch;
+    });
+
+    renderReturnTable(filtered);
+}
+
+// Helper to dynamically load categories into all dropdowns from your dataset
+function populateCategoryDropdowns(items) {
+    allInventoryItems = items;
+    const categories = [...new Set(items.map(item => item.category))].filter(Boolean);
+    
+    const dropdownIds = ['categoryFilter', 'salesCategoryFilter', 'returnCategoryFilter'];
+    
+    dropdownIds.forEach(id => {
+        const dropdown = document.getElementById(id);
+        if (dropdown) {
+            // Keep the default "All Categories" option
+            dropdown.innerHTML = '<option value="">All Categories</option>';
+            categories.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category;
+                option.textContent = category;
+                dropdown.appendChild(option);
+            });
+        }
+    });
+}
+    
     function deleteStock(index) {
       if (confirm("Are you sure you want to delete this stock item?")) {
         db.stock.splice(index, 1);
