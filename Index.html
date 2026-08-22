@@ -436,6 +436,13 @@
             </div>
             <div class="card-body">
               <div class="input-group mb-3">
+                <div class="filter-bar">
+               <input type="text" placeholder="Search items..." id="search-input" />
+                 <select id="category-filter" onchange="handleCategoryChange(this.value)">
+               <option value="all">All Categories</option>
+                   <!-- Dynamically populate options -->
+                  </select>
+                  </div>
                 <input type="text" id="dash-goods-search-input" class="form-control form-control-sm" placeholder="Search model name, quality..." onkeyup="searchDashboardGoods()">
                 <button class="btn btn-sm btn-outline-secondary" type="button" onclick="clearDashboardGoodsSearch()">Clear</button>
               </div>
@@ -639,6 +646,7 @@
         <div class="card-header bg-dark text-white fw-bold"><i class="fa-solid fa-plus me-1"></i> Add New Stock Entry</div>
         <div class="card-body p-4">
           <form id="stock-form" class="row g-3">
+           <div class="filter-bar">
             <div class="col-md-2">
               <label class="form-label small fw-bold text-muted">MODEL</label>
               <input id="stk-model" class="form-control" placeholder="e.g. iPhone 13" required>
@@ -755,6 +763,13 @@
         </div>
         <div class="card-body p-4">
           <div class="row g-3 align-items-end mb-3">
+          <div class="filter-bar">
+             <input type="text" placeholder="Search items..." id="search-input" />
+              <select id="category-filter" onchange="handleCategoryChange(this.value)">
+               <option value="all">All Categories</option>
+             <!-- Dynamically populate options -->
+            </select>
+            </div>
             <div class="col-md-3">
               <label class="form-label small fw-bold text-muted">SELECT MODEL</label>
               <div class="input-group">
@@ -988,6 +1003,13 @@
           <div class="card-header bg-warning text-dark fw-bold"><i class="fa-solid fa-box-open me-1"></i> Process Supplier Return</div>
           <div class="card-body p-4">
             <form id="supplier-returns-form" class="row g-3">
+                  <div class="filter-bar">
+                      <input type="text" placeholder="Search items..." id="search-input" />
+                      <select id="category-filter" onchange="handleCategoryChange(this.value)">
+                           <option value="all">All Categories</option>
+                                <!-- Dynamically populate options -->
+                                   </select>
+                               </div>
               <div class="col-md-3">
                 <label class="form-label small fw-bold text-muted">MODEL</label>
                 <input id="sup-return-item" class="form-control" list="sup-return-item-list" placeholder="Type model..." required oninput="autoFillSupplier()" autocomplete="off">
@@ -3260,6 +3282,27 @@ async function manualAppRefresh() {
       }
     }
 
+                 // Global or module-level filter state
+const inventoryFilterState = {
+  searchQuery: '',
+  selectedCategory: 'all'
+};
+
+// Core filtering function used across all three interfaces
+function getFilteredItems(items) {
+  return items.filter(item => {
+    const matchesCategory = inventoryFilterState.selectedCategory === 'all' || 
+                            item.category === inventoryFilterState.selectedCategory;
+    
+    const query = inventoryFilterState.searchQuery.toLowerCase();
+    const matchesSearch = item.name.toLowerCase().includes(query) || 
+                          (item.sku && item.sku.toLowerCase().includes(query));
+                          
+    return matchesCategory && matchesSearch;
+  });
+}
+
+    
  async function refreshDashboardData() {
   const refreshBtn = document.getElementById('refresh-btn');
   if (refreshBtn) refreshBtn.innerHTML = '🔄 Refreshing...';
