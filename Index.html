@@ -997,19 +997,13 @@
           <div class="card-header bg-warning text-dark fw-bold"><i class="fa-solid fa-box-open me-1"></i> Process Supplier Return</div>
           <div class="card-body p-4">
 <form id="supplier-returns-form" class="row g-3">
-  <div class="col-md-2">
-    <label class="form-label small fw-bold text-muted">CATEGORY</label>
-    <select id="sup-return-category-filter" class="form-select" onchange="updateSupplierReturnModelList()">
-      <option value="">All Categories</option>
-    </select>
-  </div>
-  <div class="col-md-3">
-    <label class="form-label small fw-bold text-muted">MODEL</label>
-    <input id="sup-return-item" class="form-control" list="sup-return-item-list" placeholder="Type model..." required oninput="autoFillSupplier()" autocomplete="off">
-    <datalist id="sup-return-item-list"></datalist>
-  </div>
-  <!-- Keep remaining supplier return inputs -->
-</form>
+      <div class="col-12">
+         <label class="form-label small fw-bold text-muted">CATEGORY</label>
+              <select id="sup-return-category-filter" class="form-select" onchange="updateSupplierReturnModelList()">
+             <option value="">All Categories</option>
+             </select>
+          </div>
+            <div class="col-md-3">
                 <label class="form-label small fw-bold text-muted">MODEL</label>
                 <input id="sup-return-item" class="form-control" list="sup-return-item-list" placeholder="Type model..." required oninput="autoFillSupplier()" autocomplete="off">
                 <datalist id="sup-return-item-list"></datalist>
