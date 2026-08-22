@@ -757,7 +757,11 @@
           </div>
         </div>
         <div class="card-body p-4">
-        <div class="col-12">
+          <div class="row g-3 align-items-end mb-3">
+            <div class="col-md-3">
+
+              <div class="row g-3 align-items-end mb-3">
+      <div class="col-md-2">
        <label class="form-label small fw-bold text-muted">CATEGORY</label>
         <select id="sale-category-filter" class="form-select" onchange="updateSaleModelList()">
         <option value="">All Categories</option>
@@ -772,8 +776,7 @@
         <datalist id="sale-item-list"></datalist>
         </div>
   <!-- Keep existing quality, price, qty, and add-to-cart columns -->
-
-            </div>
+          
             <div class="col-md-2">
               <label class="form-label small fw-bold text-muted">QUALITY / SUB-CAT</label>
               <select id="sale-quality" class="form-select">
@@ -1011,7 +1014,8 @@
     <datalist id="sup-return-item-list"></datalist>
   </div>
   <!-- Keep remaining supplier return inputs -->
-
+</form>
+            
               <div class="col-md-3">
                 <label class="form-label small fw-bold text-muted">SUPPLIER NAME</label>
                 <input id="sup-return-supplier" class="form-control" placeholder="Supplier name" required>
