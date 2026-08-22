@@ -757,12 +757,12 @@
           </div>
         </div>
         <div class="card-body p-4">
-       <div class="row g-3 align-items-end mb-3">
-            <div class="col-md-2">
-          <label class="form-label small fw-bold text-muted">CATEGORY</label>
-             <select id="sale-category-filter" class="form-select" onchange="updateSaleModelList()">
-           <option value="">All Categories</option>
-         </select>
+          <div class="row g-3 align-items-end mb-3">
+            <div class="col-md-3">
+       <label class="form-label small fw-bold text-muted">CATEGORY</label>
+        <select id="sale-category-filter" class="form-select" onchange="updateSaleModelList()">
+        <option value="">All Categories</option>
+      </select>
         </div>
      <div class="col-md-3">
        <label class="form-label small fw-bold text-muted">SELECT MODEL</label>
@@ -774,12 +774,6 @@
         </div>
   <!-- Keep existing quality, price, qty, and add-to-cart columns -->
            </div>
-              <label class="form-label small fw-bold text-muted">SELECT MODEL</label>
-              <div class="input-group">
-                <input id="sale-item" class="form-control" list="sale-item-list" placeholder="Search model..." oninput="autoFillSaleDetails()" autocomplete="off">
-                <button class="btn btn-outline-secondary" type="button" onclick="clearSaleModelInput()">✖</button>
-              </div>
-              <datalist id="sale-item-list"></datalist>
             </div>
             <div class="col-md-2">
               <label class="form-label small fw-bold text-muted">QUALITY / SUB-CAT</label>
@@ -1005,21 +999,20 @@
         <div class="card mb-4 border-warning no-print shadow-sm">
           <div class="card-header bg-warning text-dark fw-bold"><i class="fa-solid fa-box-open me-1"></i> Process Supplier Return</div>
           <div class="card-body p-4">
-              <form id="supplier-returns-form" class="row g-3">
-             <div class="col-md-2">
-        <label class="form-label small fw-bold text-muted">CATEGORY</label>
-            <select id="sup-return-category-filter" class="form-select" onchange="updateSupplierReturnModelList()">
-           <option value="">All Categories</option>
-             </select>
-            </div>
-          <div class="col-md-3">
-          <label class="form-label small fw-bold text-muted">MODEL</label>
-         <input id="sup-return-item" class="form-control" list="sup-return-item-list" placeholder="Type model..." required oninput="autoFillSupplier()" autocomplete="off">
-           <datalist id="sup-return-item-list"></datalist>
-             </div>
-         <!-- Keep remaining supplier return inputs -->
-          </form>
-
+<form id="supplier-returns-form" class="row g-3">
+  <div class="col-md-2">
+    <label class="form-label small fw-bold text-muted">CATEGORY</label>
+    <select id="sup-return-category-filter" class="form-select" onchange="updateSupplierReturnModelList()">
+      <option value="">All Categories</option>
+    </select>
+  </div>
+  <div class="col-md-3">
+    <label class="form-label small fw-bold text-muted">MODEL</label>
+    <input id="sup-return-item" class="form-control" list="sup-return-item-list" placeholder="Type model..." required oninput="autoFillSupplier()" autocomplete="off">
+    <datalist id="sup-return-item-list"></datalist>
+  </div>
+  <!-- Keep remaining supplier return inputs -->
+</form>
               <div class="col-md-3">
                 <label class="form-label small fw-bold text-muted">SUPPLIER NAME</label>
                 <input id="sup-return-supplier" class="form-control" placeholder="Supplier name" required>
