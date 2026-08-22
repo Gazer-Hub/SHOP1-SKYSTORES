@@ -776,7 +776,14 @@
         <datalist id="sale-item-list"></datalist>
         </div>
   <!-- Keep existing quality, price, qty, and add-to-cart columns -->
-          
+           </div>
+              <label class="form-label small fw-bold text-muted">SELECT MODEL</label>
+              <div class="input-group">
+                <input id="sale-item" class="form-control" list="sale-item-list" placeholder="Search model..." oninput="autoFillSaleDetails()" autocomplete="off">
+                <button class="btn btn-outline-secondary" type="button" onclick="clearSaleModelInput()">✖</button>
+              </div>
+              <datalist id="sale-item-list"></datalist>
+            </div>
             <div class="col-md-2">
               <label class="form-label small fw-bold text-muted">QUALITY / SUB-CAT</label>
               <select id="sale-quality" class="form-select">
@@ -1015,7 +1022,10 @@
   </div>
   <!-- Keep remaining supplier return inputs -->
 </form>
-            
+                <label class="form-label small fw-bold text-muted">MODEL</label>
+                <input id="sup-return-item" class="form-control" list="sup-return-item-list" placeholder="Type model..." required oninput="autoFillSupplier()" autocomplete="off">
+                <datalist id="sup-return-item-list"></datalist>
+              </div>
               <div class="col-md-3">
                 <label class="form-label small fw-bold text-muted">SUPPLIER NAME</label>
                 <input id="sup-return-supplier" class="form-control" placeholder="Supplier name" required>
