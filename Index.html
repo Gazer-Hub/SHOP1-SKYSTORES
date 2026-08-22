@@ -434,21 +434,24 @@
               <span><i class="fa-solid fa-magnifying-glass me-1"></i> Quick Inventory Lookup</span>
               <span class="small text-white-50">Instant Pricing & Stock Check</span>
             </div>
-            <div class="card-body">
-              <div class="input-group mb-3">
-                <input type="text" id="dash-goods-search-input" class="form-control form-control-sm" placeholder="Search model name, quality..." onkeyup="searchDashboardGoods()">
-                <button class="btn btn-sm btn-outline-secondary" type="button" onclick="clearDashboardGoodsSearch()">Clear</button>
-              </div>
-              <div class="table-responsive" style="max-height: 200px; overflow-y: auto;">
-                <table class="table table-sm table-hover mb-0">
-                  <thead class="table-light sticky-top">
-                    <tr><th>Model</th><th>Quality</th><th>Price (₦)</th><th>Stock</th></tr>
-                  </thead>
-                  <tbody id="dash-goods-search-results">
-                    <tr><td colspan="4" class="text-center text-muted small py-3">Type above to query inventory</td></tr>
-                  </tbody>
-                </table>
-              </div>
+           <div class="card-body">
+       <div class="input-group mb-3 gap-1">
+        <select id="dash-goods-category-select" class="form-select form-select-sm" style="max-width: 140px;" onchange="searchDashboardGoods()">
+         <option value="">All Categories</option>
+       </select>
+        <input type="text" id="dash-goods-search-input" class="form-control form-control-sm" placeholder="Search model name, quality..." onkeyup="searchDashboardGoods()">
+       <button class="btn btn-sm btn-outline-secondary" type="button" onclick="clearDashboardGoodsSearch()">Clear</button>
+     </div>
+       <div class="table-responsive" style="max-height: 200px; overflow-y: auto;">
+           <table class="table table-sm table-hover mb-0">
+            <thead class="table-light sticky-top">
+            <tr><th>Model</th><th>Quality</th><th>Price (₦)</th><th>Stock</th></tr>
+             </thead>
+               <tbody id="dash-goods-search-results">
+               <tr><td colspan="4" class="text-center text-muted small py-3">Select a category or type above to query inventory</td></tr>
+               </tbody>
+              </table>
+             </div>
             </div>
           </div>
         </div>
@@ -756,6 +759,24 @@
         <div class="card-body p-4">
           <div class="row g-3 align-items-end mb-3">
             <div class="col-md-3">
+
+              <div class="row g-3 align-items-end mb-3">
+      <div class="col-md-2">
+       <label class="form-label small fw-bold text-muted">CATEGORY</label>
+        <select id="sale-category-filter" class="form-select" onchange="updateSaleModelList()">
+        <option value="">All Categories</option>
+      </select>
+        </div>
+     <div class="col-md-3">
+       <label class="form-label small fw-bold text-muted">SELECT MODEL</label>
+       <div class="input-group">
+      <input id="sale-item" class="form-control" list="sale-item-list" placeholder="Search model..." oninput="autoFillSaleDetails()" autocomplete="off">
+      <button class="btn btn-outline-secondary" type="button" onclick="clearSaleModelInput()">✖</button>
+       </div>
+        <datalist id="sale-item-list"></datalist>
+        </div>
+  <!-- Keep existing quality, price, qty, and add-to-cart columns -->
+           </div>
               <label class="form-label small fw-bold text-muted">SELECT MODEL</label>
               <div class="input-group">
                 <input id="sale-item" class="form-control" list="sale-item-list" placeholder="Search model..." oninput="autoFillSaleDetails()" autocomplete="off">
@@ -987,8 +1008,20 @@
         <div class="card mb-4 border-warning no-print shadow-sm">
           <div class="card-header bg-warning text-dark fw-bold"><i class="fa-solid fa-box-open me-1"></i> Process Supplier Return</div>
           <div class="card-body p-4">
-            <form id="supplier-returns-form" class="row g-3">
-              <div class="col-md-3">
+<form id="supplier-returns-form" class="row g-3">
+  <div class="col-md-2">
+    <label class="form-label small fw-bold text-muted">CATEGORY</label>
+    <select id="sup-return-category-filter" class="form-select" onchange="updateSupplierReturnModelList()">
+      <option value="">All Categories</option>
+    </select>
+  </div>
+  <div class="col-md-3">
+    <label class="form-label small fw-bold text-muted">MODEL</label>
+    <input id="sup-return-item" class="form-control" list="sup-return-item-list" placeholder="Type model..." required oninput="autoFillSupplier()" autocomplete="off">
+    <datalist id="sup-return-item-list"></datalist>
+  </div>
+  <!-- Keep remaining supplier return inputs -->
+</form>
                 <label class="form-label small fw-bold text-muted">MODEL</label>
                 <input id="sup-return-item" class="form-control" list="sup-return-item-list" placeholder="Type model..." required oninput="autoFillSupplier()" autocomplete="off">
                 <datalist id="sup-return-item-list"></datalist>
@@ -3259,7 +3292,99 @@ async function manualAppRefresh() {
         saveDB();
       }
     }
+             function populateSupplierReturnCategories() {
+  const catSelect = document.getElementById('sup-return-category-filter');
+  if (!catSelect) return;
+  const categories = [...new Set(db.stock.map(s => s.category).filter(Boolean))];
+  catSelect.innerHTML = '<option value="">All Categories</option>' + 
+    categories.map(c => `<option value="${c}">${c}</option>`).join('');
+  updateSupplierReturnModelList();
+}
 
+function updateSupplierReturnModelList() {
+  const selectedCat = document.getElementById('sup-return-category-filter').value;
+  const datalist = document.getElementById('sup-return-item-list');
+  if (!datalist) return;
+
+  const filteredStock = selectedCat 
+    ? db.stock.filter(s => s.category === selectedCat) 
+    : db.stock;
+
+  const uniqueModels = [...new Set(filteredStock.map(s => s.model))];
+  datalist.innerHTML = uniqueModels.map(m => `<option value="${m}">`).join('');
+}
+    
+        function populateSalesCategories() {
+  const catSelect = document.getElementById('sale-category-filter');
+  if (!catSelect) return;
+  const categories = [...new Set(db.stock.map(s => s.category).filter(Boolean))];
+  catSelect.innerHTML = '<option value="">All Categories</option>' + 
+    categories.map(c => `<option value="${c}">${c}</option>`).join('');
+  updateSaleModelList();
+}
+
+function updateSaleModelList() {
+  const selectedCat = document.getElementById('sale-category-filter').value;
+  const datalist = document.getElementById('sale-item-list');
+  if (!datalist) return;
+  
+  const filteredStock = selectedCat 
+    ? db.stock.filter(s => s.category === selectedCat) 
+    : db.stock;
+    
+  const uniqueModels = [...new Set(filteredStock.map(s => s.model))];
+  datalist.innerHTML = uniqueModels.map(m => `<option value="${m}">`).join('');
+}
+    
+     function populateDashboardCategories() {
+  const select = document.getElementById('dash-goods-category-select');
+  if (!select) return;
+  const categories = [...new Set(db.stock.map(s => s.category).filter(Boolean))];
+  select.innerHTML = '<option value="">All Categories</option>' + 
+    categories.map(c => `<option value="${c}">${c}</option>`).join('');
+}
+
+function searchDashboardGoods() {
+  const query = document.getElementById('dash-goods-search-input').value.trim().toLowerCase();
+  const selectedCat = document.getElementById('dash-goods-category-select').value;
+  const resultsContainer = document.getElementById('dash-goods-search-results');
+
+  if (!query && !selectedCat) {
+    resultsContainer.innerHTML = `<tr><td colspan="4" class="text-center text-muted">Select a category or type above to query inventory</td></tr>`;
+    return;
+  }
+
+  const matchingGoods = db.stock.filter(s => {
+    const matchesCategory = !selectedCat || s.category === selectedCat;
+    const matchesQuery = !query || (
+      (s.model && s.model.toLowerCase().includes(query)) ||
+      (s.category && s.category.toLowerCase().includes(query)) ||
+      (s.subcat && s.subcat.toLowerCase().includes(query))
+    );
+    return matchesCategory && matchesQuery;
+  });
+
+  if (matchingGoods.length === 0) {
+    resultsContainer.innerHTML = `<tr><td colspan="4" class="text-center text-danger">No matching goods found</td></tr>`;
+    return;
+  }
+
+  resultsContainer.innerHTML = matchingGoods.map(g => `
+    <tr>
+      <td><b>${g.model}</b></td>
+      <td><span class="badge bg-secondary">${g.subcat || 'Standard'}</span></td>
+      <td class="text-success fw-bold">₦${(g.sell_price || 0).toLocaleString()}</td>
+      <td><span class="badge ${g.qty > 10 ? 'bg-success' : 'bg-danger'}">${g.qty} pcs available</span></td>
+    </tr>
+  `).join('');
+}
+
+function clearDashboardGoodsSearch() {
+  document.getElementById('dash-goods-search-input').value = '';
+  document.getElementById('dash-goods-category-select').value = '';
+  searchDashboardGoods();
+}
+    
  async function refreshDashboardData() {
   const refreshBtn = document.getElementById('refresh-btn');
   if (refreshBtn) refreshBtn.innerHTML = '🔄 Refreshing...';
@@ -3306,6 +3431,19 @@ function updateThemeButton(theme) {
   }
 }
 
+         function renderAll() {
+  populateDashboardCategories();
+  populateSalesCategories();
+  populateSupplierReturnCategories();
+  renderDashboard();
+  renderStock();
+  renderSales();
+  renderReturns();
+  renderSupplierReturns();
+  renderRequisitions();
+  renderMoniepointPayments();
+}
+    
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('/sw.js')
