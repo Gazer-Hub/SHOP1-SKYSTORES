@@ -3306,19 +3306,32 @@ function updateSupplierReturnModelList() {
 }
 
 function updateSaleModelList() {
-  const selectedCat = document.getElementById('sale-category-filter').value;
-  const datalist = document.getElementById('sale-item-list');
-  if (!datalist) return;
+  const selectedCategory = document.getElementById('sale-category-filter').value;
+  const modelInput = document.getElementById('sale-item');
+  const dataList = document.getElementById('sale-item-list');
   
-  const filteredStock = selectedCat 
-    ? db.stock.filter(s => s.category === selectedCat) 
-    : db.stock;
-    
-  const uniqueModels = [...new Set(filteredStock.map(s => s.model))];
-  datalist.innerHTML = uniqueModels.map(m => `<option value="${m}">`).join('');
-}
-    
-     function populateDashboardCategories() {
+  // Clear the current model input and quality dropdown when category changes
+  modelInput.value = '';
+  document.getElementById('sale-quality').innerHTML = '<option value="">-- Select Quality --</option>';
+  document.getElementById('sale-price').value = '';
+  
+  // Clear existing datalist options
+  dataList.innerHTML = '';
+  
+  // Filter stock items by category (if a category is selected)
+  const filteredStock = selectedCategory 
+    ? stockData.filter(item => item.category === selectedCategory)
+    : stockData;
+  
+  // Get unique models from the filtered stock
+  const uniqueModels = [...new Set(filteredStock.map(item => item.model))];
+  
+  uniqueModels.forEach(model => {
+    const option = document.createElement('option');
+    option.value = model;
+    dataList.appendChild(option);
+  });
+}     function populateDashboardCategories() {
   const select = document.getElementById('dash-goods-category-select');
   if (!select) return;
   const categories = [...new Set(db.stock.map(s => s.category).filter(Boolean))];
