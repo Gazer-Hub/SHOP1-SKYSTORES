@@ -2350,7 +2350,6 @@ function autoFillSaleDetails() {
     checkBulkPriceEligibility();
   }
 }
-      }
 
       const matchingItems = db.stock.filter(s => s.model.toLowerCase() === selectedModel.toLowerCase());
       if (matchingItems.length > 0) {
