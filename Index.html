@@ -2318,16 +2318,38 @@ document.getElementById('refresh-payments-btn').addEventListener('click', async 
         return `<option value="${s.model}">${s.model}${subInfo} (Stock: ${s.qty})</option>`;
       }).join('');
     }
-
-    function autoFillSaleDetails() {
-      const selectedModel = document.getElementById('sale-item').value.trim();
-      const qualitySelect = document.getElementById('sale-quality');
-      const priceInput = document.getElementById('sale-price');
-
-      if (!selectedModel) {
-        qualitySelect.innerHTML = '<option value="">-- Select Quality --</option>';
-        priceInput.value = '';
-        return;
+function autoFillSaleDetails() {
+  const selectedModel = document.getElementById('sale-item').value;
+  const selectedCategory = document.getElementById('sale-category-filter').value;
+  const qualitySelect = document.getElementById('sale-quality');
+  const priceInput = document.getElementById('sale-price');
+  
+  qualitySelect.innerHTML = '<option value="">-- Select Quality --</option>';
+  priceInput.value = '';
+  
+  // Find matching items filtered strictly by both category and model
+  const matchingItems = stockData.filter(item => {
+    const matchesCategory = selectedCategory ? item.category === selectedCategory : true;
+    const matchesModel = item.model.toLowerCase() === selectedModel.toLowerCase();
+    return matchesCategory && matchesModel;
+  });
+  
+  // Populate the quality dropdown with only the qualities belonging to this category/model combination
+  matchingItems.forEach(item => {
+    const qualityValue = item.subcat || item.quality || 'Standard';
+    const option = document.createElement('option');
+    option.value = qualityValue;
+    option.textContent = qualityValue;
+    qualitySelect.appendChild(option);
+  });
+  
+  // Auto-select if there is only one option available
+  if (matchingItems.length === 1) {
+    qualitySelect.selectedIndex = 1;
+    priceInput.value = matchingItems[0].sell;
+    checkBulkPriceEligibility();
+  }
+}
       }
 
       const matchingItems = db.stock.filter(s => s.model.toLowerCase() === selectedModel.toLowerCase());
@@ -3305,17 +3327,28 @@ function updateSupplierReturnModelList() {
   updateSaleModelList();
 }
 
-function updateSaleModelList() {
-  const selectedCat = document.getElementById('sale-category-filter').value;
-  const datalist = document.getElementById('sale-item-list');
-  if (!datalist) return;
+function updateSaleQualitiesAndModels() {
+  const selectedCategory = document.getElementById('sale-category-filter').value;
+  const modelInput = document.getElementById('sale-item');
+  const qualitySelect = document.getElementById('sale-quality');
+  const priceInput = document.getElementById('sale-price');
   
-  const filteredStock = selectedCat 
-    ? db.stock.filter(s => s.category === selectedCat) 
-    : db.stock;
-    
-  const uniqueModels = [...new Set(filteredStock.map(s => s.model))];
-  datalist.innerHTML = uniqueModels.map(m => `<option value="${m}">`).join('');
+  // Clear dependent fields
+  modelInput.value = '';
+  qualitySelect.innerHTML = '<option value="">-- Select Quality --</option>';
+  priceInput.value = '';
+  
+  // Filter stock based on the selected category
+  const filteredStock = selectedCategory 
+    ? stockData.filter(item => item.category === selectedCategory)
+    : stockData;
+  
+  // Extract unique qualities/subcategories available in this category
+  const uniqueQualities = [...new Set(filteredStock.map(item => item.subcat || item.quality).filter(Boolean))];
+  
+  // Populate quality dropdown if your UI allows selecting quality independently,
+  // or restrict them when a model is chosen.
+}
 }
     
      function populateDashboardCategories() {
