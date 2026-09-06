@@ -160,19 +160,38 @@
     
     /* Print Formatting */
     @media print {
-      .no-print, nav, button, .card-header, form, .input-group, .modal, .sales-filter-container, .returns-filter-container, .sup-filter-container, .req-filter-container { display: none !important; }
-      body { font-size: 11pt; background-color: #fff !important; color: #000 !important; }
-      .container { max-width: 100% !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
-      .card { border: none !important; box-shadow: none !important; }
-      .table th, .table td { border: 1px solid #cbd5e1 !important; padding: 6px !important; }
-      .print-title { display: block !important; text-align: center; margin-bottom: 20px; }
-      .cac-print-section { display: block !important; border: 2px solid #0f172a; padding: 15px; margin-top: 20px; border-radius: 8px; }
-    }
-    .print-title { display: none; }
-    .cac-print-section { display: none; }
-  </style>
-</head>
-<body>
+  /* Hide all elements on the page by default */
+  body * {
+    visibility: hidden !important;
+  }
+
+  /* Make only the CAC print section and its children visible */
+  .cac-print-section, .cac-print-section * {
+    visibility: visible !important;
+  }
+
+  /* Position the CAC print section at the top left of the printed page */
+  .cac-print-section {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    display: block !important;
+    padding: 20px !important;
+    border: none !important;
+  }
+
+  /* Ensure background colors and borders print clearly */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  table th, table td {
+    border: 1px solid #cbd5e1 !important;
+    padding: 8px 12px !important;
+  }
+}
 
   <!-- Real-time Moniepoint Payment Notification Popup Container -->
   <div id="moniepoint-toast-container">
