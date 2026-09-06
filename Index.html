@@ -1777,6 +1777,7 @@ filteredSales.forEach(sale => {
 
 let cacFee = totalCacFee;
 let netProfit = taxableProfit - cacFee;
+        
         dynamicContentContainer.innerHTML = `
           <h6 class="text-center fw-bold mb-3">CAC Audit & Tax Summary</h6>
           <table class="table table-bordered">
@@ -2279,6 +2280,8 @@ filteredSales.forEach(sale => {
 });
 
 let cacFee = totalCacFee;
+let netProfit = taxableProfit - cacFee;
+      
 // Safely update DOM elements
 document.getElementById('dash-sales').innerText = `₦${netSales.toLocaleString()}`;
 document.getElementById('dash-cost').innerText = `₦${netCost.toLocaleString()}`;
