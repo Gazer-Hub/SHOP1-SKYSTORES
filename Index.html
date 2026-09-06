@@ -159,39 +159,20 @@
 }
     
     /* Print Formatting */
-  @media print {
-  /* Hide all standard web content */
-  body * {
-    visibility: hidden !important;
-  }
-
-  /* Reveal only the CAC print section */
-  .cac-print-section, .cac-print-section * {
-    visibility: visible !important;
-  }
-
-  /* Position print section to fill the top of the page */
-  .cac-print-section {
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
-    width: 100% !important;
-    display: block !important;
-    padding: 20px !important;
-    border: 1px solid #000 !important;
-    box-sizing: border-box !important;
-  }
-
-  table {
-    width: 100% !important;
-    border-collapse: collapse !important;
-  }
-
-  table th, table td {
-    border: 1px solid #333 !important;
-    padding: 6px 10px !important;
-  }
-}
+    @media print {
+      .no-print, nav, button, .card-header, form, .input-group, .modal, .sales-filter-container, .returns-filter-container, .sup-filter-container, .req-filter-container { display: none !important; }
+      body { font-size: 11pt; background-color: #fff !important; color: #000 !important; }
+      .container { max-width: 100% !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
+      .card { border: none !important; box-shadow: none !important; }
+      .table th, .table td { border: 1px solid #cbd5e1 !important; padding: 6px !important; }
+      .print-title { display: block !important; text-align: center; margin-bottom: 20px; }
+      .cac-print-section { display: block !important; border: 2px solid #0f172a; padding: 15px; margin-top: 20px; border-radius: 8px; }
+    }
+    .print-title { display: none; }
+    .cac-print-section { display: none; }
+  </style>
+</head>
+<body>
 
   <!-- Real-time Moniepoint Payment Notification Popup Container -->
   <div id="moniepoint-toast-container">
@@ -1736,11 +1717,104 @@ document.getElementById('refresh-payments-btn').addEventListener('click', async 
         btn.classList.replace('btn-outline-secondary', 'btn-secondary');
       }
     }
-function printCACReport() {
-  const printSection = document.querySelector('.cac-print-section');
-  if (!printSection) return;
 
-  const currentYear = new Date().getFullYear();
+    function printCACReport() {
+      const { periodLabel, filteredSales, filteredReturns } = getFilteredDashboardPeriod();
+      const filterType = document.getElementById('dash-date-filter').value;
+      const periodExpenses = parseInt(document.getElementById('dash-period-expenses').value) || 0;
+      document.getElementById('printout-period-label').innerText = periodLabel;
+
+      const dynamicContentContainer = document.getElementById('cac-print-dynamic-content');
+
+      if (filterType === 'this-week' || filterType === 'this-month' || filterType === 'last-month') {
+    // Safely calculate Sales, Cost, and Returns
+let totalSales = filteredSales.reduce((sum, s) => {
+  return sum + (Number(s.sell_price || 0) * Number(s.qty || 0));
+}, 0);
+
+let totalCost = filteredSales.reduce((sum, s) => {
+  return sum + (Number(s.cost_price || 0) * Number(s.qty || 0));
+}, 0);
+
+let returnedSales = filteredReturns.reduce((sum, r) => {
+  return sum + (Number(r.sell_price || 0) * Number(r.qty || 0));
+}, 0);
+
+let returnedCost = filteredReturns.reduce((sum, r) => {
+  return sum + (Number(r.cost_price || 0) * Number(r.qty || 0));
+}, 0);
+
+// Adjusted Net Metrics
+let netSales = totalSales - returnedSales;
+let netCost = totalCost - returnedCost;
+let grossProfit = netSales - netCost;
+
+let periodExpenses = Number(document.getElementById('dash-period-expenses')?.value || 0);
+let taxableProfit = grossProfit - periodExpenses;
+
+// Define the capped profit base per unit for CAC tax computation
+const MAX_CAC_PROFIT_PER_UNIT = 500; // Capped profit limit for CAC computation
+
+let totalCacFee = 0;
+
+// Iterate over each sale item to calculate capped CAC tax
+filteredSales.forEach(sale => {
+  let qty = Number(sale.qty || 0);
+  let sellPrice = Number(sale.sell_price || 0);
+  let costPrice = Number(sale.cost_price || 0);
+  
+  // Actual profit per unit
+  let profitPerUnit = sellPrice - costPrice;
+
+  if (profitPerUnit > 0) {
+    // Cap profit at ₦500 per unit for CAC tax assessment
+    let cacBasePerUnit = Math.min(profitPerUnit, MAX_CAC_PROFIT_PER_UNIT);
+    
+    // 7.5% on capped profit base
+    totalCacFee += Math.floor(cacBasePerUnit * 0.075) * qty;
+  }
+});
+
+let cacFee = totalCacFee;
+let netProfit = taxableProfit - cacFee;
+        
+        dynamicContentContainer.innerHTML = `
+          <h6 class="text-center fw-bold mb-3">CAC Audit & Tax Summary</h6>
+          <table class="table table-bordered">
+            <tr><td><b>Total Sales Revenue:</b></td><td>₦${totalSales.toLocaleString()}</td></tr>
+            <tr><td><b>Total Cost Price:</b></td><td>₦${totalCost.toLocaleString()}</td></tr>
+            <tr><td><b>Total Customer Refunds:</b></td><td>₦${totalReturns.toLocaleString()}</td></tr>
+            <tr><td><b>Gross Profit:</b></td><td>₦${grossProfit.toLocaleString()}</td></tr>
+            <tr><td><b>Period Operating Expenses:</b></td><td>₦${periodExpenses.toLocaleString()}</td></tr>
+            <tr class="table-danger"><td><b>Official CAC Tax Deduction (7.5%):</b></td><td><b>₦${cacFee.toLocaleString()}</b></td></tr>
+            <tr class="table-success"><td><b>Final Net Profit:</b></td><td>₦${netProfit.toLocaleString()}</td></tr>
+          </table>
+        `;
+      } else if (filterType === 'this-year') {
+        const monthlyGroups = {};
+        for (let m = 1; m <= 12; m++) {
+          const monthStr = m < 10 ? `0${m}` : `${m}`;
+          monthlyGroups[monthStr] = { sales: 0, cost: 0, returns: 0 };
+        }
+
+        filteredSales.forEach(s => {
+          if (s.date && s.date.length >= 7) {
+            const mKey = s.date.substring(5, 7);
+            if (monthlyGroups[mKey]) {
+              monthlyGroups[mKey].sales += (s.sell_price * s.qty);
+              monthlyGroups[mKey].cost += (s.cost_price * s.qty);
+            }
+          }
+        });
+
+        filteredReturns.forEach(r => {
+          if (r.date && r.date.length >= 7) {
+            const mKey = r.date.substring(5, 7);
+            if (monthlyGroups[mKey]) {
+              monthlyGroups[mKey].returns += (r.sell_price * r.qty);
+            }
+          }
+        });
 
         const monthNames = {
           "01": "January", "02": "February", "03": "March", "04": "April",
@@ -1872,7 +1946,7 @@ function printCACReport() {
             <p>Attendant Signature: ______________________</p>
             <script>
               window.onload = function() { window.print(); window.close(); }
-            </script>
+            <\/script>
           </body>
         </html>
       `);
