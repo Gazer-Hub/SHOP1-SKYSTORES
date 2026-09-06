@@ -158,21 +158,39 @@
   border-width: 0.15em;
 }
     
-    /* Print Formatting */
-    @media print {
-      .no-print, nav, button, .card-header, form, .input-group, .modal, .sales-filter-container, .returns-filter-container, .sup-filter-container, .req-filter-container { display: none !important; }
-      body { font-size: 11pt; background-color: #fff !important; color: #000 !important; }
-      .container { max-width: 100% !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
-      .card { border: none !important; box-shadow: none !important; }
-      .table th, .table td { border: 1px solid #cbd5e1 !important; padding: 6px !important; }
-      .print-title { display: block !important; text-align: center; margin-bottom: 20px; }
-      .cac-print-section { display: block !important; border: 2px solid #0f172a; padding: 15px; margin-top: 20px; border-radius: 8px; }
-    }
-    .print-title { display: none; }
-    .cac-print-section { display: none; }
-  </style>
-</head>
-<body>
+@media print {
+  /* Hide all standard web content */
+  body * {
+    visibility: hidden !important;
+  }
+
+  /* Reveal only the CAC print section */
+  .cac-print-section, .cac-print-section * {
+    visibility: visible !important;
+  }
+
+  /* Position print section to fill the top of the page */
+  .cac-print-section {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    display: block !important;
+    padding: 20px !important;
+    border: 1px solid #000 !important;
+    box-sizing: border-box !important;
+  }
+
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  table th, table td {
+    border: 1px solid #333 !important;
+    padding: 6px 10px !important;
+  }
+}
 
   <!-- Real-time Moniepoint Payment Notification Popup Container -->
   <div id="moniepoint-toast-container">
@@ -1718,159 +1736,78 @@ document.getElementById('refresh-payments-btn').addEventListener('click', async 
       }
     }
 
-    function printCACReport() {
-      const { periodLabel, filteredSales, filteredReturns } = getFilteredDashboardPeriod();
-      const filterType = document.getElementById('dash-date-filter').value;
-      const periodExpenses = parseInt(document.getElementById('dash-period-expenses').value) || 0;
-      document.getElementById('printout-period-label').innerText = periodLabel;
+   function printCACReport() {
+  const printSection = document.querySelector('.cac-print-section');
+  if (!printSection) return;
 
-      const dynamicContentContainer = document.getElementById('cac-print-dynamic-content');
+  const currentYear = new Date().getFullYear();
 
-      if (filterType === 'this-week' || filterType === 'this-month' || filterType === 'last-month') {
-    // Safely calculate Sales, Cost, and Returns
-let totalSales = filteredSales.reduce((sum, s) => {
-  return sum + (Number(s.sell_price || 0) * Number(s.qty || 0));
-}, 0);
+  // Months array in standard order: January to December
+  const months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
 
-let totalCost = filteredSales.reduce((sum, s) => {
-  return sum + (Number(s.cost_price || 0) * Number(s.qty || 0));
-}, 0);
+  let totalAnnualCAC = 0;
+  let rowsHTML = '';
 
-let returnedSales = filteredReturns.reduce((sum, r) => {
-  return sum + (Number(r.sell_price || 0) * Number(r.qty || 0));
-}, 0);
+  months.forEach(month => {
+    // Replace these getters with your actual sales/profit/CAC dataset lookup
+    let sales = typeof getMonthlySales === 'function' ? getMonthlySales(month) : 0;
+    let profit = typeof getMonthlyProfit === 'function' ? getMonthlyProfit(month) : 0;
+    let cac = typeof getMonthlyCAC === 'function' ? getMonthlyCAC(month) : 0;
 
-let returnedCost = filteredReturns.reduce((sum, r) => {
-  return sum + (Number(r.cost_price || 0) * Number(r.qty || 0));
-}, 0);
+    totalAnnualCAC += Number(cac || 0);
 
-// Adjusted Net Metrics
-let netSales = totalSales - returnedSales;
-let netCost = totalCost - returnedCost;
-let grossProfit = netSales - netCost;
+    // Format currency display or 'N0' if empty
+    let salesStr = sales > 0 ? `₦${Number(sales).toLocaleString()}` : 'N0';
+    let profitStr = profit > 0 ? `₦${Number(profit).toLocaleString()}` : 'N0';
+    let cacStr = cac > 0 ? `₦${Number(cac).toLocaleString()}` : 'N0';
 
-let periodExpenses = Number(document.getElementById('dash-period-expenses')?.value || 0);
-let taxableProfit = grossProfit - periodExpenses;
+    rowsHTML += `
+      <tr>
+        <td style="font-weight: 500;">${month}</td>
+        <td>${salesStr}</td>
+        <td>${profitStr}</td>
+        <td style="font-weight: bold;">${cacStr}</td>
+      </tr>
+    `;
+  });
 
-// Define the capped profit base per unit for CAC tax computation
-const MAX_CAC_PROFIT_PER_UNIT = 500; // Capped profit limit for CAC computation
+  // Inject exact structure using Backticks (`)
+  printSection.innerHTML = `
+    <div style="text-align: center; margin-bottom: 20px;">
+      <h2 style="font-weight: bold; margin-bottom: 5px; text-transform: uppercase;">SKY MODERNIZE SAVE TECHNOLOGY LTD</h2>
+      <h5 style="color: #555; margin-bottom: 5px;">Official CAC (7.5%) Tax Compliance Printout</h5>
+      <p style="font-size: 13px; color: #666; margin-bottom: 10px;"><b>Period:</b> Yearly Report (Grouped by Month - ${currentYear})</p>
+      <hr style="border: 0.5px solid #ccc; margin-bottom: 15px;">
+      <h6 style="font-weight: bold; font-size: 15px;">Yearly CAC (7.5%) Audit Report — Grouped by Month</h6>
+    </div>
 
-let totalCacFee = 0;
+    <table style="width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px;">
+      <thead>
+        <tr style="background-color: #f8f9fa; text-align: left;">
+          <th style="border: 1px solid #ccc; padding: 8px;">MONTH</th>
+          <th style="border: 1px solid #ccc; padding: 8px;">SALES REVENUE</th>
+          <th style="border: 1px solid #ccc; padding: 8px;">GROSS PROFIT</th>
+          <th style="border: 1px solid #ccc; padding: 8px;">CAC 7.5% TAX AMOUNT</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rowsHTML}
+      </tbody>
+      <tfoot>
+        <tr style="background-color: #f8f9fa;">
+          <td colspan="3" style="border: 1px solid #ccc; padding: 8px; text-align: right; font-weight: bold;">Total Annual CAC 7.5% Tax Amount:</td>
+          <td style="border: 1px solid #ccc; padding: 8px; font-weight: bold;">₦${totalAnnualCAC.toLocaleString()}</td>
+        </tr>
+      </tfoot>
+    </table>
+  `;
 
-// Iterate over each sale item to calculate capped CAC tax
-filteredSales.forEach(sale => {
-  let qty = Number(sale.qty || 0);
-  let sellPrice = Number(sale.sell_price || 0);
-  let costPrice = Number(sale.cost_price || 0);
-  
-  // Actual profit per unit
-  let profitPerUnit = sellPrice - costPrice;
-
-  if (profitPerUnit > 0) {
-    // Cap profit at ₦500 per unit for CAC tax assessment
-    let cacBasePerUnit = Math.min(profitPerUnit, MAX_CAC_PROFIT_PER_UNIT);
-    
-    // 7.5% on capped profit base
-    totalCacFee += Math.floor(cacBasePerUnit * 0.075) * qty;
-  }
-});
-
-let cacFee = totalCacFee;
-let netProfit = taxableProfit - cacFee;
-        
-        dynamicContentContainer.innerHTML = `
-          <h6 class="text-center fw-bold mb-3">CAC Audit & Tax Summary</h6>
-          <table class="table table-bordered">
-            <tr><td><b>Total Sales Revenue:</b></td><td>₦${totalSales.toLocaleString()}</td></tr>
-            <tr><td><b>Total Cost Price:</b></td><td>₦${totalCost.toLocaleString()}</td></tr>
-            <tr><td><b>Total Customer Refunds:</b></td><td>₦${totalReturns.toLocaleString()}</td></tr>
-            <tr><td><b>Gross Profit:</b></td><td>₦${grossProfit.toLocaleString()}</td></tr>
-            <tr><td><b>Period Operating Expenses:</b></td><td>₦${periodExpenses.toLocaleString()}</td></tr>
-            <tr class="table-danger"><td><b>Official CAC Tax Deduction (7.5%):</b></td><td><b>₦${cacFee.toLocaleString()}</b></td></tr>
-            <tr class="table-success"><td><b>Final Net Profit:</b></td><td>₦${netProfit.toLocaleString()}</td></tr>
-          </table>
-        `;
-      } else if (filterType === 'this-year') {
-        const monthlyGroups = {};
-        for (let m = 1; m <= 12; m++) {
-          const monthStr = m < 10 ? `0${m}` : `${m}`;
-          monthlyGroups[monthStr] = { sales: 0, cost: 0, returns: 0 };
-        }
-
-        filteredSales.forEach(s => {
-          if (s.date && s.date.length >= 7) {
-            const mKey = s.date.substring(5, 7);
-            if (monthlyGroups[mKey]) {
-              monthlyGroups[mKey].sales += (s.sell_price * s.qty);
-              monthlyGroups[mKey].cost += (s.cost_price * s.qty);
-            }
-          }
-        });
-
-        filteredReturns.forEach(r => {
-          if (r.date && r.date.length >= 7) {
-            const mKey = r.date.substring(5, 7);
-            if (monthlyGroups[mKey]) {
-              monthlyGroups[mKey].returns += (r.sell_price * r.qty);
-            }
-          }
-        });
-
-        const monthNames = {
-          "01": "January", "02": "February", "03": "March", "04": "April",
-          "05": "May", "06": "June", "07": "July", "08": "August",
-          "09": "September", "10": "October", "11": "November", "12": "December"
-        };
-
-        let tableRows = '';
-        let annualTotalCAC = 0;
-
-        for (const [mKey, data] of Object.entries(monthlyGroups)) {
-          const gross = data.sales - data.cost - data.returns;
-          const taxable = gross - periodExpenses;
-          const cacAmt = taxable > 0 ? Math.floor(taxable * 0.075) : 0;
-          annualTotalCAC += cacAmt;
-          tableRows += `
-            <tr>
-              <td>${monthNames[mKey]}</td>
-              <td>₦${data.sales.toLocaleString()}</td>
-              <td>₦${gross.toLocaleString()}</td>
-              <td class="table-danger"><b>₦${cacAmt.toLocaleString()}</b></td>
-            </tr>
-          `;
-        }
-
-        dynamicContentContainer.innerHTML = `
-          <h6 class="text-center fw-bold mb-3">Yearly CAC (7.5%) Audit Report — Grouped by Month</h6>
-          <table class="table table-bordered table-sm align-middle">
-            <thead class="table-light">
-              <tr><th>Month</th><th>Sales Revenue</th><th>Gross Profit</th><th>CAC 7.5% Tax Amount</th></tr>
-            </thead>
-            <tbody>
-              ${tableRows}
-              <tr class="table-dark fw-bold">
-                <td colspan="3" class="text-end">Total Annual CAC 7.5% Tax Amount:</td>
-                <td>₦${annualTotalCAC.toLocaleString()}</td>
-              </tr>
-            </tbody>
-          </table>
-        `;
-      } else {
-        dynamicContentContainer.innerHTML = `
-          <table class="table table-bordered">
-            <tr><td><b>Total Sales Revenue:</b></td><td>${document.getElementById('dash-sales').innerText}</td></tr>
-            <tr><td><b>Total Cost Price:</b></td><td>${document.getElementById('dash-cost').innerText}</td></tr>
-            <tr><td><b>Total Customer Refunds:</b></td><td>${document.getElementById('dash-returns').innerText}</td></tr>
-            <tr><td><b>Gross Profit:</b></td><td>${document.getElementById('dash-gross').innerText}</td></tr>
-            <tr><td><b>Period Operating Expenses:</b></td><td>₦${periodExpenses.toLocaleString()}</td></tr>
-            <tr class="table-danger"><td><b>CAC Tax Deduction Amount (7.5%):</b></td><td><b>${document.getElementById('dash-cac').innerText}</b></td></tr>
-            <tr class="table-success"><td><b>Final Net Profit:</b></td><td>${document.getElementById('dash-net').innerText}</td></tr>
-          </table>
-        `;
-      }
-
-      window.print();
-    }
+  // Trigger browser print window
+  window.print();
+}
 
     function calculateCashDrawer() {
       const denomInputs = document.querySelectorAll('.cash-denom');
