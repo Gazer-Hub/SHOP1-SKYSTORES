@@ -1752,10 +1752,30 @@ let grossProfit = netSales - netCost;
 let periodExpenses = Number(document.getElementById('dash-period-expenses')?.value || 0);
 let taxableProfit = grossProfit - periodExpenses;
 
-// CAC Fee (Fixed or 7.5%)
-const CAC_BASE_AMOUNT = 500;
-let cacFee = Math.floor(CAC_BASE_AMOUNT * 0.075);
-let netProfit = taxableProfit - cacFee;
+// Define the capped profit base per unit for CAC tax computation
+const MAX_CAC_PROFIT_PER_UNIT = 500; // Capped profit limit for CAC computation
+
+let totalCacFee = 0;
+
+// Iterate over each sale item to calculate capped CAC tax
+filteredSales.forEach(sale => {
+  let qty = Number(sale.qty || 0);
+  let sellPrice = Number(sale.sell_price || 0);
+  let costPrice = Number(sale.cost_price || 0);
+  
+  // Actual profit per unit
+  let profitPerUnit = sellPrice - costPrice;
+
+  if (profitPerUnit > 0) {
+    // Cap profit at ₦500 per unit for CAC tax assessment
+    let cacBasePerUnit = Math.min(profitPerUnit, MAX_CAC_PROFIT_PER_UNIT);
+    
+    // 7.5% on capped profit base
+    totalCacFee += Math.floor(cacBasePerUnit * 0.075) * qty;
+  }
+});
+
+let cacFee = totalCacFee;
 
         dynamicContentContainer.innerHTML = `
           <h6 class="text-center fw-bold mb-3">CAC Audit & Tax Summary</h6>
@@ -2235,11 +2255,30 @@ let grossProfit = netSales - netCost;
 let periodExpenses = Number(document.getElementById('dash-period-expenses')?.value || 0);
 let taxableProfit = grossProfit - periodExpenses;
 
-// CAC Fee (Fixed or 7.5%)
-const CAC_BASE_AMOUNT = 500;
-let cacFee = Math.floor(CAC_BASE_AMOUNT * 0.075);
-let netProfit = taxableProfit - cacFee;
+// Define the capped profit base per unit for CAC tax computation
+const MAX_CAC_PROFIT_PER_UNIT = 500; // Capped profit limit for CAC computation
 
+let totalCacFee = 0;
+
+// Iterate over each sale item to calculate capped CAC tax
+filteredSales.forEach(sale => {
+  let qty = Number(sale.qty || 0);
+  let sellPrice = Number(sale.sell_price || 0);
+  let costPrice = Number(sale.cost_price || 0);
+  
+  // Actual profit per unit
+  let profitPerUnit = sellPrice - costPrice;
+
+  if (profitPerUnit > 0) {
+    // Cap profit at ₦500 per unit for CAC tax assessment
+    let cacBasePerUnit = Math.min(profitPerUnit, MAX_CAC_PROFIT_PER_UNIT);
+    
+    // 7.5% on capped profit base
+    totalCacFee += Math.floor(cacBasePerUnit * 0.075) * qty;
+  }
+});
+
+let cacFee = totalCacFee;
 // Safely update DOM elements
 document.getElementById('dash-sales').innerText = `₦${netSales.toLocaleString()}`;
 document.getElementById('dash-cost').innerText = `₦${netCost.toLocaleString()}`;
