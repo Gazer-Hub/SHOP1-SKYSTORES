@@ -1858,7 +1858,7 @@ function printCACReport() {
       const notes = document.getElementById('drawer-notes').value || 'None';
 
       const printWin = window.open('', '_blank', 'width=500,height=600');
-      printWin.document.write(`
+      printWin.document.write
         <html>
           <head>
             <title>Cash Drawer Reconciliation - SKY MODERNIZE</title>
@@ -1882,7 +1882,7 @@ function printCACReport() {
             <hr>
             <p>Attendant Signature: ______________________</p>
             <script>
-              window.onload = function() { window.print(); window.close(); }
+              window.onload = function() { window.print(); window.close();}
             <\/script>
           </body>
         </html>
