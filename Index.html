@@ -159,20 +159,26 @@
 }
     
     /* Print Formatting */
-    @media print {
-      .no-print, nav, button, .card-header, form, .input-group, .modal, .sales-filter-container, .returns-filter-container, .sup-filter-container, .req-filter-container { display: none !important; }
-      body { font-size: 11pt; background-color: #fff !important; color: #000 !important; }
-      .container { max-width: 100% !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
-      .card { border: none !important; box-shadow: none !important; }
-      .table th, .table td { border: 1px solid #cbd5e1 !important; padding: 6px !important; }
-      .print-title { display: block !important; text-align: center; margin-bottom: 20px; }
-      .cac-print-section { display: block !important; border: 2px solid #0f172a; padding: 15px; margin-top: 20px; border-radius: 8px; }
-    }
-    .print-title { display: none; }
-    .cac-print-section { display: none; }
-  </style>
-</head>
-<body>
+  @media print {
+  /* Hide everything by default when printing */
+  body * {
+    visibility: hidden;
+  }
+
+  /* Show only the CAC report container and its contents */
+  #cac-report-container,
+  #cac-report-container * {
+    visibility: visible;
+  }
+
+  /* Position the CAC report at the top-left of the printed page */
+  #cac-report-container {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+}
 
   <!-- Real-time Moniepoint Payment Notification Popup Container -->
   <div id="moniepoint-toast-container">
@@ -1793,7 +1799,7 @@ let netProfit = taxableProfit - cacFee;
       } else if (filterType === 'this-year') {
         const monthlyGroups = {};
         for (let m = 1; m <= 12; m++) {
-          const monthStr = m < 1 ? `0${m}` : `${m}`;
+          const monthStr = m < 10 ? `0${m}` : `${m}`;
           monthlyGroups[monthStr] = { sales: 0, cost: 0, returns: 0 };
         }
 
