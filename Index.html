@@ -369,9 +369,6 @@
             <div class="card text-center h-100"><div class="card-body p-3"><h6 class="text-muted small fw-bold">Cost Price</h6><h4 class="text-warning fw-bold mb-0" id="dash-cost">₦0</h4></div></div>
           </div>
           <div class="col-md-2 col-6">
-            <div class="card text-center h-100"><div class="card-body p-3"><h6 class="text-muted small fw-bold">Refunds</h6><h4 class="text-danger fw-bold mb-0" id="dash-returns">₦0</h4></div></div>
-          </div>
-          <div class="col-md-2 col-6">
             <div class="card text-center h-100"><div class="card-body p-3"><h6 class="text-muted small fw-bold">Gross Profit</h6><h4 class="text-info fw-bold mb-0" id="dash-gross">₦0</h4></div></div>
           </div>
           <div class="col-md-2 col-6">
@@ -1727,13 +1724,26 @@ document.getElementById('refresh-payments-btn').addEventListener('click', async 
       const dynamicContentContainer = document.getElementById('cac-print-dynamic-content');
 
       if (filterType === 'this-week' || filterType === 'this-month' || filterType === 'last-month') {
-        let totalSales = filteredSales.reduce((sum, s) => sum + (s.sell_price * s.qty), 0);
-        let totalCost = filteredSales.reduce((sum, s) => sum + (s.cost_price * s.qty), 0);
-        let totalReturns = filteredReturns.reduce((sum, r) => sum + (r.sell_price * r.qty), 0);
-        let grossProfit = totalSales - totalCost - totalReturns;
-        let taxableProfit = grossProfit - periodExpenses;
-        let cacFee = taxableProfit > 0 ? Math.floor(taxableProfit * 0.075) : 0;
-        let netProfit = taxableProfit - cacFee;
+         // Calculate total initial sales and cost
+       let totalSales = filteredSales.reduce((sum, s) => sum + (s.sell_price * s.qty), 0);
+       let totalCost = filteredSales.reduce((sum, s) => sum + (s.cost_price * s.qty), 0);
+
+          // Calculate total returned sales and returned cost price
+       let returnedSales = filteredReturns.reduce((sum, r) => sum + (r.sell_price * r.qty), 0);
+       let returnedCost = filteredReturns.reduce((sum, r) => sum + ((r.cost_price || 0) * r.qty), 0);
+
+         // Adjust sales and cost as if the returned goods were never sold
+       let netSales = totalSales - returnedSales;
+       let netCost = totalCost - returnedCost;
+
+         // Calculate profit metrics
+       let grossProfit = netSales - netCost;
+       let taxableProfit = grossProfit - periodExpenses;
+
+         // Fixed CAC calculation based on 500
+       const CAC_BASE_AMOUNT = 500;
+       let cacFee = Math.floor(CAC_BASE_AMOUNT * 0.075); // 37
+       let netProfit = taxableProfit - cacFee;
 
         dynamicContentContainer.innerHTML = `
           <h6 class="text-center fw-bold mb-3">CAC Audit & Tax Summary</h6>
