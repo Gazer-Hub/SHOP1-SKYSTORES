@@ -158,7 +158,8 @@
   border-width: 0.15em;
 }
     
-@media print {
+    /* Print Formatting */
+  @media print {
   /* Hide all standard web content */
   body * {
     visibility: hidden !important;
@@ -1735,79 +1736,67 @@ document.getElementById('refresh-payments-btn').addEventListener('click', async 
         btn.classList.replace('btn-outline-secondary', 'btn-secondary');
       }
     }
-
-   function printCACReport() {
+function printCACReport() {
   const printSection = document.querySelector('.cac-print-section');
   if (!printSection) return;
 
   const currentYear = new Date().getFullYear();
 
-  // Months array in standard order: January to December
-  const months = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-  ];
+        const monthNames = {
+          "01": "January", "02": "February", "03": "March", "04": "April",
+          "05": "May", "06": "June", "07": "July", "08": "August",
+          "09": "September", "10": "October", "11": "November", "12": "December"
+        };
 
-  let totalAnnualCAC = 0;
-  let rowsHTML = '';
+        let tableRows = '';
+        let annualTotalCAC = 0;
 
-  months.forEach(month => {
-    // Replace these getters with your actual sales/profit/CAC dataset lookup
-    let sales = typeof getMonthlySales === 'function' ? getMonthlySales(month) : 0;
-    let profit = typeof getMonthlyProfit === 'function' ? getMonthlyProfit(month) : 0;
-    let cac = typeof getMonthlyCAC === 'function' ? getMonthlyCAC(month) : 0;
+        for (const [mKey, data] of Object.entries(monthlyGroups)) {
+          const gross = data.sales - data.cost - data.returns;
+          const taxable = gross - periodExpenses;
+          const cacAmt = taxable > 0 ? Math.floor(taxable * 0.075) : 0;
+          annualTotalCAC += cacAmt;
+          tableRows += `
+            <tr>
+              <td>${monthNames[mKey]}</td>
+              <td>₦${data.sales.toLocaleString()}</td>
+              <td>₦${gross.toLocaleString()}</td>
+              <td class="table-danger"><b>₦${cacAmt.toLocaleString()}</b></td>
+            </tr>
+          `;
+        }
 
-    totalAnnualCAC += Number(cac || 0);
+        dynamicContentContainer.innerHTML = `
+          <h6 class="text-center fw-bold mb-3">Yearly CAC (7.5%) Audit Report — Grouped by Month</h6>
+          <table class="table table-bordered table-sm align-middle">
+            <thead class="table-light">
+              <tr><th>Month</th><th>Sales Revenue</th><th>Gross Profit</th><th>CAC 7.5% Tax Amount</th></tr>
+            </thead>
+            <tbody>
+              ${tableRows}
+              <tr class="table-dark fw-bold">
+                <td colspan="3" class="text-end">Total Annual CAC 7.5% Tax Amount:</td>
+                <td>₦${annualTotalCAC.toLocaleString()}</td>
+              </tr>
+            </tbody>
+          </table>
+        `;
+      } else {
+        dynamicContentContainer.innerHTML = `
+          <table class="table table-bordered">
+            <tr><td><b>Total Sales Revenue:</b></td><td>${document.getElementById('dash-sales').innerText}</td></tr>
+            <tr><td><b>Total Cost Price:</b></td><td>${document.getElementById('dash-cost').innerText}</td></tr>
+            <tr><td><b>Total Customer Refunds:</b></td><td>${document.getElementById('dash-returns').innerText}</td></tr>
+            <tr><td><b>Gross Profit:</b></td><td>${document.getElementById('dash-gross').innerText}</td></tr>
+            <tr><td><b>Period Operating Expenses:</b></td><td>₦${periodExpenses.toLocaleString()}</td></tr>
+            <tr class="table-danger"><td><b>CAC Tax Deduction Amount (7.5%):</b></td><td><b>${document.getElementById('dash-cac').innerText}</b></td></tr>
+            <tr class="table-success"><td><b>Final Net Profit:</b></td><td>${document.getElementById('dash-net').innerText}</td></tr>
+          </table>
+        `;
+      }
 
-    // Format currency display or 'N0' if empty
-    let salesStr = sales > 0 ? `₦${Number(sales).toLocaleString()}` : 'N0';
-    let profitStr = profit > 0 ? `₦${Number(profit).toLocaleString()}` : 'N0';
-    let cacStr = cac > 0 ? `₦${Number(cac).toLocaleString()}` : 'N0';
-
-    rowsHTML += `
-      <tr>
-        <td style="font-weight: 500;">${month}</td>
-        <td>${salesStr}</td>
-        <td>${profitStr}</td>
-        <td style="font-weight: bold;">${cacStr}</td>
-      </tr>
-    `;
-  });
-
-  // Inject exact structure using Backticks (`)
-  printSection.innerHTML = `
-    <div style="text-align: center; margin-bottom: 20px;">
-      <h2 style="font-weight: bold; margin-bottom: 5px; text-transform: uppercase;">SKY MODERNIZE SAVE TECHNOLOGY LTD</h2>
-      <h5 style="color: #555; margin-bottom: 5px;">Official CAC (7.5%) Tax Compliance Printout</h5>
-      <p style="font-size: 13px; color: #666; margin-bottom: 10px;"><b>Period:</b> Yearly Report (Grouped by Month - ${currentYear})</p>
-      <hr style="border: 0.5px solid #ccc; margin-bottom: 15px;">
-      <h6 style="font-weight: bold; font-size: 15px;">Yearly CAC (7.5%) Audit Report — Grouped by Month</h6>
-    </div>
-
-    <table style="width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px;">
-      <thead>
-        <tr style="background-color: #f8f9fa; text-align: left;">
-          <th style="border: 1px solid #ccc; padding: 8px;">MONTH</th>
-          <th style="border: 1px solid #ccc; padding: 8px;">SALES REVENUE</th>
-          <th style="border: 1px solid #ccc; padding: 8px;">GROSS PROFIT</th>
-          <th style="border: 1px solid #ccc; padding: 8px;">CAC 7.5% TAX AMOUNT</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${rowsHTML}
-      </tbody>
-      <tfoot>
-        <tr style="background-color: #f8f9fa;">
-          <td colspan="3" style="border: 1px solid #ccc; padding: 8px; text-align: right; font-weight: bold;">Total Annual CAC 7.5% Tax Amount:</td>
-          <td style="border: 1px solid #ccc; padding: 8px; font-weight: bold;">₦${totalAnnualCAC.toLocaleString()}</td>
-        </tr>
-      </tfoot>
-    </table>
-  `;
-
-  // Trigger browser print window
-  window.print();
-}
+      window.print();
+    }
 
     function calculateCashDrawer() {
       const denomInputs = document.querySelectorAll('.cash-denom');
@@ -1883,7 +1872,7 @@ document.getElementById('refresh-payments-btn').addEventListener('click', async 
             <p>Attendant Signature: ______________________</p>
             <script>
               window.onload = function() { window.print(); window.close(); }
-            
+            <\/script>
           </body>
         </html>
       `);
@@ -2683,7 +2672,7 @@ document.getElementById('dash-net').innerText = `₦${netProfit.toLocaleString()
             </div>
             <script>
               window.onload = function() { window.print(); window.close(); }
-          
+            <\/script>
           </body>
         </html>
       `);
