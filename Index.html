@@ -1723,27 +1723,35 @@ document.getElementById('refresh-payments-btn').addEventListener('click', async 
 
       const dynamicContentContainer = document.getElementById('cac-print-dynamic-content');
 
-      if (filterType === 'this-week' || filterType === 'this-month' || filterType === 'last-month') {
-         // Calculate total initial sales and cost
-       let totalSales = filteredSales.reduce((sum, s) => sum + (s.sell_price * s.qty), 0);
-       let totalCost = filteredSales.reduce((sum, s) => sum + (s.cost_price * s.qty), 0);
+         // Safely calculate Sales, Cost, and Returns
+       let totalSales = filteredSales.reduce((sum, s) => {
+       return sum + (Number(s.sell_price || 0) * Number(s.qty || 0));
+       }, 0);
 
-          // Calculate total returned sales and returned cost price
-       let returnedSales = filteredReturns.reduce((sum, r) => sum + (r.sell_price * r.qty), 0);
-       let returnedCost = filteredReturns.reduce((sum, r) => sum + ((r.cost_price || 0) * r.qty), 0);
+       let totalCost = filteredSales.reduce((sum, s) => {
+       return sum + (Number(s.cost_price || 0) * Number(s.qty || 0));
+       }, 0);
 
-         // Adjust sales and cost as if the returned goods were never sold
-       let netSales = totalSales - returnedSales;
-       let netCost = totalCost - returnedCost;
+      let returnedSales = filteredReturns.reduce((sum, r) => {
+      return sum + (Number(r.sell_price || 0) * Number(r.qty || 0));
+      }, 0);
 
-         // Calculate profit metrics
-       let grossProfit = netSales - netCost;
-       let taxableProfit = grossProfit - periodExpenses;
+      let returnedCost = filteredReturns.reduce((sum, r) => {
+      return sum + (Number(r.cost_price || 0) * Number(r.qty || 0));
+     }, 0);
 
-         // Fixed CAC calculation based on 500
-       const CAC_BASE_AMOUNT = 500;
-       let cacFee = Math.floor(CAC_BASE_AMOUNT * 0.075); // 37
-       let netProfit = taxableProfit - cacFee;
+       // Adjusted Net Metrics
+     let netSales = totalSales - returnedSales;
+     let netCost = totalCost - returnedCost;
+     let grossProfit = netSales - netCost;
+
+     let periodExpenses = Number(document.getElementById('dash-period-expenses')?.value || 0);
+     let taxableProfit = grossProfit - periodExpenses;
+
+        // CAC Fee (Fixed or 7.5%)
+     const CAC_BASE_AMOUNT = 500;
+     let cacFee = Math.floor(CAC_BASE_AMOUNT * 0.075);
+    let netProfit = taxableProfit - cacFee;
 
         dynamicContentContainer.innerHTML = `
           <h6 class="text-center fw-bold mb-3">CAC Audit & Tax Summary</h6>
@@ -2198,23 +2206,42 @@ document.getElementById('refresh-payments-btn').addEventListener('click', async 
       const badge = document.getElementById('dash-date-badge');
       if (badge) badge.innerText = periodLabel;
 
-      let totalSales = filteredSales.reduce((sum, s) => sum + (s.sell_price * s.qty), 0);
-      let totalCost = filteredSales.reduce((sum, s) => sum + (s.cost_price * s.qty), 0);
-      let totalReturns = filteredReturns.reduce((sum, r) => sum + (r.sell_price * r.qty), 0);
-      let periodExpenses = parseInt(document.getElementById('dash-period-expenses').value) || 0;
+     // Safely calculate Sales, Cost, and Returns
+let totalSales = filteredSales.reduce((sum, s) => {
+  return sum + (Number(s.sell_price || 0) * Number(s.qty || 0));
+}, 0);
 
-      let grossProfit = totalSales - totalCost - totalReturns;
-      let taxableProfit = grossProfit - periodExpenses;
-      let cacFee = taxableProfit > 0 ? Math.floor(taxableProfit * 0.075) : 0;
-      let netProfit = taxableProfit - cacFee;
+let totalCost = filteredSales.reduce((sum, s) => {
+  return sum + (Number(s.cost_price || 0) * Number(s.qty || 0));
+}, 0);
 
-      document.getElementById('dash-sales').innerText = `₦${totalSales.toLocaleString()}`;
-      document.getElementById('dash-cost').innerText = `₦${totalCost.toLocaleString()}`;
-      document.getElementById('dash-returns').innerText = `₦${totalReturns.toLocaleString()}`;
-      document.getElementById('dash-gross').innerText = `₦${grossProfit.toLocaleString()}`;
-      document.getElementById('dash-cac').innerText = `₦${cacFee.toLocaleString()}`;
-      document.getElementById('dash-net').innerText = `₦${netProfit.toLocaleString()}`;
+let returnedSales = filteredReturns.reduce((sum, r) => {
+  return sum + (Number(r.sell_price || 0) * Number(r.qty || 0));
+}, 0);
 
+let returnedCost = filteredReturns.reduce((sum, r) => {
+  return sum + (Number(r.cost_price || 0) * Number(r.qty || 0));
+}, 0);
+
+// Adjusted Net Metrics
+let netSales = totalSales - returnedSales;
+let netCost = totalCost - returnedCost;
+let grossProfit = netSales - netCost;
+
+let periodExpenses = Number(document.getElementById('dash-period-expenses')?.value || 0);
+let taxableProfit = grossProfit - periodExpenses;
+
+// CAC Fee (Fixed or 7.5%)
+const CAC_BASE_AMOUNT = 500;
+let cacFee = Math.floor(CAC_BASE_AMOUNT * 0.075);
+let netProfit = taxableProfit - cacFee;
+
+// Safely update DOM elements
+document.getElementById('dash-sales').innerText = `₦${netSales.toLocaleString()}`;
+document.getElementById('dash-cost').innerText = `₦${netCost.toLocaleString()}`;
+document.getElementById('dash-gross').innerText = `₦${grossProfit.toLocaleString()}`;
+document.getElementById('dash-cac').innerText = `₦${cacFee.toLocaleString()}`;
+document.getElementById('dash-net').innerText = `₦${netProfit.toLocaleString()}`;
       calculateCashDrawer();
       searchDashboardGoods();
 
