@@ -369,6 +369,9 @@
             <div class="card text-center h-100"><div class="card-body p-3"><h6 class="text-muted small fw-bold">Cost Price</h6><h4 class="text-warning fw-bold mb-0" id="dash-cost">₦0</h4></div></div>
           </div>
           <div class="col-md-2 col-6">
+            <div class="card text-center h-100"><div class="card-body p-3"><h6 class="text-muted small fw-bold">Refunds</h6><h4 class="text-danger fw-bold mb-0" id="dash-returns">₦0</h4></div></div>
+          </div>
+          <div class="col-md-2 col-6">
             <div class="card text-center h-100"><div class="card-body p-3"><h6 class="text-muted small fw-bold">Gross Profit</h6><h4 class="text-info fw-bold mb-0" id="dash-gross">₦0</h4></div></div>
           </div>
           <div class="col-md-2 col-6">
@@ -1723,35 +1726,36 @@ document.getElementById('refresh-payments-btn').addEventListener('click', async 
 
       const dynamicContentContainer = document.getElementById('cac-print-dynamic-content');
 
-         // Safely calculate Sales, Cost, and Returns
-       let totalSales = filteredSales.reduce((sum, s) => {
-       return sum + (Number(s.sell_price || 0) * Number(s.qty || 0));
-       }, 0);
+      if (filterType === 'this-week' || filterType === 'this-month' || filterType === 'last-month') {
+    // Safely calculate Sales, Cost, and Returns
+let totalSales = filteredSales.reduce((sum, s) => {
+  return sum + (Number(s.sell_price || 0) * Number(s.qty || 0));
+}, 0);
 
-       let totalCost = filteredSales.reduce((sum, s) => {
-       return sum + (Number(s.cost_price || 0) * Number(s.qty || 0));
-       }, 0);
+let totalCost = filteredSales.reduce((sum, s) => {
+  return sum + (Number(s.cost_price || 0) * Number(s.qty || 0));
+}, 0);
 
-      let returnedSales = filteredReturns.reduce((sum, r) => {
-      return sum + (Number(r.sell_price || 0) * Number(r.qty || 0));
-      }, 0);
+let returnedSales = filteredReturns.reduce((sum, r) => {
+  return sum + (Number(r.sell_price || 0) * Number(r.qty || 0));
+}, 0);
 
-      let returnedCost = filteredReturns.reduce((sum, r) => {
-      return sum + (Number(r.cost_price || 0) * Number(r.qty || 0));
-     }, 0);
+let returnedCost = filteredReturns.reduce((sum, r) => {
+  return sum + (Number(r.cost_price || 0) * Number(r.qty || 0));
+}, 0);
 
-       // Adjusted Net Metrics
-     let netSales = totalSales - returnedSales;
-     let netCost = totalCost - returnedCost;
-     let grossProfit = netSales - netCost;
+// Adjusted Net Metrics
+let netSales = totalSales - returnedSales;
+let netCost = totalCost - returnedCost;
+let grossProfit = netSales - netCost;
 
+let periodExpenses = Number(document.getElementById('dash-period-expenses')?.value || 0);
+let taxableProfit = grossProfit - periodExpenses;
 
-     let taxableProfit = grossProfit - periodExpenses;
-
-        // CAC Fee (Fixed or 7.5%)
-     const CAC_BASE_AMOUNT = 500;
-     let cacFee = Math.floor(CAC_BASE_AMOUNT * 0.075);
-    let netProfit = taxableProfit - cacFee;
+// CAC Fee (Fixed or 7.5%)
+const CAC_BASE_AMOUNT = 500;
+let cacFee = Math.floor(CAC_BASE_AMOUNT * 0.075);
+let netProfit = taxableProfit - cacFee;
 
         dynamicContentContainer.innerHTML = `
           <h6 class="text-center fw-bold mb-3">CAC Audit & Tax Summary</h6>
@@ -2206,7 +2210,7 @@ document.getElementById('refresh-payments-btn').addEventListener('click', async 
       const badge = document.getElementById('dash-date-badge');
       if (badge) badge.innerText = periodLabel;
 
-     // Safely calculate Sales, Cost, and Returns
+    // Safely calculate Sales, Cost, and Returns
 let totalSales = filteredSales.reduce((sum, s) => {
   return sum + (Number(s.sell_price || 0) * Number(s.qty || 0));
 }, 0);
