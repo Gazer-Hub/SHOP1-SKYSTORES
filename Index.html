@@ -1745,7 +1745,7 @@ document.getElementById('refresh-payments-btn').addEventListener('click', async 
      let netCost = totalCost - returnedCost;
      let grossProfit = netSales - netCost;
 
-     let periodExpenses = Number(document.getElementById('dash-period-expenses')?.value || 0);
+
      let taxableProfit = grossProfit - periodExpenses;
 
         // CAC Fee (Fixed or 7.5%)
