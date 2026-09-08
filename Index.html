@@ -157,36 +157,69 @@
   height: 0.9rem;
   border-width: 0.15em;
 }
-
-             /* Hide the CAC audit section on the normal screen dashboard */
-.cac-print-section {
-  display: none;
-}
+    
+   @media print {
+  .no-print, nav, button, .card-header, form, .input-group, .modal, 
+  .sales-filter-container, .returns-filter-container, .sup-filter-container, .req-filter-container {
+    display: none !important;
+  }
   
-    /* Print Formatting */
-  @media print {
-  /* Hide everything on the page by default */
-  body * {
-    visibility: hidden;
+  body {
+    font-size: 11pt !important;
+    background-color: #fff !important;
+    color: #000 !important;
+  }
+  
+  .container {
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  
+  .card {
+    border: none !important;
+    box-shadow: none !important;
+  }
+  
+  .table {
+    width: 100% !important;
+    border-collapse: collapse !important;
   }
 
- 
-  /* Make only the CAC print section and its contents visible */
-  .cac-print-section, .cac-print-section * {
-    visibility: visible;
+  .table th, .table td {
+    border: 1px solid #cbd5e1 !important;
+    padding: 6px !important;
+    background-color: transparent !important;
   }
 
-  /* Position the CAC section at the top-left of the print sheet */
+  .print-title {
+    display: block !important;
+    text-align: center;
+    margin-bottom: 20px;
+  }
+
   .cac-print-section {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
     display: block !important;
     border: 2px solid #0f172a;
     padding: 15px;
-    margin: 0;
+    margin-top: 20px;
+    border-radius: 8px;
+    page-break-inside: avoid;
   }
+
+  /* Prevent row breaking across pages */
+  tr {
+    page-break-inside: avoid;
+  }
+}
+
+.print-title {
+  display: none;
+}
+
+.cac-print-section {
+  display: none;
 }
   </style>
 </head>
@@ -349,10 +382,12 @@
 
     <!-- Dashboard Interface -->
     <div id="page-dashboard" class="page">
-      <div class="print-title cac-print-section">
-       
+      <div class="print-title">
+        <h2>SKY MODERNIZE SAVE TECHNOLOGY LTD</h2>
+        <h4>Executive Financial & CAC (7.5%) Audit Report</h4>
+        <hr>
       </div>
-      
+
       <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2 no-print">
         <div>
           <h3 class="fw-bold mb-1">Executive Dashboard</h3>
@@ -731,6 +766,7 @@
 
     <!-- Sales Management Interface -->
     <div id="page-sales" class="page">
+      <div class="print-title">
         <h2>SKY MODERNIZE SAVE TECHNOLOGY LTD </h2>
         <h4 id="sales-print-subtitle">Sales History Report</h4>
         <hr>
@@ -883,6 +919,7 @@
 
     <!-- Customer Returns Interface -->
     <div id="page-returns" class="page">
+      <div class="print-title">
         <h2>SKY MODERNIZE SAVE TECHNOLOGY LTD </h2>
         <h4 id="returns-print-subtitle">Customer Returns History Report</h4>
         <hr>
@@ -980,6 +1017,7 @@
     <!-- Supplier Returns Interface -->
     <div id="page-supplier-returns" class="page">
       <div id="supplier-returns-printable-area">
+        <div class="print-title">
           <h2>SKY MODERNIZE SAVE TECHNOLOGY LTD </h2>
           <h4 id="sup-returns-print-subtitle">Supplier Returns Bulk Report</h4>
           <hr>
@@ -1075,6 +1113,7 @@
 
     <!-- Purchase Requisition Interface -->
     <div id="page-purchase-requisition" class="page">
+      <div class="print-title">
         <h2>SKY MODERNIZE SAVE TECHNOLOGY LTD </h2>
         <h4 id="req-print-subtitle">Purchase Requisition Form</h4>
         <hr>
