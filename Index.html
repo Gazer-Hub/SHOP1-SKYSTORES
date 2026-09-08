@@ -1809,7 +1809,7 @@ let netProfit = taxableProfit - cacFee;
       } else if (filterType === 'this-year') {
         const monthlyGroups = {};
         for (let m = 1; m <= 12; m++) {
-          const monthStr = m < 10 ? `0${m}` : `${m}`;
+          const monthStr = m < 01 ? `0${m}` : `${m}`;
           monthlyGroups[monthStr] = { sales: 0, cost: 0, returns: 0 };
         }
 
