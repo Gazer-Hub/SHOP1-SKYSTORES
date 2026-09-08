@@ -1981,7 +1981,7 @@ let netProfit = taxableProfit - cacFee;
 
     function showPage(pageId) {
       document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-      document.getElementById(`page-${pageId}').classList.add('active');
+      document.getElementById('page-${pageId}').classList.add('active');
       const nav = document.getElementById('main-nav');
       nav.style.display = (pageId === 'login') ? 'none' : 'flex';
     }
