@@ -158,6 +158,10 @@
   border-width: 0.15em;
 }
 
+             /* Hide the CAC audit section on the normal screen dashboard */
+.cac-print-section {
+  display: none;
+}
   
     /* Print Formatting */
   @media print {
@@ -166,10 +170,7 @@
     visibility: hidden;
   }
 
-          /* Hide the CAC audit section on the normal screen dashboard */
-.cac-print-section {
-  display: none;
-}
+ 
   /* Make only the CAC print section and its contents visible */
   .cac-print-section, .cac-print-section * {
     visibility: visible;
@@ -347,13 +348,13 @@
     </div>
 
     <!-- Dashboard Interface -->
-    <div id="page-dashboard" class="page">
-      <div class="print-title">
-        <h2>SKY MODERNIZE SAVE TECHNOLOGY LTD</h2>
-        <h4>Executive Financial & CAC (7.5%) Audit Report</h4>
-        <hr>
-      </div>
-
+    <div class="cac-print-section">
+    <div style="text-align: center; margin-bottom: 20px;">
+        <h3>SKY MODERNIZE SAVE TECHNOLOGY LTD</h3>
+        <p>Official CAC (7.5%) Tax Compliance Printout</p>
+        <p>Period: Yearly Report (Grouped by Month - 2026)</p>
+    </div>
+      
       <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2 no-print">
         <div>
           <h3 class="fw-bold mb-1">Executive Dashboard</h3>
