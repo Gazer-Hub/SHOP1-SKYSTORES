@@ -1202,67 +1202,57 @@ const SALES_SYNC_KEY = "sky_sales_synced_count";
 let syncedSalesCount = parseInt(localStorage.getItem(SALES_SYNC_KEY) || "0");
 
 // --- TRIPLE SAVING METHOD IMPLEMENTATION - FIXED ---
-async function saveDB() {
-  localStorage.setItem(DB_KEY, JSON.stringify(db));
-
-  if (!supabaseClient) {
-    renderAll();
-    return;
+async function initDB() {
+  // 1. Try localStorage first
+  const local = localStorage.getItem("skystores_db");
+  if (local) {
+    try {
+      const parsed = JSON.parse(local);
+      if (parsed.stock && parsed.stock.length > 0) {
+        db = parsed;
+      }
+    } catch(e){}
   }
 
-  try {
-    // 1. STOCK -> inventory (stock only)
-    const { error: e1 } = await supabaseClient
-      .from('inventory')
-      .upsert({ id: 1, payload: { stock: db.stock }, updated_at: new Date().toISOString() }, { onConflict: 'id' });
+  // 2. Load from Supabase (your 679 items)
+  if (supabaseClient) {
+    const { data, error } = await supabaseClient.from('inventory').select('payload').eq('id', 1).single();
     
-    if (e1) console.error("Inventory error:", e1.message);
+    if (error) {
+      console.error("Cloud load error:", error.message);
+    } else if (data && data.payload) {
+      let cloudStock = data.payload.stock;
+      let cloudSales = data.payload.sales || [];
 
-    // 2. SALES -> sales table (no 'date' column - use created_at)
-    if (db.sales && db.sales.length > 0) {
-      const s = db.sales[db.sales.length - 1];
-      
-      // Get real price - fix ₦0 issue too
-      const stockItem = db.stock.find(st => st.model === s.model);
-      const realPrice = s.sell_price || s.selling_price || s.price || s.unit_price || stockItem?.selling_price || stockItem?.price || 0;
+      // FIX: Sometimes stock is saved as string, parse it
+      if (typeof cloudStock === 'string') {
+        try { cloudStock = JSON.parse(cloudStock); } catch(e){}
+      }
+      if (typeof cloudSales === 'string') {
+        try { cloudSales = JSON.parse(cloudSales); } catch(e){}
+      }
 
-      const payload = {
-        model: s.model,
-        part: s.quality || s.part || 'Standard',
-        qty: s.qty,
-        price: realPrice,
-        customer: s.customer || 'Walk-in'
-        // NO 'date' column - Supabase will auto-fill created_at
-      };
+      console.log(`Cloud has ${cloudStock?.length || 0} stock, Local has ${db.stock?.length || 0}`);
 
-      console.log("Saving to sales:", payload);
-
-      const { error: e2 } = await supabaseClient.from('sales').insert(payload);
-      if (e2) {
-        console.error("SALES ERROR:", e2.message);
-        // If still errors, try even simpler payload
-        if (e2.message.includes('column')) {
-          const simplePayload = { model: payload.model, qty: payload.qty, price: payload.price };
-          const { error: e3 } = await supabaseClient.from('sales').insert(simplePayload);
-          if (e3) alert("Sales table error: " + e3.message + "\nRun the SQL I sent to add columns");
-          else console.log("✅ Saved with simple payload");
+      // Use whichever is bigger, but cloud has 679 so it will win
+      if (cloudStock && cloudStock.length > 0) {
+        // If local is empty (after refresh), use cloud
+        if (!db.stock || db.stock.length === 0 || cloudStock.length >= db.stock.length) {
+          db.stock = cloudStock;
+          db.sales = cloudSales;
+          localStorage.setItem("skystores_db", JSON.stringify(db));
+          console.log(`✅ Loaded ${db.stock.length} items from cloud`);
         }
-      } else {
-        console.log("✅ Sale saved to Supabase sales table");
       }
     }
-
-  } catch(err) {
-    console.error("Network error:", err);
   }
+  
   renderAll();
+  console.log(`Final: ${db.stock.length} stock | ${db.sales.length} sales`);
 }
 
-// Fix your other error too:
-function fetchPaymentHistory() {
-  console.log("fetchPaymentHistory not implemented yet");
-  return [];
-}
+// Run on page load
+initDB();
 
     // --- CSV EXPORT UTILITY ---
     function downloadCSV(csvContent, filename) {
