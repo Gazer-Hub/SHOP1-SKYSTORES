@@ -116,7 +116,19 @@
     .btn-primary { background-color: var(--accent-color); border-color: var(--accent-color); }
     .btn-primary:hover { background-color: #1d4ed8; border-color: #1d4ed8; }
 
+    /* Toast Notifications */
+    #moniepoint-toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 9999;
+    }
 
+    .toast {
+      border-radius: 10px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15);
+      border: none;
+    }
 
     /* Styling for the Sales Interface Refresh Button */
 #refresh-btn {
@@ -213,7 +225,17 @@
 </head>
 <body>
 
-
+  <!-- Real-time Moniepoint Payment Notification Popup Container -->
+  <div id="moniepoint-toast-container">
+    <div id="moniepoint-toast" class="toast align-items-center text-white bg-success border-0 shadow-lg" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="d-flex">
+        <div class="toast-body fs-6 py-3">
+          <i class="fa-solid fa-circle-check me-2"></i><strong>Moniepoint Alert:</strong> <span id="toast-message">New payment received!</span>
+        </div>
+        <button type="button" class="btn-close btn-close-white me-3 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+      </div>
+    </div>
+  </div>
 
   <!-- Professional Navigation Header -->
   <nav id="main-nav" class="navbar navbar-expand-lg navbar-dark px-3 mb-4 no-print" style="display: none;">
@@ -231,6 +253,7 @@
           <button class="btn btn-sm btn-outline-light nav-link-btn" onclick="navigateTo('stock')"><i class="fa-solid fa-warehouse me-1"></i> Stock 🔒</button>
           <button class="btn btn-sm btn-outline-light nav-link-btn" onclick="navigateTo('sales')"><i class="fa-solid fa-cart-shopping me-1"></i> Sales</button>
           <button class="btn btn-sm btn-outline-light nav-link-btn" onclick="navigateTo('cash-drawer')"><i class="fa-solid fa-cash-register me-1"></i> Till Count</button>
+          <button class="btn btn-sm btn-outline-info nav-link-btn" onclick="navigateTo('moniepoint')"><i class="fa-solid fa-credit-card me-1"></i> Payments</button>
           <button class="btn btn-sm btn-outline-light nav-link-btn" onclick="navigateTo('returns')"><i class="fa-solid fa-rotate-left me-1"></i> Returns</button>
           <button class="btn btn-sm btn-outline-warning nav-link-btn" onclick="navigateTo('supplier-returns')"><i class="fa-solid fa-truck-ramp-box me-1"></i> Vendor Box</button>
           <button class="btn btn-sm btn-outline-info nav-link-btn" onclick="navigateTo('purchase-requisition')"><i class="fa-solid fa-clipboard-list me-1"></i> Requisition</button>
@@ -494,6 +517,79 @@
       </div>
     </div>
 
+    <!-- Moniepoint Payment History Interface Tab -->
+    <div id="page-moniepoint" class="page">
+      <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+          <h3 class="fw-bold mb-1"><i class="fa-solid fa-credit-card text-info me-2"></i> Moniepoint Payment Integration[cite: 1]</h3>
+          <p class="text-muted small mb-0">Automated webhook gateway for direct customer transfer reconciliation.</p>
+        </div>
+        <div class="no-print d-flex align-items-center gap-2 flex-wrap">
+          <span class="badge bg-secondary px-3 py-2">Webhook Status: Active & Synced</span>[cite: 1]
+          <button class="btn btn-outline-primary btn-sm" onclick="exportMoniepointToCSV()"><i class="fa-solid fa-download me-1"></i> Export CSV</button>
+        </div>
+      </div>
+
+      <div class="d-flex align-items-center mb-3 gap-2">
+        <label for="moniepoint-date-filter" class="fw-bold small text-muted">FILTER PERIOD:</label>
+        <select id="moniepoint-date-filter" class="form-select form-select-sm w-auto" onchange="filterMoniepointPayments()">
+          <option value="today" selected>Today</option>
+          <option value="yesterday">Yesterday</option>
+          <option value="this_week">This Week</option>
+          <option value="last_month">Last Month</option>
+          <option value="all">All Time History</option>
+        </select>
+      </div>  
+    
+      <div class="row g-3 mb-4">
+        <div class="col-md-6">
+          <div class="card text-center border-success shadow-sm">
+            <div class="card-body py-3">
+              <h6 class="text-muted small fw-bold">Total Moniepoint Inflows (Filtered Period)</h6>
+              <h3 class="text-success fw-bold mb-0" id="moniepoint-total-amount">₦0</h3>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="card text-center border-primary shadow-sm">
+            <div class="card-body py-3">
+              <h6 class="text-muted small fw-bold">Total Successful Transactions</h6>
+              <h3 class="text-primary fw-bold mb-0" id="moniepoint-total-count">0</h3>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card shadow-sm">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-3">
+          <span class="fw-bold">Moniepoint Transfer History Logs</span>
+          <div class="input-group input-group-sm" style="max-width: 320px;">
+            <input type="text" id="moniepoint-search-input" class="form-control" placeholder="Search sender, ref..." onkeyup="searchMoniepointPayments()">
+            <button class="btn btn-outline-light" type="button" id="refresh-payments-btn"><i class="fa-solid fa-sync"></i></button>
+          </div>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-striped align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Date & Time</th>
+                  <th>Reference / Session ID</th>
+                  <th>Sender Name</th>
+                  <th>Account Number</th>
+                  <th>Amount (₦)</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="payment-table-body">
+                <tr><td colspan="6" class="text-center text-muted py-4">No Moniepoint payment records loaded.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Cash Drawer Reconciliation Interface -->
     <div id="page-cash-drawer" class="page">
       <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
@@ -566,13 +662,7 @@
         </div>
         <div class="no-print d-flex gap-2 flex-wrap">
           <button class="btn btn-sm btn-outline-primary" onclick="exportStockToCSV()"><i class="fa-solid fa-download me-1"></i> Export CSV</button>
-        <button onclick="backupJSON('all')">💾 Backup All</button>
-<button onclick="backupJSON('stock')">📦 Backup Stock Only</button>
-<button onclick="backupJSON('sales')">🧾 Backup Sales Only</button>
-<label class="btn">
-  ♻️ Restore
-  <input type="file" hidden accept=".json" onchange="restoreDB(event)">
-</label>
+          <button class="btn btn-sm btn-outline-info" onclick="exportBackupJSON()"><i class="fa-solid fa-database me-1"></i> Backup JSON</button>
           <button class="btn btn-sm btn-outline-success" onclick="document.getElementById('import-file-input').click()"><i class="fa-solid fa-upload me-1"></i> Restore</button>
           <input type="file" id="import-file-input" accept=".json" class="d-none" onchange="importBackupJSON(event)">
           <button id="btn-toggle-stock-totals" class="btn btn-sm btn-outline-secondary" onclick="toggleStockTotals()">👁️ Hide Totals</button>
@@ -697,13 +787,7 @@
             <option value="custom">Custom Date...</option>
           </select>
           <input type="date" id="sales-custom-date" class="form-control form-control-sm d-none" style="width: auto;" onchange="renderSales()">
-<div class="flex gap-2">
-  <button onclick="exportSalesCSV()">Export CSV</button>
-  <label class="btn bg-green-600 text-white px-3 py-1 rounded cursor-pointer">
-    📤 Import CSV
-    <input type="file" id="importCsvInput" accept=".csv" hidden onchange="importSalesCSV(event)">
-  </label>
-</div>
+          <button class="btn btn-outline-primary btn-sm" onclick="exportSalesToCSV()"><i class="fa-solid fa-download me-1"></i> Export CSV</button>
           <button class="btn btn-outline-dark btn-sm" onclick="printFilteredSales()"><i class="fa-solid fa-print me-1"></i> Print Report</button>
           <button id="refresh-btn" class="btn btn-outline-light btn-sm d-flex align-items-center gap-1" onclick="manualAppRefresh()">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-clockwise" viewBox="0 0 16 16">
@@ -1161,99 +1245,220 @@
   </div>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-// --- TRIPLE SAVING METHOD CONFIGURATION (SUPABASE + LOCALSTORAGE) ---
-const SUPABASE_URL = 'https://puktzlekeoojrlxrkziu.supabase.co'; 
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB1a3R6bGVrZW9vanJseHJreml1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1NTI5MzAsImV4cCI6MjEwMDEyODkzMH0.uSH3tcofOW-LiBHraIb_eDi2hI3_ZUN1b9JjIJ42Z-Q'; 
-const supabaseClient = (window.supabase && SUPABASE_URL !== 'YOUR_SUPABASE_URL_HERE') 
-  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) 
-  : null;
+    // --- TRIPLE SAVING METHOD CONFIGURATION (SUPABASE + LOCALSTORAGE) ---
+    const SUPABASE_URL = 'https://puktzlekeoojrlxrkziu.supabase.co'; 
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB1a3R6bGVrZW9vanJseHJreml1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1NTI5MzAsImV4cCI6MjEwMDEyODkzMH0.uSH3tcofOW-LiBHraIb_eDi2hI3_ZUN1b9JjIJ42Z-Q'; 
+    const supabaseClient = (window.supabase && SUPABASE_URL !== 'YOUR_SUPABASE_URL_HERE') 
+      ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) 
+      : null;
 
-// --- AUTHENTICATION ---
-const AUTH_KEY = "sky_modernize_auth";
-let auth = JSON.parse(localStorage.getItem(AUTH_KEY)) || { username: "admin", password: "1234" };
+    // --- AUTHENTICATION ---
+    const AUTH_KEY = "sky_modernize_auth";
+    let auth = JSON.parse(localStorage.getItem(AUTH_KEY)) || { username: "admin", password: "1234" };
 
-function saveAuth() {
-  localStorage.setItem(AUTH_KEY, JSON.stringify(auth));
-}
+    function saveAuth() {
+      localStorage.setItem(AUTH_KEY, JSON.stringify(auth));
+    }
 
-const MANAGER_PIN = "2468";
+    const MANAGER_PIN = "2468";
 
-// --- STATE MANAGEMENT ---
-let isLoggedIn = false;
-let isManagerUnlocked = false;
-let isStockTotalsVisible = true;
-let isDashboardSummaryVisible = true;
-let salesCart = [];
+    // --- STATE MANAGEMENT ---
+    let isLoggedIn = false;
+    let isManagerUnlocked = false;
+    let isStockTotalsVisible = true;
+    let isDashboardSummaryVisible = true;
+    let salesCart = [];
 
-const DB_KEY = "sky_modernize_db";
-let db = JSON.parse(localStorage.getItem(DB_KEY)) || { 
-  stock: [], 
-  sales: [], 
-  returns: [], 
-  supplierReturns: [],
-  requisitions: [],
-};
+    const DB_KEY = "sky_modernize_db";
+    let db = JSON.parse(localStorage.getItem(DB_KEY)) || { 
+      stock: [], 
+      sales: [], 
+      returns: [], 
+      supplierReturns: [],
+      requisitions: [],
+      moniepointPayments: []
+    };
 
-if (!db.supplierReturns) db.supplierReturns = [];
-if (!db.requisitions) db.requisitions = [];
+    if (!db.supplierReturns) db.supplierReturns = [];
+    if (!db.requisitions) db.requisitions = [];
+    if (!db.moniepointPayments) db.moniepointPayments = [];
 
-// Track last synced sales count to avoid duplicates
-const SALES_SYNC_KEY = "sky_sales_synced_count";
-let syncedSalesCount = parseInt(localStorage.getItem(SALES_SYNC_KEY) || "0");
+    // --- REAL-TIME TOAST POPUP NOTIFICATION ---
+    function showMoniepointToast(message) {
+      document.getElementById('toast-message').innerText = message;
+      const toastElement = document.getElementById('moniepoint-toast');
+      const toast = new bootstrap.Toast(toastElement, { delay: 5000 });
+      toast.show();
+    }
 
-// --- TRIPLE SAVING METHOD IMPLEMENTATION - FIXED ---
-async function initDB() {
-  // 1. Try localStorage first
-  const local = localStorage.getItem("skystores_db");
-  if (local) {
-    try {
-      const parsed = JSON.parse(local);
-      if (parsed.stock && parsed.stock.length > 0) {
-        db = parsed;
-      }
-    } catch(e){}
-  }
+    // --- TRIPLE SAVING METHOD IMPLEMENTATION ---
+    async function saveDB() {
+      localStorage.setItem(DB_KEY, JSON.stringify(db));
 
-  // 2. Load from Supabase (your 679 items)
-  if (supabaseClient) {
-    const { data, error } = await supabaseClient.from('inventory').select('payload').eq('id', 1).single();
-    
-    if (error) {
-      console.error("Cloud load error:", error.message);
-    } else if (data && data.payload) {
-      let cloudStock = data.payload.stock;
-      let cloudSales = data.payload.sales || [];
-
-      // FIX: Sometimes stock is saved as string, parse it
-      if (typeof cloudStock === 'string') {
-        try { cloudStock = JSON.parse(cloudStock); } catch(e){}
-      }
-      if (typeof cloudSales === 'string') {
-        try { cloudSales = JSON.parse(cloudSales); } catch(e){}
-      }
-
-      console.log(`Cloud has ${cloudStock?.length || 0} stock, Local has ${db.stock?.length || 0}`);
-
-      // Use whichever is bigger, but cloud has 679 so it will win
-      if (cloudStock && cloudStock.length > 0) {
-        // If local is empty (after refresh), use cloud
-        if (!db.stock || db.stock.length === 0 || cloudStock.length >= db.stock.length) {
-          db.stock = cloudStock;
-          db.sales = cloudSales;
-          localStorage.setItem("skystores_db", JSON.stringify(db));
-          console.log(`✅ Loaded ${db.stock.length} items from cloud`);
+      if (supabaseClient) {
+        try {
+          const { error } = await supabaseClient
+            .from('inventory')
+            .upsert({ id: 1, payload: db, updated_at: new Date().toISOString() });
+          
+          if (error) {
+            console.error('Supabase sync error:', error.message);
+          }
+        } catch (err) {
+          console.error('Network error during Supabase triple saving sync:', err);
         }
       }
+
+      renderAll();
     }
+
+    async function initTripleSavingSync() {
+      if (supabaseClient) {
+        try {
+          const { data, error } = await supabaseClient
+            .from('inventory')
+            .select('payload')
+            .eq('id', 1)
+            .single();
+          
+          if (data && data.payload && !error) {
+            db = data.payload;
+            if (!db.supplierReturns) db.supplierReturns = [];
+            if (!db.requisitions) db.requisitions = [];
+            if (!db.moniepointPayments) db.moniepointPayments = [];
+            localStorage.setItem(DB_KEY, JSON.stringify(db));
+          }
+        } catch (e) {
+          console.log('Using local backup storage fallback.');
+        }
+      }
+      renderAll();
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      initTripleSavingSync();
+    });
+
+let allMoniepointPayments = [];
+
+async function fetchPaymentHistory() {
+  try {
+    const { data: payments, error } = await supabaseClient
+      .from('payments')
+      .select('*')
+      .order('datetime', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching payments:', error.message);
+      return;
+    }
+
+async function triggerCloudTransactionSync() {
+  try {
+    // Calls your Netlify serverless function quietly in the background
+    await fetch('/.netlify/functions/sync-moniepoint');
+  } catch (e) {
+    console.log('Background sync skipped, using local cache.');
   }
+}
+
+// Run it right alongside your startup sync
+window.addEventListener('DOMContentLoaded', async () => {
+  await triggerCloudTransactionSync();
+  initTripleSavingSync();
+});
+    
+    // Save all fetched records globally
+    allMoniepointPayments = payments || [];
+    
+    // Run the filter / render logic based on the selected dropdown value
+    filterMoniepointPayments();
+
+  } catch (err) {
+    console.error('Unexpected error loading payments:', err);
+  }
+}
+
+function filterMoniepointPayments() {
+  const filterValue = document.getElementById('moniepoint-date-filter')?.value || 'today';
+  const paymentTableBody = document.getElementById('payment-table-body');
+  if (!paymentTableBody) return;
+
+  paymentTableBody.innerHTML = '';
+
+  const now = new Date();
   
-  renderAll();
-  console.log(`Final: ${db.stock.length} stock | ${db.sales.length} sales`);
+  // Define time boundaries based on current date (August 6, 2026)
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  
+  const yesterdayStart = new Date(todayStart);
+  yesterdayStart.setDate(todayStart.getDate() - 1);
+  
+  const thisWeekStart = new Date(todayStart);
+  thisWeekStart.setDate(todayStart.getDate() - todayStart.getDay()); // Start of week (Sunday)
+  
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  // Filter the master list
+  const filteredPayments = allMoniepointPayments.filter(payment => {
+    if (!payment.datetime) return false;
+    const paymentDate = new Date(payment.datetime);
+
+    if (filterValue === 'today') {
+      return paymentDate >= todayStart;
+    } else if (filterValue === 'yesterday') {
+      return paymentDate >= yesterdayStart && paymentDate < todayStart;
+    } else if (filterValue === 'this_week') {
+      return paymentDate >= thisWeekStart;
+    } else if (filterValue === 'last_month') {
+      return paymentDate >= lastMonthStart && paymentDate < lastMonthEnd;
+    } else {
+      return true; // 'all'
+    }
+  });
+
+  if (filteredPayments.length === 0) {
+    paymentTableBody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">No payments recorded for this period.</td></tr>`;
+    document.getElementById('moniepoint-total-amount').innerText = '₦0';
+    document.getElementById('moniepoint-total-count').innerText = '0';
+    return;
+  }
+
+  let totalInflow = 0;
+  let successfulCount = 0;
+
+  filteredPayments.forEach((payment) => {
+    const amount = Number(payment.amount || 0);
+    const status = (payment.status || '').toUpperCase();
+
+    if (status === 'SUCCESSFUL') {
+      totalInflow += amount;
+      successfulCount += 1;
+    }
+
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td>${payment.datetime ? new Date(payment.datetime).toLocaleString() : ''}</td>
+      <td>${payment.reference || ''}</td>
+      <td>${payment.sender_name || 'unknown'}</td>
+      <td>${payment.account_number || 'unknown'}</td>
+      <td>₦${amount.toLocaleString()}</td>
+      <td>${payment.status || ''}</td>
+    `;
+    paymentTableBody.appendChild(row);
+  });
+
+  // Update summary cards dynamically
+  const inflowEl = document.getElementById('moniepoint-total-amount');
+  const countEl = document.getElementById('moniepoint-total-count');
+  
+  if (inflowEl) inflowEl.innerText = `₦${totalInflow.toLocaleString()}`;
+  if (countEl) countEl.innerText = successfulCount;
 }
 
 // Run on page load
-initDB();
-
+document.addEventListener('DOMContentLoaded', fetchPaymentHistory);
     // --- CSV EXPORT UTILITY ---
     function downloadCSV(csvContent, filename) {
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -1276,6 +1481,128 @@ initDB();
       downloadCSV(csv, `Stock_Inventory_${new Date().toISOString().split('T')[0]}.csv`);
     }
 
+    function exportMoniepointToCSV() {
+      if (db.moniepointPayments.length === 0) return alert("No Moniepoint payment records available to export.");
+      let csv = "DateTime,Reference,SenderName,AccountNumber,Amount (NGN),Status\n";
+      db.moniepointPayments.forEach(p => {
+        csv += `"${p.datetime}","${p.reference}","${p.senderName}","${p.accountNumber}",${p.amount},"${p.status}"\n`;
+      });
+      downloadCSV(csv, `Moniepoint_Payments_${new Date().toISOString().split('T')[0]}.csv`);
+    }
+
+    function simulateMoniepointWebhookTest() {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const testPayment = {
+        datetime: todayStr + " " + new Date().toTimeString().split(' ')[0],
+        reference: "MP-TXN-" + Math.floor(100000 + Math.random() * 900000),
+        senderName: "TEST CUSTOMER",
+        accountNumber: "99" + Math.floor(10000000 + Math.random() * 90000000),
+        amount: 55000,
+        status: "SUCCESS"
+      };
+      db.moniepointPayments.push(testPayment);
+      saveDB();
+      showMoniepointToast(`Payment of ₦55,000 received from TEST CUSTOMER!`);
+    }
+
+    function searchMoniepointPayments() {
+      renderMoniepointPayments(document.getElementById('moniepoint-search-input').value.trim().toLowerCase());
+    }
+
+    function clearMoniepointSearch() {
+      document.getElementById('moniepoint-search-input').value = '';
+      renderMoniepointPayments();
+    }
+
+    function renderMoniepointPayments(filterQuery = "") {
+      const tbody = document.getElementById('payment-table-body');
+      const payments = db.moniepointPayments || [];
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      const todaysPayments = payments.filter(p => p.datetime && p.datetime.startsWith(todayStr));
+      
+      document.getElementById('moniepoint-total-amount').innerText = `₦${todaysPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0).toLocaleString()}`;
+      document.getElementById('moniepoint-total-count').innerText = todaysPayments.length;
+
+      const filtered = payments.slice().reverse().filter(p => {
+        if (!filterQuery) return true;
+        const q = filterQuery.toLowerCase();
+        return (p.senderName && p.senderName.toLowerCase().includes(q)) ||
+               (p.reference && p.reference.toLowerCase().includes(q)) ||
+               (p.accountNumber && p.accountNumber.toLowerCase().includes(q)) ||
+               (p.amount && p.amount.toString().includes(q));
+      });
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">No matching Moniepoint payment records found</td></tr>`;
+      } else {
+        tbody.innerHTML = filtered.map(p => `
+          <tr>
+            <td>${p.datetime}</td>
+            <td><code>${p.reference}</code></td>
+            <td><b>${p.senderName}</b></td>
+            <td>${p.accountNumber}</td>
+            <td class="text-success fw-bold">₦${Number(p.amount).toLocaleString()}</td>
+            <td><span class="badge bg-success">${p.status}</span></td>
+          </tr>
+        `).join('');
+      }
+    }
+document.getElementById('refresh-payments-btn').addEventListener('click', async () => {
+    const refreshBtn = document.getElementById('refresh-payments-btn');
+
+
+  async function manualAppRefresh() {
+  const btn = document.getElementById('refresh-btn');
+  const originalHtml = btn.innerHTML;
+  
+  // Show loading state on button
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Refreshing...`;
+
+  try {
+    // 1. Pull latest cloud data from Supabase
+    if (typeof initTripleSavingSync === 'function') {
+      await initTripleSavingSync();
+    }
+    
+    // 2. If you added the automated payment history sync function, call it too
+    if (typeof triggerCloudTransactionSync === 'function') {
+      await triggerCloudTransactionSync();
+    }
+
+    // 3. Re-render all dashboard views, sales panels, and OPay histories
+    if (typeof renderAll === 'function') {
+      renderAll();
+    }
+
+    console.log("App data successfully refreshed from cloud.");
+  } catch (err) {
+    console.error("Refresh failed:", err);
+  } finally {
+    // Restore button back to normal state
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.innerHTML = originalHtml;
+    }, 500); // Small half-second delay for smooth visual feedback
+  }
+}
+  
+    // Optional: Add a loading class or disable button to prevent spamming
+    refreshBtn.disabled = true;
+    refreshBtn.textContent = 'Refreshing...';
+
+    try {
+        // Call your existing function that fetches data from the payments table
+        await fetchPaymentHistory(); 
+    } catch (error) {
+        console.error('Failed to refresh payment history:', error);
+    } finally {
+        // Reset button state
+        refreshBtn.disabled = false;
+        refreshBtn.textContent = 'Refresh';
+    }
+});
     
     function exportSalesToCSV() {
       const { salesData, periodLabel } = getFilteredSalesData();
@@ -1343,75 +1670,39 @@ initDB();
       html2pdf().set(opt).from(element).save();
     }
 
-// --- BACKUP OPTIONS ---
-function backupJSON(type = 'all') {
-  let data, filename;
-  const date = new Date().toISOString().slice(0,10);
-
-  if (type === 'stock') {
-    data = { stock: db.stock };
-    filename = `stock_only_${date}.json`;
-  } else if (type === 'sales') {
-    data = { sales: db.sales };
-    filename = `sales_only_${date}.json`;
-  } else {
-    data = db; // both stock + sales + everything
-    filename = `FULL_BACKUP_${date}.json`;
-  }
-
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = filename; a.click();
-  alert(`✅ ${filename} exported`);
-}
-
-// --- SMART RESTORE ---
-function restoreDB(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    try {
-      const data = JSON.parse(e.target.result);
-
-      // Ask what to restore
-      const hasStock = data.stock && data.stock.length > 0;
-      const hasSales = data.sales && data.sales.length > 0;
-
-      let restoreStock = true;
-      let restoreSales = true;
-
-      if (hasStock && hasSales) {
-        restoreStock = confirm(`This backup has:\n- ${data.stock.length} STOCK items\n- ${data.sales.length} SALES\n\nRestore STOCK? OK=Yes, Cancel=No`);
-        restoreSales = confirm(`Restore SALES too? (${data.sales.length} sales)\nOK=Yes, Cancel=No`);
-      }
-
-      if (restoreStock && hasStock) {
-        db.stock = data.stock;
-        console.log(`Restored ${db.stock.length} stock`);
-      }
-      if (restoreSales && hasSales) {
-        db.sales = data.sales;
-        console.log(`Restored ${db.sales.length} sales`);
-      }
-
-      // Fallback for old format
-      if (Array.isArray(data)) db.stock = data;
-
-      localStorage.setItem(DB_KEY, JSON.stringify(db));
-      saveDB();
-      renderAll();
-      alert(`✅ Done! Stock: ${db.stock.length} | Sales: ${db.sales.length}`);
-
-    } catch (err) {
-      alert("❌ Invalid JSON: " + err.message);
+    function exportBackupJSON() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `SKY_MODERNIZE_BACKUP_${new Date().toISOString().split('T')[0]}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
     }
-  };
-  reader.readAsText(file);
-  event.target.value = ""; // reset
-}
+
+    function importBackupJSON(event) {
+      const fileReader = new FileReader();
+      fileReader.onload = function(e) {
+        try {
+          const importedDB = JSON.parse(e.target.result);
+          if (importedDB && typeof importedDB === 'object' && Array.isArray(importedDB.stock)) {
+            if (confirm("Restoring from backup will overwrite current system data. Continue?")) {
+              db = importedDB;
+              saveDB();
+              alert("System successfully restored from backup!");
+            }
+          } else {
+            alert("Invalid backup file format!");
+          }
+        } catch (err) {
+          alert("Error parsing backup file: " + err.message);
+        }
+      };
+      if (event.target.files[0]) {
+        fileReader.readAsText(event.target.files[0]);
+      }
+    }
+
     function clearCustomerReturnForm() {
       document.getElementById('returns-form').reset();
       document.getElementById('return-sale-search-input').value = '';
@@ -1911,6 +2202,7 @@ let netProfit = taxableProfit - cacFee;
       renderReturns();
       renderSupplierReturns();
       renderRequisitions();
+      renderMoniepointPayments();
     }
 
     function handleDashboardFilterChange() {
@@ -3041,53 +3333,6 @@ async function manualAppRefresh() {
       window.print();
     }
 
-    // --- CSV IMPORT - NEW ---
-function importSalesCSV(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    try {
-      const text = e.target.result;
-      const lines = text.split("\n").filter(l => l.trim()!== "");
-      const headers = lines[0].toLowerCase().split(",").map(h => h.trim());
-
-      const modelIdx = headers.indexOf("model");
-      const partIdx = headers.indexOf("part");
-      const qtyIdx = headers.indexOf("qty");
-      const priceIdx = headers.indexOf("price");
-      const customerIdx = headers.indexOf("customer");
-      const dateIdx = headers.indexOf("date");
-
-      let imported = 0;
-      for (let i = 1; i < lines.length; i++) {
-        const cols = lines[i].split(",").map(c => c.trim().replace(/^"|"$/g, ''));
-        if (cols.length < 3) continue;
-
-        db.sales.push({
-          model: cols[modelIdx] || "Unknown",
-          quality: cols[partIdx] || "Standard",
-          part: cols[partIdx] || "Standard",
-          qty: parseInt(cols[qtyIdx]) || 1,
-          sell_price: parseFloat(cols[priceIdx]) || 0,
-          price: parseFloat(cols[priceIdx]) || 0,
-          customer: cols[customerIdx] || "Walk-in",
-          date: cols[dateIdx] || new Date().toISOString()
-        });
-        imported++;
-      }
-
-      saveDB(); // This will sync to localStorage + Supabase (stock + new sales)
-      alert(`✅ Imported ${imported} sales from CSV`);
-      event.target.value = ""; // reset input
-    } catch (err) {
-      console.error(err);
-      alert("❌ CSV format error: " + err.message);
-    }
-  };
-  reader.readAsText(file);
-}
     function sendRequisitionToGmail() {
       if (db.requisitions.length === 0) return alert("No purchase requisitions available to send!");
       let emailBody = `SKY MODERNIZE SAVE TECHNOLOGY LTD - Purchase Requisitions\n\n`;
@@ -3312,6 +3557,7 @@ function updateThemeButton(theme) {
   renderReturns();
   renderSupplierReturns();
   renderRequisitions();
+  renderMoniepointPayments();
 }
     
   if ('serviceWorker' in navigator) {
