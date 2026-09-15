@@ -691,7 +691,13 @@
             <option value="custom">Custom Date...</option>
           </select>
           <input type="date" id="sales-custom-date" class="form-control form-control-sm d-none" style="width: auto;" onchange="renderSales()">
-          <button class="btn btn-outline-primary btn-sm" onclick="exportSalesToCSV()"><i class="fa-solid fa-download me-1"></i> Export CSV</button>
+<div class="flex gap-2">
+  <button onclick="exportSalesCSV()">Export CSV</button>
+  <label class="btn bg-green-600 text-white px-3 py-1 rounded cursor-pointer">
+    📤 Import CSV
+    <input type="file" id="importCsvInput" accept=".csv" hidden onchange="importSalesCSV(event)">
+  </label>
+</div>
           <button class="btn btn-outline-dark btn-sm" onclick="printFilteredSales()"><i class="fa-solid fa-print me-1"></i> Print Report</button>
           <button id="refresh-btn" class="btn btn-outline-light btn-sm d-flex align-items-center gap-1" onclick="manualAppRefresh()">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-clockwise" viewBox="0 0 16 16">
@@ -3018,6 +3024,53 @@ async function manualAppRefresh() {
       window.print();
     }
 
+    // --- CSV IMPORT - NEW ---
+function importSalesCSV(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const text = e.target.result;
+      const lines = text.split("\n").filter(l => l.trim()!== "");
+      const headers = lines[0].toLowerCase().split(",").map(h => h.trim());
+
+      const modelIdx = headers.indexOf("model");
+      const partIdx = headers.indexOf("part");
+      const qtyIdx = headers.indexOf("qty");
+      const priceIdx = headers.indexOf("price");
+      const customerIdx = headers.indexOf("customer");
+      const dateIdx = headers.indexOf("date");
+
+      let imported = 0;
+      for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split(",").map(c => c.trim().replace(/^"|"$/g, ''));
+        if (cols.length < 3) continue;
+
+        db.sales.push({
+          model: cols[modelIdx] || "Unknown",
+          quality: cols[partIdx] || "Standard",
+          part: cols[partIdx] || "Standard",
+          qty: parseInt(cols[qtyIdx]) || 1,
+          sell_price: parseFloat(cols[priceIdx]) || 0,
+          price: parseFloat(cols[priceIdx]) || 0,
+          customer: cols[customerIdx] || "Walk-in",
+          date: cols[dateIdx] || new Date().toISOString()
+        });
+        imported++;
+      }
+
+      saveDB(); // This will sync to localStorage + Supabase (stock + new sales)
+      alert(`✅ Imported ${imported} sales from CSV`);
+      event.target.value = ""; // reset input
+    } catch (err) {
+      console.error(err);
+      alert("❌ CSV format error: " + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
     function sendRequisitionToGmail() {
       if (db.requisitions.length === 0) return alert("No purchase requisitions available to send!");
       let emailBody = `SKY MODERNIZE SAVE TECHNOLOGY LTD - Purchase Requisitions\n\n`;
