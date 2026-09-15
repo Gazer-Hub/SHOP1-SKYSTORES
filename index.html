@@ -566,7 +566,13 @@
         </div>
         <div class="no-print d-flex gap-2 flex-wrap">
           <button class="btn btn-sm btn-outline-primary" onclick="exportStockToCSV()"><i class="fa-solid fa-download me-1"></i> Export CSV</button>
-          <button class="btn btn-sm btn-outline-info" onclick="exportBackupJSON()"><i class="fa-solid fa-database me-1"></i> Backup JSON</button>
+        <button onclick="backupJSON('all')">💾 Backup All</button>
+<button onclick="backupJSON('stock')">📦 Backup Stock Only</button>
+<button onclick="backupJSON('sales')">🧾 Backup Sales Only</button>
+<label class="btn">
+  ♻️ Restore
+  <input type="file" hidden accept=".json" onchange="restoreDB(event)">
+</label>
           <button class="btn btn-sm btn-outline-success" onclick="document.getElementById('import-file-input').click()"><i class="fa-solid fa-upload me-1"></i> Restore</button>
           <input type="file" id="import-file-input" accept=".json" class="d-none" onchange="importBackupJSON(event)">
           <button id="btn-toggle-stock-totals" class="btn btn-sm btn-outline-secondary" onclick="toggleStockTotals()">👁️ Hide Totals</button>
@@ -1347,39 +1353,75 @@ function fetchPaymentHistory() {
       html2pdf().set(opt).from(element).save();
     }
 
-    function exportBackupJSON() {
-      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db, null, 2));
-      const downloadAnchor = document.createElement('a');
-      downloadAnchor.setAttribute("href", dataStr);
-      downloadAnchor.setAttribute("download", `SKY_MODERNIZE_BACKUP_${new Date().toISOString().split('T')[0]}.json`);
-      document.body.appendChild(downloadAnchor);
-      downloadAnchor.click();
-      downloadAnchor.remove();
-    }
+// --- BACKUP OPTIONS ---
+function backupJSON(type = 'all') {
+  let data, filename;
+  const date = new Date().toISOString().slice(0,10);
 
-    function importBackupJSON(event) {
-      const fileReader = new FileReader();
-      fileReader.onload = function(e) {
-        try {
-          const importedDB = JSON.parse(e.target.result);
-          if (importedDB && typeof importedDB === 'object' && Array.isArray(importedDB.stock)) {
-            if (confirm("Restoring from backup will overwrite current system data. Continue?")) {
-              db = importedDB;
-              saveDB();
-              alert("System successfully restored from backup!");
-            }
-          } else {
-            alert("Invalid backup file format!");
-          }
-        } catch (err) {
-          alert("Error parsing backup file: " + err.message);
-        }
-      };
-      if (event.target.files[0]) {
-        fileReader.readAsText(event.target.files[0]);
+  if (type === 'stock') {
+    data = { stock: db.stock };
+    filename = `stock_only_${date}.json`;
+  } else if (type === 'sales') {
+    data = { sales: db.sales };
+    filename = `sales_only_${date}.json`;
+  } else {
+    data = db; // both stock + sales + everything
+    filename = `FULL_BACKUP_${date}.json`;
+  }
+
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  alert(`✅ ${filename} exported`);
+}
+
+// --- SMART RESTORE ---
+function restoreDB(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+
+      // Ask what to restore
+      const hasStock = data.stock && data.stock.length > 0;
+      const hasSales = data.sales && data.sales.length > 0;
+
+      let restoreStock = true;
+      let restoreSales = true;
+
+      if (hasStock && hasSales) {
+        restoreStock = confirm(`This backup has:\n- ${data.stock.length} STOCK items\n- ${data.sales.length} SALES\n\nRestore STOCK? OK=Yes, Cancel=No`);
+        restoreSales = confirm(`Restore SALES too? (${data.sales.length} sales)\nOK=Yes, Cancel=No`);
       }
-    }
 
+      if (restoreStock && hasStock) {
+        db.stock = data.stock;
+        console.log(`Restored ${db.stock.length} stock`);
+      }
+      if (restoreSales && hasSales) {
+        db.sales = data.sales;
+        console.log(`Restored ${db.sales.length} sales`);
+      }
+
+      // Fallback for old format
+      if (Array.isArray(data)) db.stock = data;
+
+      localStorage.setItem(DB_KEY, JSON.stringify(db));
+      saveDB();
+      renderAll();
+      alert(`✅ Done! Stock: ${db.stock.length} | Sales: ${db.sales.length}`);
+
+    } catch (err) {
+      alert("❌ Invalid JSON: " + err.message);
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = ""; // reset
+}
     function clearCustomerReturnForm() {
       document.getElementById('returns-form').reset();
       document.getElementById('return-sale-search-input').value = '';
