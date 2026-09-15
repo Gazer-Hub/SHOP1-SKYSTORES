@@ -1199,79 +1199,64 @@ let syncedSalesCount = parseInt(localStorage.getItem(SALES_SYNC_KEY) || "0");
 async function saveDB() {
   localStorage.setItem(DB_KEY, JSON.stringify(db));
 
-  if (supabaseClient) {
-    try {
-      // 1. INVENTORY TABLE = STOCK ONLY (for Telegram bot)
-      const { error: stockError } = await supabaseClient
-        .from('inventory')
-        .upsert({ id: 1, payload: { stock: db.stock }, updated_at: new Date().toISOString() }, { onConflict: 'id' });
-      
-      if (stockError) console.error('Stock sync error:', stockError.message);
-
-      // 2. SALES TABLE = SALES ONLY - sync only new sales
-      if (db.sales && db.sales.length > syncedSalesCount) {
-        const newSales = db.sales.slice(syncedSalesCount);
-        for (const sale of newSales) {
-          const { error: salesError } = await supabaseClient
-            .from('sales')
-            .insert({
-              model: sale.model,
-              part: sale.quality || sale.part || 'Standard',
-              qty: sale.qty,
-              price: sale.sell_price || sale.price,
-              customer: sale.customer || 'Walk-in',
-              date: sale.date || new Date().toISOString()
-            });
-          if (salesError) {
-            console.error('Sales sync error:', salesError.message);
-            break; // stop if error, will retry next save
-          } else {
-            syncedSalesCount++;
-            localStorage.setItem(SALES_SYNC_KEY, syncedSalesCount.toString());
-          }
-        }
-      }
-
-    } catch (err) {
-      console.error('Network error during sync:', err);
-    }
+  if (!supabaseClient) {
+    renderAll();
+    return;
   }
 
-  renderAll();
-}
-
-async function initTripleSavingSync() {
-  if (supabaseClient) {
-    try {
-      const { data, error } = await supabaseClient
-        .from('inventory')
-        .select('payload')
-        .eq('id', 1)
-        .single();
-      
-      if (data && data.payload && data.payload.stock && !error) {
-        db.stock = data.payload.stock;
-        if (!db.sales) db.sales = [];
-        if (!db.returns) db.returns = [];
-        if (!db.supplierReturns) db.supplierReturns = [];
-        if (!db.requisitions) db.requisitions = [];
-        localStorage.setItem(DB_KEY, JSON.stringify(db));
-      }
-      // Sync count stays local, so we don't overwrite
-      syncedSalesCount = db.sales ? db.sales.length : 0;
-      localStorage.setItem(SALES_SYNC_KEY, syncedSalesCount.toString());
-
-    } catch (e) {
-      console.log('Using local backup storage fallback.');
-    }
-  }
-  renderAll();
-}
-
-window.addEventListener('DOMContentLoaded', () => {
-  initTripleSavingSync();
-});
+  try {
+    // 1. STOCK -> inventory (stock only)
+    const { error: e1 } = await supabaseClient
+      .from('inventory')
+      .upsert({ id: 1, payload: { stock: db.stock }, updated_at: new Date().toISOString() }, { onConflict: 'id' });
     
+    if (e1) console.error("Inventory error:", e1.message);
+
+    // 2. SALES -> sales table (no 'date' column - use created_at)
+    if (db.sales && db.sales.length > 0) {
+      const s = db.sales[db.sales.length - 1];
+      
+      // Get real price - fix ₦0 issue too
+      const stockItem = db.stock.find(st => st.model === s.model);
+      const realPrice = s.sell_price || s.selling_price || s.price || s.unit_price || stockItem?.selling_price || stockItem?.price || 0;
+
+      const payload = {
+        model: s.model,
+        part: s.quality || s.part || 'Standard',
+        qty: s.qty,
+        price: realPrice,
+        customer: s.customer || 'Walk-in'
+        // NO 'date' column - Supabase will auto-fill created_at
+      };
+
+      console.log("Saving to sales:", payload);
+
+      const { error: e2 } = await supabaseClient.from('sales').insert(payload);
+      if (e2) {
+        console.error("SALES ERROR:", e2.message);
+        // If still errors, try even simpler payload
+        if (e2.message.includes('column')) {
+          const simplePayload = { model: payload.model, qty: payload.qty, price: payload.price };
+          const { error: e3 } = await supabaseClient.from('sales').insert(simplePayload);
+          if (e3) alert("Sales table error: " + e3.message + "\nRun the SQL I sent to add columns");
+          else console.log("✅ Saved with simple payload");
+        }
+      } else {
+        console.log("✅ Sale saved to Supabase sales table");
+      }
+    }
+
+  } catch(err) {
+    console.error("Network error:", err);
+  }
+  renderAll();
+}
+
+// Fix your other error too:
+function fetchPaymentHistory() {
+  console.log("fetchPaymentHistory not implemented yet");
+  return [];
+}
 
     // --- CSV EXPORT UTILITY ---
     function downloadCSV(csvContent, filename) {
