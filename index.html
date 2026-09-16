@@ -1292,8 +1292,6 @@
     }
 
     // --- TRIPLE SAVING METHOD IMPLEMENTATION ---
-   const DB_KEY = 'triple_saving_db'; // your existing key
-
 async function saveDB() {
   // 1. Always save full backup locally
   localStorage.setItem(DB_KEY, JSON.stringify(db));
