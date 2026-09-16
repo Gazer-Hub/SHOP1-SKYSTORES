@@ -1292,89 +1292,52 @@
     }
 
     // --- TRIPLE SAVING METHOD IMPLEMENTATION ---
-async function saveDB() {
-  // 1. Always save full backup locally
-  localStorage.setItem(DB_KEY, JSON.stringify(db));
+    async function saveDB() {
+      localStorage.setItem(DB_KEY, JSON.stringify(db));
 
-  if (!supabaseClient) {
-    renderAll();
-    return;
-  }
+      if (supabaseClient) {
+        try {
+          const { error } = await supabaseClient
+            .from('inventory')
+            .upsert({ id: 1, payload: db, updated_at: new Date().toISOString() });
+          
+          if (error) {
+            console.error('Supabase sync error:', error.message);
+          }
+        } catch (err) {
+          console.error('Network error during Supabase triple saving sync:', err);
+        }
+      }
 
-  // 2. Save to 2 different Supabase tables in parallel
-  try {
-    const stockPromise = supabaseClient
-     .from('inventory')
-     .upsert({
-        id: 1,
-        payload: db.stock || db.inventory || [], // change this to whatever your stock array is called
-        updated_at: new Date().toISOString()
-      });
-
-    const salesPromise = supabaseClient
-     .from('sales')
-     .upsert({
-        id: 1,
-        payload: db.sales || [],
-        updated_at: new Date().toISOString()
-      });
-
-    const [stockRes, salesRes] = await Promise.all([stockPromise, salesPromise]);
-
-    if (stockRes.error) console.error('Inventory sync error:', stockRes.error.message);
-    if (salesRes.error) console.error('Sales sync error:', salesRes.error.message);
-
-  } catch (err) {
-    console.error('Network error during Triple Saving sync:', err);
-  }
-
-  renderAll();
-}
-
-async function initTripleSavingSync() {
-  if (!supabaseClient) {
-    renderAll();
-    return;
-  }
-
-  try {
-    // Load both tables in parallel
-    const [inventoryRes, salesRes] = await Promise.all([
-      supabaseClient.from('inventory').select('payload').eq('id', 1).single(),
-      supabaseClient.from('sales').select('payload').eq('id', 1).single()
-    ]);
-
-    let localDb = JSON.parse(localStorage.getItem(DB_KEY) || '{}');
-    db = localDb;
-
-    // If cloud has stock, use it
-    if (inventoryRes.data && inventoryRes.data.payload) {
-      db.stock = inventoryRes.data.payload;
-    }
-    // If cloud has sales, use it
-    if (salesRes.data && salesRes.data.payload) {
-      db.sales = salesRes.data.payload;
+      renderAll();
     }
 
-    // Make sure other arrays exist
-    if (!db.supplierReturns) db.supplierReturns = [];
-    if (!db.requisitions) db.requisitions = [];
-    if (!db.moniepointPayments) db.moniepointPayments = [];
-    if (!db.stock) db.stock = [];
-    if (!db.sales) db.sales = [];
+    async function initTripleSavingSync() {
+      if (supabaseClient) {
+        try {
+          const { data, error } = await supabaseClient
+            .from('inventory')
+            .select('payload')
+            .eq('id', 1)
+            .single();
+          
+          if (data && data.payload && !error) {
+            db = data.payload;
+            if (!db.supplierReturns) db.supplierReturns = [];
+            if (!db.requisitions) db.requisitions = [];
+            if (!db.moniepointPayments) db.moniepointPayments = [];
+            localStorage.setItem(DB_KEY, JSON.stringify(db));
+          }
+        } catch (e) {
+          console.log('Using local backup storage fallback.');
+        }
+      }
+      renderAll();
+    }
 
-    localStorage.setItem(DB_KEY, JSON.stringify(db));
-
-  } catch (e) {
-    console.log('Using local backup storage fallback.', e.message);
-  }
-
-  renderAll();
-}
-
-window.addEventListener('DOMContentLoaded', () => {
-  initTripleSavingSync();
-});
+    window.addEventListener('DOMContentLoaded', () => {
+      initTripleSavingSync();
+    });
 
 let allMoniepointPayments = [];
 
