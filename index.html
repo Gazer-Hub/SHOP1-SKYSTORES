@@ -115,22 +115,8 @@
 
     .btn-primary { background-color: var(--accent-color); border-color: var(--accent-color); }
     .btn-primary:hover { background-color: #1d4ed8; border-color: #1d4ed8; }
-
-    /* Toast Notifications */
-    #moniepoint-toast-container {
-      position: fixed;
-      bottom: 24px;
-      right: 24px;
-      z-index: 9999;
-    }
-
-    .toast {
-      border-radius: 10px;
-      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15);
-      border: none;
-    }
-
-    /* Styling for the Sales Interface Refresh Button */
+    /* Toasts removed */
+/* Styling for the Sales Interface Refresh Button */
 #refresh-btn {
   background-color: blue;
   border: 1px solid rgba(255, 255, 255, 0.4);
@@ -224,20 +210,7 @@
   </style>
 </head>
 <body>
-
-  <!-- Real-time Moniepoint Payment Notification Popup Container -->
-  <div id="moniepoint-toast-container">
-    <div id="moniepoint-toast" class="toast align-items-center text-white bg-success border-0 shadow-lg" role="alert" aria-live="assertive" aria-atomic="true">
-      <div class="d-flex">
-        <div class="toast-body fs-6 py-3">
-          <i class="fa-solid fa-circle-check me-2"></i><strong>Moniepoint Alert:</strong> <span id="toast-message">New payment received!</span>
-        </div>
-        <button type="button" class="btn-close btn-close-white me-3 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Professional Navigation Header -->
+<!-- Professional Navigation Header -->
   <nav id="main-nav" class="navbar navbar-expand-lg navbar-dark px-3 mb-4 no-print" style="display: none;">
     <div class="container-fluid">
       <a class="navbar-brand d-flex align-items-center gap-2" href="#">
@@ -253,7 +226,6 @@
           <button class="btn btn-sm btn-outline-light nav-link-btn" onclick="navigateTo('stock')"><i class="fa-solid fa-warehouse me-1"></i> Stock 🔒</button>
           <button class="btn btn-sm btn-outline-light nav-link-btn" onclick="navigateTo('sales')"><i class="fa-solid fa-cart-shopping me-1"></i> Sales</button>
           <button class="btn btn-sm btn-outline-light nav-link-btn" onclick="navigateTo('cash-drawer')"><i class="fa-solid fa-cash-register me-1"></i> Till Count</button>
-          <button class="btn btn-sm btn-outline-info nav-link-btn" onclick="navigateTo('moniepoint')"><i class="fa-solid fa-credit-card me-1"></i> Payments</button>
           <button class="btn btn-sm btn-outline-light nav-link-btn" onclick="navigateTo('returns')"><i class="fa-solid fa-rotate-left me-1"></i> Returns</button>
           <button class="btn btn-sm btn-outline-warning nav-link-btn" onclick="navigateTo('supplier-returns')"><i class="fa-solid fa-truck-ramp-box me-1"></i> Vendor Box</button>
           <button class="btn btn-sm btn-outline-info nav-link-btn" onclick="navigateTo('purchase-requisition')"><i class="fa-solid fa-clipboard-list me-1"></i> Requisition</button>
@@ -516,80 +488,6 @@
         <div class="card-body" id="low-stock-list"></div>
       </div>
     </div>
-
-    <!-- Moniepoint Payment History Interface Tab -->
-    <div id="page-moniepoint" class="page">
-      <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-        <div>
-          <h3 class="fw-bold mb-1"><i class="fa-solid fa-credit-card text-info me-2"></i> Moniepoint Payment Integration[cite: 1]</h3>
-          <p class="text-muted small mb-0">Automated webhook gateway for direct customer transfer reconciliation.</p>
-        </div>
-        <div class="no-print d-flex align-items-center gap-2 flex-wrap">
-          <span class="badge bg-secondary px-3 py-2">Webhook Status: Active & Synced</span>[cite: 1]
-          <button class="btn btn-outline-primary btn-sm" onclick="exportMoniepointToCSV()"><i class="fa-solid fa-download me-1"></i> Export CSV</button>
-        </div>
-      </div>
-
-      <div class="d-flex align-items-center mb-3 gap-2">
-        <label for="moniepoint-date-filter" class="fw-bold small text-muted">FILTER PERIOD:</label>
-        <select id="moniepoint-date-filter" class="form-select form-select-sm w-auto" onchange="filterMoniepointPayments()">
-          <option value="today" selected>Today</option>
-          <option value="yesterday">Yesterday</option>
-          <option value="this_week">This Week</option>
-          <option value="last_month">Last Month</option>
-          <option value="all">All Time History</option>
-        </select>
-      </div>  
-    
-      <div class="row g-3 mb-4">
-        <div class="col-md-6">
-          <div class="card text-center border-success shadow-sm">
-            <div class="card-body py-3">
-              <h6 class="text-muted small fw-bold">Total Moniepoint Inflows (Filtered Period)</h6>
-              <h3 class="text-success fw-bold mb-0" id="moniepoint-total-amount">₦0</h3>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-6">
-          <div class="card text-center border-primary shadow-sm">
-            <div class="card-body py-3">
-              <h6 class="text-muted small fw-bold">Total Successful Transactions</h6>
-              <h3 class="text-primary fw-bold mb-0" id="moniepoint-total-count">0</h3>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="card shadow-sm">
-        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-3">
-          <span class="fw-bold">Moniepoint Transfer History Logs</span>
-          <div class="input-group input-group-sm" style="max-width: 320px;">
-            <input type="text" id="moniepoint-search-input" class="form-control" placeholder="Search sender, ref..." onkeyup="searchMoniepointPayments()">
-            <button class="btn btn-outline-light" type="button" id="refresh-payments-btn"><i class="fa-solid fa-sync"></i></button>
-          </div>
-        </div>
-        <div class="card-body p-0">
-          <div class="table-responsive">
-            <table class="table table-striped align-middle mb-0">
-              <thead>
-                <tr>
-                  <th>Date & Time</th>
-                  <th>Reference / Session ID</th>
-                  <th>Sender Name</th>
-                  <th>Account Number</th>
-                  <th>Amount (₦)</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody id="payment-table-body">
-                <tr><td colspan="6" class="text-center text-muted py-4">No Moniepoint payment records loaded.</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- Cash Drawer Reconciliation Interface -->
     <div id="page-cash-drawer" class="page">
       <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
@@ -1275,63 +1173,269 @@
       sales: [], 
       returns: [], 
       supplierReturns: [],
-      requisitions: [],
-      moniepointPayments: []
+      requisitions: []
     };
 
     if (!db.supplierReturns) db.supplierReturns = [];
     if (!db.requisitions) db.requisitions = [];
-    if (!db.moniepointPayments) db.moniepointPayments = [];
-
-    // --- REAL-TIME TOAST POPUP NOTIFICATION ---
-    function showMoniepointToast(message) {
-      document.getElementById('toast-message').innerText = message;
-      const toastElement = document.getElementById('moniepoint-toast');
-      const toast = new bootstrap.Toast(toastElement, { delay: 5000 });
-      toast.show();
-    }
-
-    // --- TRIPLE SAVING METHOD IMPLEMENTATION ---
+// --- TRIPLE SAVING METHOD IMPLEMENTATION ---
+    // --- ROW-BASED SAVING: stock -> stock table, sales -> sales table (proper rows) ---
     async function saveDB() {
       localStorage.setItem(DB_KEY, JSON.stringify(db));
 
-      if (supabaseClient) {
-        try {
-          const { error } = await supabaseClient
-            .from('inventory')
-            .upsert({ id: 1, payload: db, updated_at: new Date().toISOString() });
-          
-          if (error) {
-            console.error('Supabase sync error:', error.message);
-          }
-        } catch (err) {
-          console.error('Network error during Supabase triple saving sync:', err);
+      if (!supabaseClient) {
+        renderAll();
+        return;
+      }
+
+      try {
+        // 1. SYNC STOCK: delete all existing stock rows then insert current stock
+        // Using neq on a text column to delete all rows safely regardless of id type
+        await supabaseClient.from('stock').delete().neq('model', '__DELETE_ALL__');
+
+        if (db.stock.length > 0) {
+          const stockRows = db.stock.map(s => ({
+            model: s.model,
+            category: s.category || null,
+            subcat: s.subcat || s.quality || 'Standard',
+            supplier: s.supplier || null,
+            qty: parseInt(s.qty) || 0,
+            cost_price: parseFloat(s.cost_price) || 0,
+            sell_price: parseFloat(s.sell_price) || 0,
+            updated_at: new Date().toISOString()
+          }));
+          const { error: stockError } = await supabaseClient.from('stock').insert(stockRows);
+          if (stockError) console.error('stock sync error:', stockError.message);
+          else console.log(`Stock synced: ${stockRows.length} items`);
         }
+
+        // 2. SYNC SALES: incremental insert - only insert sales not yet in Supabase
+        // We keep a local cache of last synced count to avoid re-inserting everything
+        const lastSyncedSalesCount = parseInt(localStorage.getItem('last_synced_sales_count') || '0');
+        const newSales = db.sales.slice(lastSyncedSalesCount);
+
+        if (newSales.length > 0) {
+          const salesRows = newSales.map(s => ({
+            date: s.date, // YYYY-MM-DD
+            model: s.model,
+            quality: s.quality || s.subcat || 'Standard',
+            customer: s.customer || 'Walk-in',
+            qty: parseInt(s.qty) || 0,
+            cost_price: parseFloat(s.cost_price) || 0,
+            sell_price: parseFloat(s.sell_price) || 0,
+            payment_method: s.paymentMethod || 'Cash',
+            created_at: new Date().toISOString()
+          }));
+          const { error: salesError } = await supabaseClient.from('sales').insert(salesRows);
+          if (salesError) {
+            console.error('sales sync error:', salesError.message);
+          } else {
+            localStorage.setItem('last_synced_sales_count', db.sales.length.toString());
+            console.log(`Sales synced: ${salesRows.length} new sales`);
+          }
+        }
+
+        // 3. SYNC RETURNS, SUPPLIER RETURNS, REQUISITIONS - full replace for simplicity
+        // RETURNS
+        await supabaseClient.from('returns').delete().neq('model', '__DELETE_ALL__');
+        if (db.returns.length > 0) {
+          const returnsRows = db.returns.map(r => ({
+            date: r.date,
+            model: r.model,
+            customer: r.customer,
+            qty: r.qty,
+            reason: r.reason,
+            is_exchanged: r.isExchanged || false,
+            created_at: new Date().toISOString()
+          }));
+          await supabaseClient.from('returns').insert(returnsRows);
+        }
+
+        // SUPPLIER RETURNS
+        await supabaseClient.from('supplier_returns').delete().neq('model', '__DELETE_ALL__');
+        if (db.supplierReturns.length > 0) {
+          const supRows = db.supplierReturns.map(r => ({
+            date: r.date,
+            model: r.model,
+            supplier: r.supplier,
+            qty: r.qty,
+            reason: r.reason,
+            status: r.status,
+            created_at: new Date().toISOString()
+          }));
+          await supabaseClient.from('supplier_returns').insert(supRows);
+        }
+
+        // REQUISITIONS
+        await supabaseClient.from('requisitions').delete().neq('item', '__DELETE_ALL__');
+        if (db.requisitions.length > 0) {
+          const reqRows = db.requisitions.map(r => ({
+            req_id: r.id,
+            date: r.date,
+            item: r.item,
+            category: r.category,
+            qty_needed: r.qty,
+            est_unit_cost: r.cost || 0,
+            est_total_cost: (r.cost || 0) * (r.qty || 0),
+            preferred_supplier: r.supplier || null,
+            status: r.status,
+            notes: r.notes || null,
+            created_at: new Date().toISOString()
+          }));
+          await supabaseClient.from('requisitions').insert(reqRows);
+        }
+
+      } catch (err) {
+        console.error('Row-based sync network error:', err);
       }
 
       renderAll();
     }
 
-    async function initTripleSavingSync() {
-      if (supabaseClient) {
-        try {
-          const { data, error } = await supabaseClient
-            .from('inventory')
-            .select('payload')
-            .eq('id', 1)
-            .single();
-          
-          if (data && data.payload && !error) {
-            db = data.payload;
-            if (!db.supplierReturns) db.supplierReturns = [];
-            if (!db.requisitions) db.requisitions = [];
-            if (!db.moniepointPayments) db.moniepointPayments = [];
-            localStorage.setItem(DB_KEY, JSON.stringify(db));
+    // Force full re-sync of all sales (useful for first migration)
+    async function forceFullSalesSync() {
+      if (!supabaseClient) return;
+      if (!confirm('This will delete all sales in Supabase and re-upload everything from this browser. Continue?')) return;
+      try {
+        await supabaseClient.from('sales').delete().neq('model', '__DELETE_ALL__');
+        if (db.sales.length > 0) {
+          const salesRows = db.sales.map(s => ({
+            date: s.date,
+            model: s.model,
+            quality: s.quality || 'Standard',
+            customer: s.customer || 'Walk-in',
+            qty: s.qty,
+            cost_price: s.cost_price,
+            sell_price: s.sell_price,
+            payment_method: s.paymentMethod || 'Cash',
+            created_at: new Date().toISOString()
+          }));
+          const { error } = await supabaseClient.from('sales').insert(salesRows);
+          if (!error) {
+            localStorage.setItem('last_synced_sales_count', db.sales.length.toString());
+            alert(`Successfully re-synced ${salesRows.length} sales!`);
           }
-        } catch (e) {
-          console.log('Using local backup storage fallback.');
         }
+      } catch (e) {
+        console.error(e);
+        alert('Full sync failed: ' + e.message);
       }
+    }
+
+    async function initTripleSavingSync() {
+      if (!supabaseClient) {
+        renderAll();
+        return;
+      }
+
+      try {
+        // Load from row-based tables
+        const [stockRes, salesRes, returnsRes, supRetRes, reqRes, legacyRes] = await Promise.all([
+          supabaseClient.from('stock').select('*'),
+          supabaseClient.from('sales').select('*').order('date', { ascending: false }).limit(1000),
+          supabaseClient.from('returns').select('*'),
+          supabaseClient.from('supplier_returns').select('*'),
+          supabaseClient.from('requisitions').select('*'),
+          supabaseClient.from('inventory').select('payload').eq('id', 1).single() // legacy fallback
+        ]);
+
+        let loaded = false;
+
+        // STOCK
+        if (stockRes.data && stockRes.data.length > 0) {
+          db.stock = stockRes.data.map(row => ({
+            model: row.model,
+            category: row.category,
+            subcat: row.subcat,
+            supplier: row.supplier,
+            qty: row.qty,
+            cost_price: row.cost_price,
+            sell_price: row.sell_price
+          }));
+          loaded = true;
+          console.log(`Loaded ${db.stock.length} stock items from Supabase`);
+        }
+
+        // SALES
+        if (salesRes.data && salesRes.data.length > 0) {
+          db.sales = salesRes.data.map(row => ({
+            date: row.date,
+            model: row.model,
+            quality: row.quality,
+            customer: row.customer,
+            qty: row.qty,
+            cost_price: row.cost_price,
+            sell_price: row.sell_price,
+            paymentMethod: row.payment_method
+          }));
+          localStorage.setItem('last_synced_sales_count', db.sales.length.toString());
+          loaded = true;
+          console.log(`Loaded ${db.sales.length} sales from Supabase`);
+        }
+
+        // RETURNS
+        if (returnsRes.data && returnsRes.data.length > 0) {
+          db.returns = returnsRes.data.map(row => ({
+            date: row.date,
+            model: row.model,
+            customer: row.customer,
+            qty: row.qty,
+            reason: row.reason,
+            isExchanged: row.is_exchanged
+          }));
+        }
+
+        // SUPPLIER RETURNS
+        if (supRetRes.data && supRetRes.data.length > 0) {
+          db.supplierReturns = supRetRes.data.map(row => ({
+            date: row.date,
+            model: row.model,
+            supplier: row.supplier,
+            qty: row.qty,
+            reason: row.reason,
+            status: row.status
+          }));
+        }
+
+        // REQUISITIONS
+        if (reqRes.data && reqRes.data.length > 0) {
+          db.requisitions = reqRes.data.map(row => ({
+            id: row.req_id,
+            date: row.date,
+            item: row.item,
+            category: row.category,
+            qty: row.qty_needed,
+            cost: row.est_unit_cost,
+            supplier: row.preferred_supplier,
+            status: row.status,
+            notes: row.notes
+          }));
+        }
+
+        // Legacy fallback if row tables empty
+        if (!loaded && legacyRes.data && legacyRes.data.payload) {
+          console.log('No row data found, loading from legacy inventory table');
+          const legacy = legacyRes.data.payload;
+          db.stock = legacy.stock || [];
+          db.sales = legacy.sales || [];
+          db.returns = legacy.returns || [];
+          db.supplierReturns = legacy.supplierReturns || [];
+          db.requisitions = legacy.requisitions || [];
+        }
+
+        // Ensure arrays
+        if (!db.stock) db.stock = [];
+        if (!db.sales) db.sales = [];
+        if (!db.returns) db.returns = [];
+        if (!db.supplierReturns) db.supplierReturns = [];
+        if (!db.requisitions) db.requisitions = [];
+
+        localStorage.setItem(DB_KEY, JSON.stringify(db));
+
+      } catch (e) {
+        console.log('Using local backup storage fallback.', e);
+      }
+
       renderAll();
     }
 
@@ -1339,127 +1443,8 @@
       initTripleSavingSync();
     });
 
-let allMoniepointPayments = [];
-
-async function fetchPaymentHistory() {
-  try {
-    const { data: payments, error } = await supabaseClient
-      .from('payments')
-      .select('*')
-      .order('datetime', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching payments:', error.message);
-      return;
-    }
-
-async function triggerCloudTransactionSync() {
-  try {
-    // Calls your Netlify serverless function quietly in the background
-    await fetch('/.netlify/functions/sync-moniepoint');
-  } catch (e) {
-    console.log('Background sync skipped, using local cache.');
-  }
-}
-
-// Run it right alongside your startup sync
-window.addEventListener('DOMContentLoaded', async () => {
-  await triggerCloudTransactionSync();
-  initTripleSavingSync();
-});
-    
-    // Save all fetched records globally
-    allMoniepointPayments = payments || [];
-    
-    // Run the filter / render logic based on the selected dropdown value
-    filterMoniepointPayments();
-
-  } catch (err) {
-    console.error('Unexpected error loading payments:', err);
-  }
-}
-
-function filterMoniepointPayments() {
-  const filterValue = document.getElementById('moniepoint-date-filter')?.value || 'today';
-  const paymentTableBody = document.getElementById('payment-table-body');
-  if (!paymentTableBody) return;
-
-  paymentTableBody.innerHTML = '';
-
-  const now = new Date();
-  
-  // Define time boundaries based on current date (August 6, 2026)
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  
-  const yesterdayStart = new Date(todayStart);
-  yesterdayStart.setDate(todayStart.getDate() - 1);
-  
-  const thisWeekStart = new Date(todayStart);
-  thisWeekStart.setDate(todayStart.getDate() - todayStart.getDay()); // Start of week (Sunday)
-  
-  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 1);
-
-  // Filter the master list
-  const filteredPayments = allMoniepointPayments.filter(payment => {
-    if (!payment.datetime) return false;
-    const paymentDate = new Date(payment.datetime);
-
-    if (filterValue === 'today') {
-      return paymentDate >= todayStart;
-    } else if (filterValue === 'yesterday') {
-      return paymentDate >= yesterdayStart && paymentDate < todayStart;
-    } else if (filterValue === 'this_week') {
-      return paymentDate >= thisWeekStart;
-    } else if (filterValue === 'last_month') {
-      return paymentDate >= lastMonthStart && paymentDate < lastMonthEnd;
-    } else {
-      return true; // 'all'
-    }
-  });
-
-  if (filteredPayments.length === 0) {
-    paymentTableBody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">No payments recorded for this period.</td></tr>`;
-    document.getElementById('moniepoint-total-amount').innerText = '₦0';
-    document.getElementById('moniepoint-total-count').innerText = '0';
-    return;
-  }
-
-  let totalInflow = 0;
-  let successfulCount = 0;
-
-  filteredPayments.forEach((payment) => {
-    const amount = Number(payment.amount || 0);
-    const status = (payment.status || '').toUpperCase();
-
-    if (status === 'SUCCESSFUL') {
-      totalInflow += amount;
-      successfulCount += 1;
-    }
-
-    const row = document.createElement('tr');
-    row.innerHTML = `
-      <td>${payment.datetime ? new Date(payment.datetime).toLocaleString() : ''}</td>
-      <td>${payment.reference || ''}</td>
-      <td>${payment.sender_name || 'unknown'}</td>
-      <td>${payment.account_number || 'unknown'}</td>
-      <td>₦${amount.toLocaleString()}</td>
-      <td>${payment.status || ''}</td>
-    `;
-    paymentTableBody.appendChild(row);
-  });
-
-  // Update summary cards dynamically
-  const inflowEl = document.getElementById('moniepoint-total-amount');
-  const countEl = document.getElementById('moniepoint-total-count');
-  
-  if (inflowEl) inflowEl.innerText = `₦${totalInflow.toLocaleString()}`;
-  if (countEl) countEl.innerText = successfulCount;
-}
-
-// Run on page load
-document.addEventListener('DOMContentLoaded', fetchPaymentHistory);
-    // --- CSV EXPORT UTILITY ---
+    // --- Payment webhook integration removed ---
+// --- CSV EXPORT UTILITY ---
     function downloadCSV(csvContent, filename) {
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement("a");
@@ -1479,132 +1464,8 @@ document.addEventListener('DOMContentLoaded', fetchPaymentHistory);
         csv += `"${s.model}","${s.category}","${s.subcat || ''}","${s.supplier || ''}",${s.qty},${s.cost_price},${s.sell_price}\n`;
       });
       downloadCSV(csv, `Stock_Inventory_${new Date().toISOString().split('T')[0]}.csv`);
-    }
-
-    function exportMoniepointToCSV() {
-      if (db.moniepointPayments.length === 0) return alert("No Moniepoint payment records available to export.");
-      let csv = "DateTime,Reference,SenderName,AccountNumber,Amount (NGN),Status\n";
-      db.moniepointPayments.forEach(p => {
-        csv += `"${p.datetime}","${p.reference}","${p.senderName}","${p.accountNumber}",${p.amount},"${p.status}"\n`;
-      });
-      downloadCSV(csv, `Moniepoint_Payments_${new Date().toISOString().split('T')[0]}.csv`);
-    }
-
-    function simulateMoniepointWebhookTest() {
-      const todayStr = new Date().toISOString().split('T')[0];
-      const testPayment = {
-        datetime: todayStr + " " + new Date().toTimeString().split(' ')[0],
-        reference: "MP-TXN-" + Math.floor(100000 + Math.random() * 900000),
-        senderName: "TEST CUSTOMER",
-        accountNumber: "99" + Math.floor(10000000 + Math.random() * 90000000),
-        amount: 55000,
-        status: "SUCCESS"
-      };
-      db.moniepointPayments.push(testPayment);
-      saveDB();
-      showMoniepointToast(`Payment of ₦55,000 received from TEST CUSTOMER!`);
-    }
-
-    function searchMoniepointPayments() {
-      renderMoniepointPayments(document.getElementById('moniepoint-search-input').value.trim().toLowerCase());
-    }
-
-    function clearMoniepointSearch() {
-      document.getElementById('moniepoint-search-input').value = '';
-      renderMoniepointPayments();
-    }
-
-    function renderMoniepointPayments(filterQuery = "") {
-      const tbody = document.getElementById('payment-table-body');
-      const payments = db.moniepointPayments || [];
-      const todayStr = new Date().toISOString().split('T')[0];
-
-      const todaysPayments = payments.filter(p => p.datetime && p.datetime.startsWith(todayStr));
-      
-      document.getElementById('moniepoint-total-amount').innerText = `₦${todaysPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0).toLocaleString()}`;
-      document.getElementById('moniepoint-total-count').innerText = todaysPayments.length;
-
-      const filtered = payments.slice().reverse().filter(p => {
-        if (!filterQuery) return true;
-        const q = filterQuery.toLowerCase();
-        return (p.senderName && p.senderName.toLowerCase().includes(q)) ||
-               (p.reference && p.reference.toLowerCase().includes(q)) ||
-               (p.accountNumber && p.accountNumber.toLowerCase().includes(q)) ||
-               (p.amount && p.amount.toString().includes(q));
-      });
-
-      if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">No matching Moniepoint payment records found</td></tr>`;
-      } else {
-        tbody.innerHTML = filtered.map(p => `
-          <tr>
-            <td>${p.datetime}</td>
-            <td><code>${p.reference}</code></td>
-            <td><b>${p.senderName}</b></td>
-            <td>${p.accountNumber}</td>
-            <td class="text-success fw-bold">₦${Number(p.amount).toLocaleString()}</td>
-            <td><span class="badge bg-success">${p.status}</span></td>
-          </tr>
-        `).join('');
-      }
-    }
-document.getElementById('refresh-payments-btn').addEventListener('click', async () => {
-    const refreshBtn = document.getElementById('refresh-payments-btn');
-
-
-  async function manualAppRefresh() {
-  const btn = document.getElementById('refresh-btn');
-  const originalHtml = btn.innerHTML;
-  
-  // Show loading state on button
-  btn.disabled = true;
-  btn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Refreshing...`;
-
-  try {
-    // 1. Pull latest cloud data from Supabase
-    if (typeof initTripleSavingSync === 'function') {
-      await initTripleSavingSync();
-    }
     
-    // 2. If you added the automated payment history sync function, call it too
-    if (typeof triggerCloudTransactionSync === 'function') {
-      await triggerCloudTransactionSync();
-    }
-
-    // 3. Re-render all dashboard views, sales panels, and OPay histories
-    if (typeof renderAll === 'function') {
-      renderAll();
-    }
-
-    console.log("App data successfully refreshed from cloud.");
-  } catch (err) {
-    console.error("Refresh failed:", err);
-  } finally {
-    // Restore button back to normal state
-    setTimeout(() => {
-      btn.disabled = false;
-      btn.innerHTML = originalHtml;
-    }, 500); // Small half-second delay for smooth visual feedback
-  }
-}
-  
-    // Optional: Add a loading class or disable button to prevent spamming
-    refreshBtn.disabled = true;
-    refreshBtn.textContent = 'Refreshing...';
-
-    try {
-        // Call your existing function that fetches data from the payments table
-        await fetchPaymentHistory(); 
-    } catch (error) {
-        console.error('Failed to refresh payment history:', error);
-    } finally {
-        // Reset button state
-        refreshBtn.disabled = false;
-        refreshBtn.textContent = 'Refresh';
-    }
-});
-    
-    function exportSalesToCSV() {
+function exportSalesToCSV() {
       const { salesData, periodLabel } = getFilteredSalesData();
       if (salesData.length === 0) return alert("No sales records available to export for this period.");
       let csv = "Date,Model,Quality,Customer,Payment Method,Quantity,Unit Price (NGN),Total Amount (NGN)\n";
@@ -2202,7 +2063,6 @@ let netProfit = taxableProfit - cacFee;
       renderReturns();
       renderSupplierReturns();
       renderRequisitions();
-      renderMoniepointPayments();
     }
 
     function handleDashboardFilterChange() {
@@ -2892,11 +2752,7 @@ async function manualAppRefresh() {
       await initTripleSavingSync();
     }
     
-    // 2. Pull latest OPay/payment transactions if the function exists
-    if (typeof triggerCloudTransactionSync === 'function') {
-      await triggerCloudTransactionSync();
-    }
-
+    
     // 3. Re-render all views and tables on your screen
     if (typeof renderAll === 'function') {
       renderAll();
@@ -3557,7 +3413,6 @@ function updateThemeButton(theme) {
   renderReturns();
   renderSupplierReturns();
   renderRequisitions();
-  renderMoniepointPayments();
 }
     
   if ('serviceWorker' in navigator) {
