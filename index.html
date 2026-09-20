@@ -1181,15 +1181,15 @@
 // --- TRIPLE SAVING METHOD IMPLEMENTATION ---
     async function saveDB() {
       localStorage.setItem(DB_KEY, JSON.stringify(db));
-
       if (!supabaseClient) {
-        renderAll();
+        if (typeof renderAll === 'function') renderAll();
         return;
       }
-
       try {
-        // STOCK - full replace with real rows
-        await supabaseClient.from('stock').delete().neq('model', '__DELETE_ALL__');
+        // STOCK - delete all then insert
+        try {
+          await supabaseClient.from('stock').delete().neq('model', '__DELETE_ALL__');
+        } catch(e) { console.log('stock delete skip', e.message); }
         if (db.stock.length > 0) {
           const stockRows = db.stock.map(s => ({
             model: s.model,
@@ -1205,104 +1205,136 @@
           if (error) console.error('stock sync error:', error.message);
         }
 
-        // SALES - incremental insert
-        const lastSynced = parseInt(localStorage.getItem('last_synced_sales_count') || '0');
-        const newSales = db.sales.slice(lastSynced);
-        if (newSales.length > 0) {
-          const salesRows = newSales.map(s => ({
-            date: s.date,
-            model: s.model,
-            quality: s.quality || 'Standard',
-            customer: s.customer || 'Walk-in',
-            qty: parseInt(s.qty) || 0,
-            cost_price: parseFloat(s.cost_price) || 0,
-            sell_price: parseFloat(s.sell_price) || 0,
-            payment_method: s.paymentMethod || 'Cash',
-            created_at: new Date().toISOString()
-          }));
-          const { error } = await supabaseClient.from('sales').insert(salesRows);
-          if (!error) {
-            localStorage.setItem('last_synced_sales_count', db.sales.length.toString());
-          } else {
-            console.error('sales sync error:', error.message);
+        // SALES - incremental
+        try {
+          const lastSynced = parseInt(localStorage.getItem('last_synced_sales_count') || '0');
+          const newSales = db.sales.slice(lastSynced);
+          if (newSales.length > 0) {
+            const salesRows = newSales.map(s => ({
+              date: s.date,
+              model: s.model,
+              quality: s.quality || 'Standard',
+              customer: s.customer || 'Walk-in',
+              qty: parseInt(s.qty) || 0,
+              cost_price: parseFloat(s.cost_price) || 0,
+              sell_price: parseFloat(s.sell_price) || 0,
+              payment_method: s.paymentMethod || 'Cash',
+              created_at: new Date().toISOString()
+            }));
+            const { error } = await supabaseClient.from('sales').insert(salesRows);
+            if (!error) localStorage.setItem('last_synced_sales_count', db.sales.length.toString());
+            else console.error('sales sync error:', error.message);
           }
-        }
+        } catch(e) { console.error('sales sync exception', e); }
 
         // RETURNS
-        await supabaseClient.from('returns').delete().neq('model', '__DELETE_ALL__');
-        if (db.returns.length > 0) {
-          const rows = db.returns.map(r => ({
-            date: r.date,
-            model: r.model,
-            customer: r.customer,
-            qty: r.qty,
-            reason: r.reason,
-            is_exchanged: r.isExchanged || false,
-            created_at: new Date().toISOString()
-          }));
-          await supabaseClient.from('returns').insert(rows);
-        }
+        try {
+          await supabaseClient.from('returns').delete().neq('model', '__DELETE_ALL__');
+          if (db.returns.length > 0) {
+            const rows = db.returns.map(r => ({
+              date: r.date,
+              model: r.model,
+              customer: r.customer,
+              qty: r.qty,
+              reason: r.reason,
+              is_exchanged: r.isExchanged || false,
+              created_at: new Date().toISOString()
+            }));
+            await supabaseClient.from('returns').insert(rows);
+          }
+        } catch(e) { console.log('returns sync skip', e.message); }
 
         // SUPPLIER RETURNS
-        await supabaseClient.from('supplier_returns').delete().neq('model', '__DELETE_ALL__');
-        if (db.supplierReturns.length > 0) {
-          const rows = db.supplierReturns.map(r => ({
-            date: r.date,
-            model: r.model,
-            supplier: r.supplier,
-            qty: r.qty,
-            reason: r.reason,
-            status: r.status,
-            created_at: new Date().toISOString()
-          }));
-          await supabaseClient.from('supplier_returns').insert(rows);
-        }
+        try {
+          await supabaseClient.from('supplier_returns').delete().neq('model', '__DELETE_ALL__');
+          if (db.supplierReturns.length > 0) {
+            const rows = db.supplierReturns.map(r => ({
+              date: r.date,
+              model: r.model,
+              supplier: r.supplier,
+              qty: r.qty,
+              reason: r.reason,
+              status: r.status,
+              created_at: new Date().toISOString()
+            }));
+            await supabaseClient.from('supplier_returns').insert(rows);
+          }
+        } catch(e) { console.log('supplier_returns sync skip', e.message); }
 
         // REQUISITIONS
-        await supabaseClient.from('requisitions').delete().neq('item', '__DELETE_ALL__');
-        if (db.requisitions.length > 0) {
-          const rows = db.requisitions.map(r => ({
-            req_id: r.id,
-            date: r.date,
-            item: r.item,
-            category: r.category,
-            qty_needed: r.qty,
-            est_unit_cost: r.cost || 0,
-            est_total_cost: (r.cost || 0) * (r.qty || 0),
-            preferred_supplier: r.supplier || null,
-            status: r.status,
-            notes: r.notes || null,
-            created_at: new Date().toISOString()
-          }));
-          await supabaseClient.from('requisitions').insert(rows);
-        }
+        try {
+          await supabaseClient.from('requisitions').delete().neq('item', '__DELETE_ALL__');
+          if (db.requisitions.length > 0) {
+            const rows = db.requisitions.map(r => ({
+              req_id: r.id,
+              date: r.date,
+              item: r.item,
+              category: r.category,
+              qty_needed: r.qty,
+              est_unit_cost: r.cost || 0,
+              est_total_cost: (r.cost || 0) * (r.qty || 0),
+              preferred_supplier: r.supplier || null,
+              status: r.status,
+              notes: r.notes || null,
+              created_at: new Date().toISOString()
+            }));
+            await supabaseClient.from('requisitions').insert(rows);
+          }
+        } catch(e) { console.log('requisitions sync skip', e.message); }
 
       } catch (err) {
         console.error('Row-based sync error:', err);
       }
-
-      renderAll();
+      if (typeof renderAll === 'function') renderAll();
     }
 
     async function initTripleSavingSync() {
       if (!supabaseClient) {
-        renderAll();
+        if (typeof renderAll === 'function') renderAll();
         return;
       }
       try {
-        const [stockRes, salesRes, returnsRes, supRetRes, reqRes, legacyRes] = await Promise.all([
-          supabaseClient.from('stock').select('*'),
-          supabaseClient.from('sales').select('*').order('date', { ascending: false }).limit(1000),
-          supabaseClient.from('returns').select('*'),
-          supabaseClient.from('supplier_returns').select('*'),
-          supabaseClient.from('requisitions').select('*'),
-          supabaseClient.from('inventory').select('payload').eq('id', 1).single()
-        ]);
+        // Load each table individually to avoid 400 breaking everything
+        let stockData = [], salesData = [], returnsData = [], supRetData = [], reqData = [];
+        let legacyData = null;
+
+        try {
+          const res = await supabaseClient.from('stock').select('*');
+          if (!res.error) stockData = res.data || [];
+          else console.log('stock load:', res.error.message);
+        } catch(e) { console.log('stock load exception', e); }
+
+        try {
+          // Avoid order by date (reserved) - order by created_at
+          const res = await supabaseClient.from('sales').select('*').order('created_at', { ascending: false }).limit(1000);
+          if (!res.error) salesData = res.data || [];
+          else console.log('sales load:', res.error.message);
+        } catch(e) { console.log('sales load exception', e); }
+
+        try {
+          const res = await supabaseClient.from('returns').select('*');
+          if (!res.error) returnsData = res.data || [];
+        } catch(e) {}
+
+        try {
+          const res = await supabaseClient.from('supplier_returns').select('*');
+          if (!res.error) supRetData = res.data || [];
+        } catch(e) {}
+
+        try {
+          const res = await supabaseClient.from('requisitions').select('*');
+          if (!res.error) reqData = res.data || [];
+        } catch(e) {}
+
+        try {
+          const res = await supabaseClient.from('inventory').select('payload').eq('id', 1).single();
+          if (!res.error && res.data) legacyData = res.data.payload;
+        } catch(e) {}
 
         let loaded = false;
 
-        if (stockRes.data && stockRes.data.length > 0) {
-          db.stock = stockRes.data.map(row => ({
+        if (stockData.length > 0) {
+          db.stock = stockData.map(row => ({
             model: row.model,
             category: row.category,
             subcat: row.subcat,
@@ -1314,8 +1346,8 @@
           loaded = true;
         }
 
-        if (salesRes.data && salesRes.data.length > 0) {
-          db.sales = salesRes.data.map(row => ({
+        if (salesData.length > 0) {
+          db.sales = salesData.map(row => ({
             date: row.date,
             model: row.model,
             quality: row.quality,
@@ -1329,8 +1361,8 @@
           loaded = true;
         }
 
-        if (returnsRes.data && returnsRes.data.length > 0) {
-          db.returns = returnsRes.data.map(row => ({
+        if (returnsData.length > 0) {
+          db.returns = returnsData.map(row => ({
             date: row.date,
             model: row.model,
             customer: row.customer,
@@ -1340,8 +1372,8 @@
           }));
         }
 
-        if (supRetRes.data && supRetRes.data.length > 0) {
-          db.supplierReturns = supRetRes.data.map(row => ({
+        if (supRetData.length > 0) {
+          db.supplierReturns = supRetData.map(row => ({
             date: row.date,
             model: row.model,
             supplier: row.supplier,
@@ -1351,8 +1383,8 @@
           }));
         }
 
-        if (reqRes.data && reqRes.data.length > 0) {
-          db.requisitions = reqRes.data.map(row => ({
+        if (reqData.length > 0) {
+          db.requisitions = reqData.map(row => ({
             id: row.req_id,
             date: row.date,
             item: row.item,
@@ -1365,13 +1397,12 @@
           }));
         }
 
-        if (!loaded && legacyRes.data && legacyRes.data.payload) {
-          const legacy = legacyRes.data.payload;
-          db.stock = legacy.stock || [];
-          db.sales = legacy.sales || [];
-          db.returns = legacy.returns || [];
-          db.supplierReturns = legacy.supplierReturns || [];
-          db.requisitions = legacy.requisitions || [];
+        if (!loaded && legacyData) {
+          db.stock = legacyData.stock || db.stock;
+          db.sales = legacyData.sales || db.sales;
+          db.returns = legacyData.returns || db.returns;
+          db.supplierReturns = legacyData.supplierReturns || db.supplierReturns;
+          db.requisitions = legacyData.requisitions || db.requisitions;
         }
 
         if (!db.stock) db.stock = [];
@@ -1385,7 +1416,7 @@
       } catch (e) {
         console.log('Fallback to local storage', e);
       }
-      renderAll();
+      if (typeof renderAll === 'function') renderAll();
     }
 
     window.addEventListener('DOMContentLoaded', () => {
@@ -3364,14 +3395,12 @@ function updateThemeButton(theme) {
   renderRequisitions();
 }
     
-// Service Worker
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('/sw.js')
         .then((reg) => console.log('Service Worker registered! Scope:', reg.scope))
         .catch((err) => console.log('Service Worker registration failed:', err));
     });
-  }
   }
 </script>
 </body>
