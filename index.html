@@ -1179,7 +1179,6 @@
     if (!db.supplierReturns) db.supplierReturns = [];
     if (!db.requisitions) db.requisitions = [];
 // --- TRIPLE SAVING METHOD IMPLEMENTATION ---
-    // --- ROW-BASED SAVING: stock -> stock table, sales -> sales table (proper rows) ---
     async function saveDB() {
       localStorage.setItem(DB_KEY, JSON.stringify(db));
 
@@ -1189,36 +1188,31 @@
       }
 
       try {
-        // 1. SYNC STOCK: delete all existing stock rows then insert current stock
-        // Using neq on a text column to delete all rows safely regardless of id type
+        // STOCK - full replace with real rows
         await supabaseClient.from('stock').delete().neq('model', '__DELETE_ALL__');
-
         if (db.stock.length > 0) {
           const stockRows = db.stock.map(s => ({
             model: s.model,
             category: s.category || null,
-            subcat: s.subcat || s.quality || 'Standard',
+            subcat: s.subcat || 'Standard',
             supplier: s.supplier || null,
             qty: parseInt(s.qty) || 0,
             cost_price: parseFloat(s.cost_price) || 0,
             sell_price: parseFloat(s.sell_price) || 0,
             updated_at: new Date().toISOString()
           }));
-          const { error: stockError } = await supabaseClient.from('stock').insert(stockRows);
-          if (stockError) console.error('stock sync error:', stockError.message);
-          else console.log(`Stock synced: ${stockRows.length} items`);
+          const { error } = await supabaseClient.from('stock').insert(stockRows);
+          if (error) console.error('stock sync error:', error.message);
         }
 
-        // 2. SYNC SALES: incremental insert - only insert sales not yet in Supabase
-        // We keep a local cache of last synced count to avoid re-inserting everything
-        const lastSyncedSalesCount = parseInt(localStorage.getItem('last_synced_sales_count') || '0');
-        const newSales = db.sales.slice(lastSyncedSalesCount);
-
+        // SALES - incremental insert
+        const lastSynced = parseInt(localStorage.getItem('last_synced_sales_count') || '0');
+        const newSales = db.sales.slice(lastSynced);
         if (newSales.length > 0) {
           const salesRows = newSales.map(s => ({
-            date: s.date, // YYYY-MM-DD
+            date: s.date,
             model: s.model,
-            quality: s.quality || s.subcat || 'Standard',
+            quality: s.quality || 'Standard',
             customer: s.customer || 'Walk-in',
             qty: parseInt(s.qty) || 0,
             cost_price: parseFloat(s.cost_price) || 0,
@@ -1226,20 +1220,18 @@
             payment_method: s.paymentMethod || 'Cash',
             created_at: new Date().toISOString()
           }));
-          const { error: salesError } = await supabaseClient.from('sales').insert(salesRows);
-          if (salesError) {
-            console.error('sales sync error:', salesError.message);
-          } else {
+          const { error } = await supabaseClient.from('sales').insert(salesRows);
+          if (!error) {
             localStorage.setItem('last_synced_sales_count', db.sales.length.toString());
-            console.log(`Sales synced: ${salesRows.length} new sales`);
+          } else {
+            console.error('sales sync error:', error.message);
           }
         }
 
-        // 3. SYNC RETURNS, SUPPLIER RETURNS, REQUISITIONS - full replace for simplicity
         // RETURNS
         await supabaseClient.from('returns').delete().neq('model', '__DELETE_ALL__');
         if (db.returns.length > 0) {
-          const returnsRows = db.returns.map(r => ({
+          const rows = db.returns.map(r => ({
             date: r.date,
             model: r.model,
             customer: r.customer,
@@ -1248,13 +1240,13 @@
             is_exchanged: r.isExchanged || false,
             created_at: new Date().toISOString()
           }));
-          await supabaseClient.from('returns').insert(returnsRows);
+          await supabaseClient.from('returns').insert(rows);
         }
 
         // SUPPLIER RETURNS
         await supabaseClient.from('supplier_returns').delete().neq('model', '__DELETE_ALL__');
         if (db.supplierReturns.length > 0) {
-          const supRows = db.supplierReturns.map(r => ({
+          const rows = db.supplierReturns.map(r => ({
             date: r.date,
             model: r.model,
             supplier: r.supplier,
@@ -1263,13 +1255,13 @@
             status: r.status,
             created_at: new Date().toISOString()
           }));
-          await supabaseClient.from('supplier_returns').insert(supRows);
+          await supabaseClient.from('supplier_returns').insert(rows);
         }
 
         // REQUISITIONS
         await supabaseClient.from('requisitions').delete().neq('item', '__DELETE_ALL__');
         if (db.requisitions.length > 0) {
-          const reqRows = db.requisitions.map(r => ({
+          const rows = db.requisitions.map(r => ({
             req_id: r.id,
             date: r.date,
             item: r.item,
@@ -1282,44 +1274,14 @@
             notes: r.notes || null,
             created_at: new Date().toISOString()
           }));
-          await supabaseClient.from('requisitions').insert(reqRows);
+          await supabaseClient.from('requisitions').insert(rows);
         }
 
       } catch (err) {
-        console.error('Row-based sync network error:', err);
+        console.error('Row-based sync error:', err);
       }
 
       renderAll();
-    }
-
-    // Force full re-sync of all sales (useful for first migration)
-    async function forceFullSalesSync() {
-      if (!supabaseClient) return;
-      if (!confirm('This will delete all sales in Supabase and re-upload everything from this browser. Continue?')) return;
-      try {
-        await supabaseClient.from('sales').delete().neq('model', '__DELETE_ALL__');
-        if (db.sales.length > 0) {
-          const salesRows = db.sales.map(s => ({
-            date: s.date,
-            model: s.model,
-            quality: s.quality || 'Standard',
-            customer: s.customer || 'Walk-in',
-            qty: s.qty,
-            cost_price: s.cost_price,
-            sell_price: s.sell_price,
-            payment_method: s.paymentMethod || 'Cash',
-            created_at: new Date().toISOString()
-          }));
-          const { error } = await supabaseClient.from('sales').insert(salesRows);
-          if (!error) {
-            localStorage.setItem('last_synced_sales_count', db.sales.length.toString());
-            alert(`Successfully re-synced ${salesRows.length} sales!`);
-          }
-        }
-      } catch (e) {
-        console.error(e);
-        alert('Full sync failed: ' + e.message);
-      }
     }
 
     async function initTripleSavingSync() {
@@ -1327,21 +1289,18 @@
         renderAll();
         return;
       }
-
       try {
-        // Load from row-based tables
         const [stockRes, salesRes, returnsRes, supRetRes, reqRes, legacyRes] = await Promise.all([
           supabaseClient.from('stock').select('*'),
           supabaseClient.from('sales').select('*').order('date', { ascending: false }).limit(1000),
           supabaseClient.from('returns').select('*'),
           supabaseClient.from('supplier_returns').select('*'),
           supabaseClient.from('requisitions').select('*'),
-          supabaseClient.from('inventory').select('payload').eq('id', 1).single() // legacy fallback
+          supabaseClient.from('inventory').select('payload').eq('id', 1).single()
         ]);
 
         let loaded = false;
 
-        // STOCK
         if (stockRes.data && stockRes.data.length > 0) {
           db.stock = stockRes.data.map(row => ({
             model: row.model,
@@ -1353,10 +1312,8 @@
             sell_price: row.sell_price
           }));
           loaded = true;
-          console.log(`Loaded ${db.stock.length} stock items from Supabase`);
         }
 
-        // SALES
         if (salesRes.data && salesRes.data.length > 0) {
           db.sales = salesRes.data.map(row => ({
             date: row.date,
@@ -1370,10 +1327,8 @@
           }));
           localStorage.setItem('last_synced_sales_count', db.sales.length.toString());
           loaded = true;
-          console.log(`Loaded ${db.sales.length} sales from Supabase`);
         }
 
-        // RETURNS
         if (returnsRes.data && returnsRes.data.length > 0) {
           db.returns = returnsRes.data.map(row => ({
             date: row.date,
@@ -1385,7 +1340,6 @@
           }));
         }
 
-        // SUPPLIER RETURNS
         if (supRetRes.data && supRetRes.data.length > 0) {
           db.supplierReturns = supRetRes.data.map(row => ({
             date: row.date,
@@ -1397,7 +1351,6 @@
           }));
         }
 
-        // REQUISITIONS
         if (reqRes.data && reqRes.data.length > 0) {
           db.requisitions = reqRes.data.map(row => ({
             id: row.req_id,
@@ -1412,9 +1365,7 @@
           }));
         }
 
-        // Legacy fallback if row tables empty
         if (!loaded && legacyRes.data && legacyRes.data.payload) {
-          console.log('No row data found, loading from legacy inventory table');
           const legacy = legacyRes.data.payload;
           db.stock = legacy.stock || [];
           db.sales = legacy.sales || [];
@@ -1423,7 +1374,6 @@
           db.requisitions = legacy.requisitions || [];
         }
 
-        // Ensure arrays
         if (!db.stock) db.stock = [];
         if (!db.sales) db.sales = [];
         if (!db.returns) db.returns = [];
@@ -1433,9 +1383,8 @@
         localStorage.setItem(DB_KEY, JSON.stringify(db));
 
       } catch (e) {
-        console.log('Using local backup storage fallback.', e);
+        console.log('Fallback to local storage', e);
       }
-
       renderAll();
     }
 
@@ -3415,12 +3364,14 @@ function updateThemeButton(theme) {
   renderRequisitions();
 }
     
+// Service Worker
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('/sw.js')
         .then((reg) => console.log('Service Worker registered! Scope:', reg.scope))
         .catch((err) => console.log('Service Worker registration failed:', err));
     });
+  }
   }
 </script>
 </body>
