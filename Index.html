@@ -1179,49 +1179,57 @@
     if (!db.supplierReturns) db.supplierReturns = [];
     if (!db.requisitions) db.requisitions = [];
 // --- TRIPLE SAVING METHOD IMPLEMENTATION ---
+    function renderAll() {
+      if (typeof populateDashboardCategories==='function') populateDashboardCategories();
+      if (typeof populateSalesCategories==='function') populateSalesCategories();
+      if (typeof populateSupplierReturnCategories==='function') populateSupplierReturnCategories();
+      if (typeof renderDashboard==='function') renderDashboard();
+      if (typeof renderStock==='function') renderStock();
+      if (typeof renderSales==='function') renderSales();
+      if (typeof renderReturns==='function') renderReturns();
+      if (typeof renderSupplierReturns==='function') renderSupplierReturns();
+      if (typeof renderRequisitions==='function') renderRequisitions();
+    }
+
     async function saveDB() {
       localStorage.setItem(DB_KEY, JSON.stringify(db));
-
-      if (supabaseClient) {
-        try {
-          const { error } = await supabaseClient
-            .from('inventory')
-            .upsert({ id: 1, payload: db, updated_at: new Date().toISOString() });
-          
-          if (error) {
-            console.error('Supabase sync error:', error.message);
-          }
-        } catch (err) {
-          console.error('Network error during Supabase triple saving sync:', err);
+      if (!supabaseClient) { renderAll(); return; }
+      try {
+        try { await supabaseClient.from('stock').delete().neq('model', '__DELETE_ALL__'); } catch(e) {}
+        if (db.stock.length>0) {
+          var rows=db.stock.map(function(s){return {model:s.model, category:s.category||null, subcat:s.subcat||'Standard', supplier:s.supplier||null, qty:parseInt(s.qty)||0, cost_price:parseFloat(s.cost_price)||0, sell_price:parseFloat(s.sell_price)||0, updated_at:new Date().toISOString()};});
+          var res=await supabaseClient.from('stock').insert(rows); if(res.error) console.error('stock',res.error.message);
         }
-      }
-
+        try {
+          var last=parseInt(localStorage.getItem('last_synced_sales_count')||'0');
+          var news=db.sales.slice(last);
+          if(news.length>0){
+            var rows=news.map(function(s){return {date:s.date, model:s.model, quality:s.quality||'Standard', customer:s.customer||'Walk-in', qty:parseInt(s.qty)||0, cost_price:parseFloat(s.cost_price)||0, sell_price:parseFloat(s.sell_price)||0, payment_method:s.paymentMethod||'Cash', created_at:new Date().toISOString()};});
+            var res=await supabaseClient.from('sales').insert(rows); if(!res.error) localStorage.setItem('last_synced_sales_count', db.sales.length.toString());
+          }
+        } catch(e){}
+      } catch(err){ console.error('sync error',err); }
       renderAll();
     }
 
     async function initTripleSavingSync() {
-      if (supabaseClient) {
-        try {
-          const { data, error } = await supabaseClient
-            .from('inventory')
-            .select('payload')
-            .eq('id', 1)
-            .single();
-          
-          if (data && data.payload && !error) {
-            db = data.payload;
-            if (!db.supplierReturns) db.supplierReturns = [];
-            if (!db.requisitions) db.requisitions = [];
-                    localStorage.setItem(DB_KEY, JSON.stringify(db));
-          }
-        } catch (e) {
-          console.log('Using local backup storage fallback.');
-        }
-      }
+      if (!supabaseClient) { renderAll(); return; }
+      try {
+        var stockData=[], salesData=[], legacyData=null;
+        try{ var res=await supabaseClient.from('stock').select('*'); if(!res.error) stockData=res.data||[]; }catch(e){}
+        try{ var res=await supabaseClient.from('sales').select('*').order('created_at',{ascending:false}).limit(1000); if(!res.error) salesData=res.data||[]; }catch(e){}
+        try{ var res=await supabaseClient.from('inventory').select('payload').eq('id',1).single(); if(!res.error && res.data) legacyData=res.data.payload; }catch(e){}
+        var loaded=false;
+        if(stockData.length>0){ db.stock=stockData.map(function(r){return {model:r.model, category:r.category, subcat:r.subcat, supplier:r.supplier, qty:r.qty, cost_price:r.cost_price, sell_price:r.sell_price};}); loaded=true; }
+        if(salesData.length>0){ db.sales=salesData.map(function(r){return {date:r.date, model:r.model, quality:r.quality, customer:r.customer, qty:r.qty, cost_price:r.cost_price, sell_price:r.sell_price, paymentMethod:r.payment_method};}); localStorage.setItem('last_synced_sales_count', db.sales.length.toString()); loaded=true; }
+        if(!loaded && legacyData){ db.stock=legacyData.stock||db.stock; db.sales=legacyData.sales||db.sales; }
+        if(!db.stock) db.stock=[]; if(!db.sales) db.sales=[]; if(!db.returns) db.returns=[]; if(!db.supplierReturns) db.supplierReturns=[]; if(!db.requisitions) db.requisitions=[];
+        localStorage.setItem(DB_KEY, JSON.stringify(db));
+      }catch(e){ console.log('fallback',e); }
       renderAll();
     }
 
-    window.addEventListener('DOMContentLoaded', () => {
+    window.addEventListener('DOMContentLoaded', function() {
       initTripleSavingSync();
     });
 
@@ -1791,14 +1799,8 @@ let netProfit = taxableProfit - cacFee;
       searchDashboardGoods();
     }
 
-    function renderAll() {
-      renderDashboard();
-      renderStock();
-      renderSales();
-      renderReturns();
-      renderSupplierReturns();
-      renderRequisitions();
-    }
+    // duplicate renderAll removed final
+
 
     function handleDashboardFilterChange() {
       const filterType = document.getElementById('dash-date-filter').value;
@@ -3138,17 +3140,8 @@ function updateThemeButton(theme) {
   }
 }
 
-         function renderAll() {
-  populateDashboardCategories();
-  populateSalesCategories();
-  populateSupplierReturnCategories();
-  renderDashboard();
-  renderStock();
-  renderSales();
-  renderReturns();
-  renderSupplierReturns();
-  renderRequisitions();
-}
+         // duplicate renderAll removed
+
     
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
