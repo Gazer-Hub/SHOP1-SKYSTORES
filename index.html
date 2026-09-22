@@ -6,8 +6,6 @@
   <title>SKY MODERNIZE SAVE TECHNOLOGY LTD - Inventory</title>
    <!-- PWA Manifest Link -->
     <link rel="manifest" href="/manifest.json">
-   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"> 
     <meta name="theme-color" content="#000000">
  
   <!-- Google Fonts for Modern Typography -->
@@ -1245,5 +1243,2330 @@
       </div>
     </div>
   </div>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // --- TRIPLE SAVING METHOD CONFIGURATION (SUPABASE + LOCALSTORAGE) ---
+    const SUPABASE_URL = 'https://puktzlekeoojrlxrkziu.supabase.co'; 
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB1a3R6bGVrZW9vanJseHJreml1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1NTI5MzAsImV4cCI6MjEwMDEyODkzMH0.uSH3tcofOW-LiBHraIb_eDi2hI3_ZUN1b9JjIJ42Z-Q'; 
+    const supabaseClient = (window.supabase && SUPABASE_URL !== 'YOUR_SUPABASE_URL_HERE') 
+      ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) 
+      : null;
+
+    // --- AUTHENTICATION ---
+    const AUTH_KEY = "sky_modernize_auth";
+    let auth = JSON.parse(localStorage.getItem(AUTH_KEY)) || { username: "admin", password: "1234" };
+
+    function saveAuth() {
+      localStorage.setItem(AUTH_KEY, JSON.stringify(auth));
+    }
+
+    const MANAGER_PIN = "2468";
+
+    // --- STATE MANAGEMENT ---
+    let isLoggedIn = false;
+    let isManagerUnlocked = false;
+    let isStockTotalsVisible = true;
+    let isDashboardSummaryVisible = true;
+    let salesCart = [];
+
+    const DB_KEY = "sky_modernize_db";
+    let db = JSON.parse(localStorage.getItem(DB_KEY)) || { 
+      stock: [], 
+      sales: [], 
+      returns: [], 
+      supplierReturns: [],
+      requisitions: [],
+      moniepointPayments: []
+    };
+
+    if (!db.supplierReturns) db.supplierReturns = [];
+    if (!db.requisitions) db.requisitions = [];
+    if (!db.moniepointPayments) db.moniepointPayments = [];
+
+    // --- REAL-TIME TOAST POPUP NOTIFICATION ---
+    function showMoniepointToast(message) {
+      document.getElementById('toast-message').innerText = message;
+      const toastElement = document.getElementById('moniepoint-toast');
+      const toast = new bootstrap.Toast(toastElement, { delay: 5000 });
+      toast.show();
+    }
+
+    // --- TRIPLE SAVING METHOD IMPLEMENTATION ---
+    async function saveDB() {
+      localStorage.setItem(DB_KEY, JSON.stringify(db));
+
+      if (supabaseClient) {
+        try {
+          const { error } = await supabaseClient
+            .from('inventory')
+            .upsert({ id: 1, payload: db, updated_at: new Date().toISOString() });
+          
+          if (error) {
+            console.error('Supabase sync error:', error.message);
+          }
+        } catch (err) {
+          console.error('Network error during Supabase triple saving sync:', err);
+        }
+      }
+
+      renderAll();
+    }
+
+    async function initTripleSavingSync() {
+      if (supabaseClient) {
+        try {
+          const { data, error } = await supabaseClient
+            .from('inventory')
+            .select('payload')
+            .eq('id', 1)
+            .single();
+          
+          if (data && data.payload && !error) {
+            db = data.payload;
+            if (!db.supplierReturns) db.supplierReturns = [];
+            if (!db.requisitions) db.requisitions = [];
+            if (!db.moniepointPayments) db.moniepointPayments = [];
+            localStorage.setItem(DB_KEY, JSON.stringify(db));
+          }
+        } catch (e) {
+          console.log('Using local backup storage fallback.');
+        }
+      }
+      renderAll();
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      initTripleSavingSync();
+    });
+
+let allMoniepointPayments = [];
+
+async function fetchPaymentHistory() {
+  try {
+    const { data: payments, error } = await supabaseClient
+      .from('payments')
+      .select('*')
+      .order('datetime', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching payments:', error.message);
+      return;
+    }
+
+async function triggerCloudTransactionSync() {
+  try {
+    // Calls your Netlify serverless function quietly in the background
+    await fetch('/.netlify/functions/sync-moniepoint');
+  } catch (e) {
+    console.log('Background sync skipped, using local cache.');
+  }
+}
+
+// Run it right alongside your startup sync
+window.addEventListener('DOMContentLoaded', async () => {
+  await triggerCloudTransactionSync();
+  initTripleSavingSync();
+});
+    
+    // Save all fetched records globally
+    allMoniepointPayments = payments || [];
+    
+    // Run the filter / render logic based on the selected dropdown value
+    filterMoniepointPayments();
+
+  } catch (err) {
+    console.error('Unexpected error loading payments:', err);
+  }
+}
+
+function filterMoniepointPayments() {
+  const filterValue = document.getElementById('moniepoint-date-filter')?.value || 'today';
+  const paymentTableBody = document.getElementById('payment-table-body');
+  if (!paymentTableBody) return;
+
+  paymentTableBody.innerHTML = '';
+
+  const now = new Date();
+  
+  // Define time boundaries based on current date (August 6, 2026)
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  
+  const yesterdayStart = new Date(todayStart);
+  yesterdayStart.setDate(todayStart.getDate() - 1);
+  
+  const thisWeekStart = new Date(todayStart);
+  thisWeekStart.setDate(todayStart.getDate() - todayStart.getDay()); // Start of week (Sunday)
+  
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  // Filter the master list
+  const filteredPayments = allMoniepointPayments.filter(payment => {
+    if (!payment.datetime) return false;
+    const paymentDate = new Date(payment.datetime);
+
+    if (filterValue === 'today') {
+      return paymentDate >= todayStart;
+    } else if (filterValue === 'yesterday') {
+      return paymentDate >= yesterdayStart && paymentDate < todayStart;
+    } else if (filterValue === 'this_week') {
+      return paymentDate >= thisWeekStart;
+    } else if (filterValue === 'last_month') {
+      return paymentDate >= lastMonthStart && paymentDate < lastMonthEnd;
+    } else {
+      return true; // 'all'
+    }
+  });
+
+  if (filteredPayments.length === 0) {
+    paymentTableBody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">No payments recorded for this period.</td></tr>`;
+    document.getElementById('moniepoint-total-amount').innerText = '₦0';
+    document.getElementById('moniepoint-total-count').innerText = '0';
+    return;
+  }
+
+  let totalInflow = 0;
+  let successfulCount = 0;
+
+  filteredPayments.forEach((payment) => {
+    const amount = Number(payment.amount || 0);
+    const status = (payment.status || '').toUpperCase();
+
+    if (status === 'SUCCESSFUL') {
+      totalInflow += amount;
+      successfulCount += 1;
+    }
+
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td>${payment.datetime ? new Date(payment.datetime).toLocaleString() : ''}</td>
+      <td>${payment.reference || ''}</td>
+      <td>${payment.sender_name || 'unknown'}</td>
+      <td>${payment.account_number || 'unknown'}</td>
+      <td>₦${amount.toLocaleString()}</td>
+      <td>${payment.status || ''}</td>
+    `;
+    paymentTableBody.appendChild(row);
+  });
+
+  // Update summary cards dynamically
+  const inflowEl = document.getElementById('moniepoint-total-amount');
+  const countEl = document.getElementById('moniepoint-total-count');
+  
+  if (inflowEl) inflowEl.innerText = `₦${totalInflow.toLocaleString()}`;
+  if (countEl) countEl.innerText = successfulCount;
+}
+
+// Run on page load
+document.addEventListener('DOMContentLoaded', fetchPaymentHistory);
+    // --- CSV EXPORT UTILITY ---
+    function downloadCSV(csvContent, filename) {
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute("download", filename);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    function exportStockToCSV() {
+      if (db.stock.length === 0) return alert("No stock data available to export.");
+      let csv = "Model,Category,Quality/Sub-Cat,Supplier,Quantity,Cost Price (NGN),Selling Price (NGN)\n";
+      db.stock.forEach(s => {
+        csv += `"${s.model}","${s.category}","${s.subcat || ''}","${s.supplier || ''}",${s.qty},${s.cost_price},${s.sell_price}\n`;
+      });
+      downloadCSV(csv, `Stock_Inventory_${new Date().toISOString().split('T')[0]}.csv`);
+    }
+
+    function exportMoniepointToCSV() {
+      if (db.moniepointPayments.length === 0) return alert("No Moniepoint payment records available to export.");
+      let csv = "DateTime,Reference,SenderName,AccountNumber,Amount (NGN),Status\n";
+      db.moniepointPayments.forEach(p => {
+        csv += `"${p.datetime}","${p.reference}","${p.senderName}","${p.accountNumber}",${p.amount},"${p.status}"\n`;
+      });
+      downloadCSV(csv, `Moniepoint_Payments_${new Date().toISOString().split('T')[0]}.csv`);
+    }
+
+    function simulateMoniepointWebhookTest() {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const testPayment = {
+        datetime: todayStr + " " + new Date().toTimeString().split(' ')[0],
+        reference: "MP-TXN-" + Math.floor(100000 + Math.random() * 900000),
+        senderName: "TEST CUSTOMER",
+        accountNumber: "99" + Math.floor(10000000 + Math.random() * 90000000),
+        amount: 55000,
+        status: "SUCCESS"
+      };
+      db.moniepointPayments.push(testPayment);
+      saveDB();
+      showMoniepointToast(`Payment of ₦55,000 received from TEST CUSTOMER!`);
+    }
+
+    function searchMoniepointPayments() {
+      renderMoniepointPayments(document.getElementById('moniepoint-search-input').value.trim().toLowerCase());
+    }
+
+    function clearMoniepointSearch() {
+      document.getElementById('moniepoint-search-input').value = '';
+      renderMoniepointPayments();
+    }
+
+    function renderMoniepointPayments(filterQuery = "") {
+      const tbody = document.getElementById('payment-table-body');
+      const payments = db.moniepointPayments || [];
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      const todaysPayments = payments.filter(p => p.datetime && p.datetime.startsWith(todayStr));
+      
+      document.getElementById('moniepoint-total-amount').innerText = `₦${todaysPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0).toLocaleString()}`;
+      document.getElementById('moniepoint-total-count').innerText = todaysPayments.length;
+
+      const filtered = payments.slice().reverse().filter(p => {
+        if (!filterQuery) return true;
+        const q = filterQuery.toLowerCase();
+        return (p.senderName && p.senderName.toLowerCase().includes(q)) ||
+               (p.reference && p.reference.toLowerCase().includes(q)) ||
+               (p.accountNumber && p.accountNumber.toLowerCase().includes(q)) ||
+               (p.amount && p.amount.toString().includes(q));
+      });
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">No matching Moniepoint payment records found</td></tr>`;
+      } else {
+        tbody.innerHTML = filtered.map(p => `
+          <tr>
+            <td>${p.datetime}</td>
+            <td><code>${p.reference}</code></td>
+            <td><b>${p.senderName}</b></td>
+            <td>${p.accountNumber}</td>
+            <td class="text-success fw-bold">₦${Number(p.amount).toLocaleString()}</td>
+            <td><span class="badge bg-success">${p.status}</span></td>
+          </tr>
+        `).join('');
+      }
+    }
+document.getElementById('refresh-payments-btn').addEventListener('click', async () => {
+    const refreshBtn = document.getElementById('refresh-payments-btn');
+
+
+  async function manualAppRefresh() {
+  const btn = document.getElementById('refresh-btn');
+  const originalHtml = btn.innerHTML;
+  
+  // Show loading state on button
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Refreshing...`;
+
+  try {
+    // 1. Pull latest cloud data from Supabase
+    if (typeof initTripleSavingSync === 'function') {
+      await initTripleSavingSync();
+    }
+    
+    // 2. If you added the automated payment history sync function, call it too
+    if (typeof triggerCloudTransactionSync === 'function') {
+      await triggerCloudTransactionSync();
+    }
+
+    // 3. Re-render all dashboard views, sales panels, and OPay histories
+    if (typeof renderAll === 'function') {
+      renderAll();
+    }
+
+    console.log("App data successfully refreshed from cloud.");
+  } catch (err) {
+    console.error("Refresh failed:", err);
+  } finally {
+    // Restore button back to normal state
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.innerHTML = originalHtml;
+    }, 500); // Small half-second delay for smooth visual feedback
+  }
+}
+  
+    // Optional: Add a loading class or disable button to prevent spamming
+    refreshBtn.disabled = true;
+    refreshBtn.textContent = 'Refreshing...';
+
+    try {
+        // Call your existing function that fetches data from the payments table
+        await fetchPaymentHistory(); 
+    } catch (error) {
+        console.error('Failed to refresh payment history:', error);
+    } finally {
+        // Reset button state
+        refreshBtn.disabled = false;
+        refreshBtn.textContent = 'Refresh';
+    }
+});
+    
+    function exportSalesToCSV() {
+      const { salesData, periodLabel } = getFilteredSalesData();
+      if (salesData.length === 0) return alert("No sales records available to export for this period.");
+      let csv = "Date,Model,Quality,Customer,Payment Method,Quantity,Unit Price (NGN),Total Amount (NGN)\n";
+      salesData.forEach(s => {
+        csv += `"${s.date}","${s.model}","${s.quality || ''}","${s.customer}","${s.paymentMethod || 'Cash'}",${s.qty},${s.sell_price},${s.sell_price * s.qty}\n`;
+      });
+      downloadCSV(csv, `Sales_Report_${periodLabel.replace(/[^a-zA-Z0-9]/g, '_')}.csv`);
+    }
+
+    function exportReturnsToCSV() {
+      const { returnsData, periodLabel } = getFilteredReturnsData();
+      if (returnsData.length === 0) return alert("No customer return records available to export for this period.");
+      let csv = "Date,Model,Customer,Quantity,Reason,Status\n";
+      returnsData.forEach(r => {
+        csv += `"${r.date}","${r.model}","${r.customer}",${r.qty},"${r.reason}","${r.isExchanged ? 'Replacement Issued' : 'Refund'}"\n`;
+      });
+      downloadCSV(csv, `Customer_Returns_${periodLabel.replace(/[^a-zA-Z0-9]/g, '_')}.csv`);
+    }
+
+    function exportSupplierReturnsToCSV() {
+      const { supReturnsData, periodLabel } = getFilteredSupplierReturnsData();
+      if (supReturnsData.length === 0) return alert("No supplier return records available to export for this period.");
+      let csv = "Date,Model,Supplier,Quantity,Reason,Status\n";
+      supReturnsData.forEach(r => {
+        csv += `"${r.date}","${r.model}","${r.supplier}",${r.qty},"${r.reason}","${r.status}"\n`;
+      });
+      downloadCSV(csv, `Supplier_Returns_${periodLabel.replace(/[^a-zA-Z0-9]/g, '_')}.csv`);
+    }
+
+    function exportRequisitionsToCSV() {
+      if (db.requisitions.length === 0) return alert("No purchase requisitions available to export.");
+      let csv = "Req ID,Date,Item Needed,Category,Qty Needed,Est Unit Cost (NGN),Est Total Cost (NGN),Preferred Supplier,Status,Notes\n";
+      db.requisitions.forEach(r => {
+        csv += `"${r.id}","${r.date}","${r.item}","${r.category}",${r.qty},${r.cost || 0},${(r.cost || 0) * r.qty},"${r.supplier || ''}","${r.status}","${r.notes || ''}"\n`;
+      });
+      downloadCSV(csv, `Purchase_Requisitions_${new Date().toISOString().split('T')[0]}.csv`);
+    }
+
+    function exportRequisitionsPDF() {
+      if (db.requisitions.length === 0) return alert("No requisition records to export.");
+      const element = document.getElementById('requisition-printable-area');
+      const opt = {
+        margin:       0.5,
+        filename:     `Purchase_Requisitions_${new Date().toISOString().split('T')[0]}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2 },
+        jsPDF:        { unit: 'in', format: 'letter', orientation: 'landscape' }
+      };
+      html2pdf().set(opt).from(element).save();
+    }
+
+    function exportSupplierReturnsPDF() {
+      const { supReturnsData, periodLabel } = getFilteredSupplierReturnsData();
+      if (supReturnsData.length === 0) return alert("No supplier return records to export for this period.");
+      const element = document.getElementById('supplier-returns-printable-area');
+      const opt = {
+        margin:       0.5,
+        filename:     `Supplier_Returns_${periodLabel.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2 },
+        jsPDF:        { unit: 'in', format: 'letter', orientation: 'landscape' }
+      };
+      html2pdf().set(opt).from(element).save();
+    }
+
+    function exportBackupJSON() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `SKY_MODERNIZE_BACKUP_${new Date().toISOString().split('T')[0]}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    }
+
+    function importBackupJSON(event) {
+      const fileReader = new FileReader();
+      fileReader.onload = function(e) {
+        try {
+          const importedDB = JSON.parse(e.target.result);
+          if (importedDB && typeof importedDB === 'object' && Array.isArray(importedDB.stock)) {
+            if (confirm("Restoring from backup will overwrite current system data. Continue?")) {
+              db = importedDB;
+              saveDB();
+              alert("System successfully restored from backup!");
+            }
+          } else {
+            alert("Invalid backup file format!");
+          }
+        } catch (err) {
+          alert("Error parsing backup file: " + err.message);
+        }
+      };
+      if (event.target.files[0]) {
+        fileReader.readAsText(event.target.files[0]);
+      }
+    }
+
+    function clearCustomerReturnForm() {
+      document.getElementById('returns-form').reset();
+      document.getElementById('return-sale-search-input').value = '';
+      populateReturnSaleDropdown();
+    }
+
+    function clearSupplierReturnForm() {
+      document.getElementById('supplier-returns-form').reset();
+    }
+
+    function duplicateStockEntry(index) {
+      const item = db.stock[index];
+      if (!item) return;
+      document.getElementById('stk-model').value = item.model;
+      document.getElementById('stk-cat').value = item.category;
+      document.getElementById('stk-subcat').value = item.subcat || '';
+      document.getElementById('stk-qty').value = item.qty;
+      document.getElementById('stk-cost').value = item.cost_price;
+      document.getElementById('stk-sell').value = item.sell_price;
+      document.getElementById('stk-supplier').value = item.supplier || '';
+      document.getElementById('stk-model').focus();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function requestBulkLowStockRequisition() {
+      const checkboxes = document.querySelectorAll('.low-stock-checkbox:checked');
+      if (checkboxes.length === 0) return alert("Please check at least one low stock item to request in bulk!");
+      let addedCount = 0;
+      checkboxes.forEach(cb => {
+        const idx = parseInt(cb.value);
+        const item = db.stock[idx];
+        if (item) {
+          const reqId = "REQ-" + Math.floor(1000 + Math.random() * 9000);
+          db.requisitions.push({
+            id: reqId,
+            item: item.model,
+            category: item.subcat ? `${item.category} / ${item.subcat}` : item.category,
+            qty: Math.max(10, 20 - item.qty),
+            cost: item.cost_price || 0,
+            supplier: item.supplier || '',
+            notes: `Bulk Low Stock Requisition: Only ${item.qty} pcs remaining in stock.`,
+            status: "Pending",
+            date: new Date().toISOString().split('T')[0]
+          });
+          addedCount++;
+        }
+      });
+      saveDB();
+      alert(`📋 ${addedCount} Purchase Requisitions successfully created in bulk! View them in the Purchase Requisition tab.`);
+    }
+
+    function toggleDashboardSummary() {
+      isDashboardSummaryVisible = !isDashboardSummaryVisible;
+      const container = document.getElementById('dashboard-summary-container');
+      const btn = document.getElementById('btn-toggle-dashboard-summary');
+      if (isDashboardSummaryVisible) {
+        container.style.display = 'block';
+        btn.innerHTML = "👁️ Hide Dashboard Summary";
+        btn.classList.replace('btn-secondary', 'btn-outline-secondary');
+      } else {
+        container.style.display = 'none';
+        btn.innerHTML = "👁️ Show Dashboard Summary";
+        btn.classList.replace('btn-outline-secondary', 'btn-secondary');
+      }
+    }
+
+    function printCACReport() {
+      const { periodLabel, filteredSales, filteredReturns } = getFilteredDashboardPeriod();
+      const filterType = document.getElementById('dash-date-filter').value;
+      const periodExpenses = parseInt(document.getElementById('dash-period-expenses').value) || 0;
+      document.getElementById('printout-period-label').innerText = periodLabel;
+
+      const dynamicContentContainer = document.getElementById('cac-print-dynamic-content');
+
+      if (filterType === 'this-week' || filterType === 'this-month' || filterType === 'last-month') {
+    // Safely calculate Sales, Cost, and Returns
+let totalSales = filteredSales.reduce((sum, s) => {
+  return sum + (Number(s.sell_price || 0) * Number(s.qty || 0));
+}, 0);
+
+let totalCost = filteredSales.reduce((sum, s) => {
+  return sum + (Number(s.cost_price || 0) * Number(s.qty || 0));
+}, 0);
+
+let returnedSales = filteredReturns.reduce((sum, r) => {
+  return sum + (Number(r.sell_price || 0) * Number(r.qty || 0));
+}, 0);
+
+let returnedCost = filteredReturns.reduce((sum, r) => {
+  return sum + (Number(r.cost_price || 0) * Number(r.qty || 0));
+}, 0);
+
+// Adjusted Net Metrics
+let netSales = totalSales - returnedSales;
+let netCost = totalCost - returnedCost;
+let grossProfit = netSales - netCost;
+
+let periodExpenses = Number(document.getElementById('dash-period-expenses')?.value || 0);
+let taxableProfit = grossProfit - periodExpenses;
+
+// Define the capped profit base per unit for CAC tax computation
+const MAX_CAC_PROFIT_PER_UNIT = 500; // Capped profit limit for CAC computation
+
+let totalCacFee = 0;
+
+// Iterate over each sale item to calculate capped CAC tax
+filteredSales.forEach(sale => {
+  let qty = Number(sale.qty || 0);
+  let sellPrice = Number(sale.sell_price || 0);
+  let costPrice = Number(sale.cost_price || 0);
+  
+  // Actual profit per unit
+  let profitPerUnit = sellPrice - costPrice;
+
+  if (profitPerUnit > 0) {
+    // Cap profit at ₦500 per unit for CAC tax assessment
+    let cacBasePerUnit = Math.min(profitPerUnit, MAX_CAC_PROFIT_PER_UNIT);
+    
+    // 7.5% on capped profit base
+    totalCacFee += Math.floor(cacBasePerUnit * 0.075) * qty;
+  }
+});
+
+let cacFee = totalCacFee;
+let netProfit = taxableProfit - cacFee;
+        
+        dynamicContentContainer.innerHTML = `
+          <h6 class="text-center fw-bold mb-3">CAC Audit & Tax Summary</h6>
+          <table class="table table-bordered">
+            <tr><td><b>Total Sales Revenue:</b></td><td>₦${totalSales.toLocaleString()}</td></tr>
+            <tr><td><b>Total Cost Price:</b></td><td>₦${totalCost.toLocaleString()}</td></tr>
+            <tr><td><b>Total Customer Refunds:</b></td><td>₦${totalReturns.toLocaleString()}</td></tr>
+            <tr><td><b>Gross Profit:</b></td><td>₦${grossProfit.toLocaleString()}</td></tr>
+            <tr><td><b>Period Operating Expenses:</b></td><td>₦${periodExpenses.toLocaleString()}</td></tr>
+            <tr class="table-danger"><td><b>Official CAC Tax Deduction (7.5%):</b></td><td><b>₦${cacFee.toLocaleString()}</b></td></tr>
+            <tr class="table-success"><td><b>Final Net Profit:</b></td><td>₦${netProfit.toLocaleString()}</td></tr>
+          </table>
+        `;
+      } else if (filterType === 'this-year') {
+        const monthlyGroups = {};
+        for (let m = 1; m <= 12; m++) {
+          const monthStr = m < 10 ? `0${m}` : `${m}`;
+          monthlyGroups[monthStr] = { sales: 0, cost: 0, returns: 0 };
+        }
+
+        filteredSales.forEach(s => {
+          if (s.date && s.date.length >= 7) {
+            const mKey = s.date.substring(5, 7);
+            if (monthlyGroups[mKey]) {
+              monthlyGroups[mKey].sales += (s.sell_price * s.qty);
+              monthlyGroups[mKey].cost += (s.cost_price * s.qty);
+            }
+          }
+        });
+
+        filteredReturns.forEach(r => {
+          if (r.date && r.date.length >= 7) {
+            const mKey = r.date.substring(5, 7);
+            if (monthlyGroups[mKey]) {
+              monthlyGroups[mKey].returns += (r.sell_price * r.qty);
+            }
+          }
+        });
+
+        const monthNames = {
+          "01": "January", "02": "February", "03": "March", "04": "April",
+          "05": "May", "06": "June", "07": "July", "08": "August",
+          "09": "September", "10": "October", "11": "November", "12": "December"
+        };
+
+        let tableRows = '';
+        let annualTotalCAC = 0;
+
+        for (const [mKey, data] of Object.entries(monthlyGroups)) {
+          const gross = data.sales - data.cost - data.returns;
+          const taxable = gross - periodExpenses;
+          const cacAmt = taxable > 0 ? Math.floor(taxable * 0.075) : 0;
+          annualTotalCAC += cacAmt;
+          tableRows += `
+            <tr>
+              <td>${monthNames[mKey]}</td>
+              <td>₦${data.sales.toLocaleString()}</td>
+              <td>₦${gross.toLocaleString()}</td>
+              <td class="table-danger"><b>₦${cacAmt.toLocaleString()}</b></td>
+            </tr>
+          `;
+        }
+
+        dynamicContentContainer.innerHTML = `
+          <h6 class="text-center fw-bold mb-3">Yearly CAC (7.5%) Audit Report — Grouped by Month</h6>
+          <table class="table table-bordered table-sm align-middle">
+            <thead class="table-light">
+              <tr><th>Month</th><th>Sales Revenue</th><th>Gross Profit</th><th>CAC 7.5% Tax Amount</th></tr>
+            </thead>
+            <tbody>
+              ${tableRows}
+              <tr class="table-dark fw-bold">
+                <td colspan="3" class="text-end">Total Annual CAC 7.5% Tax Amount:</td>
+                <td>₦${annualTotalCAC.toLocaleString()}</td>
+              </tr>
+            </tbody>
+          </table>
+        `;
+      } else {
+        dynamicContentContainer.innerHTML = `
+          <table class="table table-bordered">
+            <tr><td><b>Total Sales Revenue:</b></td><td>${document.getElementById('dash-sales').innerText}</td></tr>
+            <tr><td><b>Total Cost Price:</b></td><td>${document.getElementById('dash-cost').innerText}</td></tr>
+            <tr><td><b>Total Customer Refunds:</b></td><td>${document.getElementById('dash-returns').innerText}</td></tr>
+            <tr><td><b>Gross Profit:</b></td><td>${document.getElementById('dash-gross').innerText}</td></tr>
+            <tr><td><b>Period Operating Expenses:</b></td><td>₦${periodExpenses.toLocaleString()}</td></tr>
+            <tr class="table-danger"><td><b>CAC Tax Deduction Amount (7.5%):</b></td><td><b>${document.getElementById('dash-cac').innerText}</b></td></tr>
+            <tr class="table-success"><td><b>Final Net Profit:</b></td><td>${document.getElementById('dash-net').innerText}</td></tr>
+          </table>
+        `;
+      }
+
+      window.print();
+    }
+
+    function calculateCashDrawer() {
+      const denomInputs = document.querySelectorAll('.cash-denom');
+      let totalCounted = 0;
+      denomInputs.forEach(input => {
+        const val = parseInt(input.getAttribute('data-val')) || 0;
+        const count = parseInt(input.value) || 0;
+        const subtotal = val * count;
+        const subEl = document.getElementById(`sub-${val}`);
+        if (subEl) subEl.innerText = `₦${subtotal.toLocaleString()}`;
+        totalCounted += subtotal;
+      });
+      const totalCountedEl = document.getElementById('drawer-total-counted');
+      if (totalCountedEl) totalCountedEl.innerText = `₦${totalCounted.toLocaleString()}`;
+
+      const todayStr = new Date().toISOString().split('T')[0];
+      const todayCashSales = db.sales.filter(s => s.date === todayStr && (!s.paymentMethod || s.paymentMethod === 'Cash'));
+      const expectedSales = todayCashSales.reduce((sum, s) => sum + (s.sell_price * s.qty), 0);
+      
+      const expectedSalesEl = document.getElementById('drawer-expected-sales');
+      if (expectedSalesEl) expectedSalesEl.innerText = `₦${expectedSales.toLocaleString()}`;
+
+      const variance = totalCounted - expectedSales;
+      const varianceEl = document.getElementById('drawer-variance');
+      if (varianceEl) {
+        varianceEl.innerText = `₦${variance.toLocaleString()}`;
+        if (variance === 0) {
+          varianceEl.className = "text-success fw-bold";
+        } else if (variance > 0) {
+          varianceEl.className = "text-primary fw-bold";
+        } else {
+          varianceEl.className = "text-danger fw-bold";
+        }
+      }
+    }
+
+    function resetCashDrawer() {
+      document.querySelectorAll('.cash-denom').forEach(input => input.value = 0);
+      const notesEl = document.getElementById('drawer-notes');
+      if (notesEl) notesEl.value = '';
+      calculateCashDrawer();
+    }
+
+    function printCashReconciliation() {
+      const totalCounted = document.getElementById('drawer-total-counted').innerText;
+      const expectedSales = document.getElementById('drawer-expected-sales').innerText;
+      const variance = document.getElementById('drawer-variance').innerText;
+      const notes = document.getElementById('drawer-notes').value || 'None';
+
+      const printWin = window.open('', '_blank', 'width=500,height=600');
+      printWin.document.write(`
+        <html>
+          <head>
+            <title>Cash Drawer Reconciliation - SKY MODERNIZE</title>
+            <style>
+              body { font-family: monospace; padding: 20px; font-size: 13px; }
+              .center { text-align: center; }
+              hr { border-top: 1px dashed #000; }
+            </style>
+          </head>
+          <body>
+            <div class="center">
+              <h3>SKY MODERNIZE SAVE TECHNOLOGY LTD</h3>
+              <p>Cash Drawer Reconciliation Slip</p>
+              <p>${new Date().toISOString().split('T')[0]}</p>
+            </div>
+            <hr>
+            <p><b>Expected Cash Sales:</b> ${expectedSales}</p>
+            <p><b>Physical Cash Counted:</b> ${totalCounted}</p>
+            <p><b>Variance / Difference:</b> ${variance}</p>
+            <p><b>Notes:</b> ${notes}</p>
+            <hr>
+            <p>Attendant Signature: ______________________</p>
+            <script>
+              window.onload = function() { window.print(); window.close(); }
+            <\/script>
+          </body>
+        </html>
+      `);
+      printWin.document.close();
+    }
+
+    function navigateTo(pageId) {
+      if (!isLoggedIn && pageId !== 'login') {
+        showPage('login');
+        return;
+      }
+      if (pageId === 'stock' && !isManagerUnlocked) {
+        showPage('manager-auth');
+        return;
+      }
+      showPage(pageId);
+    }
+
+    function showPage(pageId) {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.getElementById(`page-${pageId}`).classList.add('active');
+      const nav = document.getElementById('main-nav');
+      nav.style.display = (pageId === 'login') ? 'none' : 'flex';
+    }
+
+    document.getElementById('login-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const user = document.getElementById('login-username').value;
+      const pass = document.getElementById('login-password').value;
+      const alertBox = document.getElementById('login-alert');
+      if (user === auth.username && pass === auth.password) {
+        isLoggedIn = true;
+        alertBox.classList.add('d-none');
+        e.target.reset();
+        navigateTo('dashboard');
+      fetchPaymentHistory();
+      
+      } else {
+        alertBox.innerText = "Invalid credentials";
+        alertBox.classList.remove('d-none');
+      }
+    });
+
+    document.getElementById('manager-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const pin = document.getElementById('manager-pin').value;
+      const alertBox = document.getElementById('manager-alert');
+      if (pin === MANAGER_PIN) {
+        isManagerUnlocked = true;
+        alertBox.classList.add('d-none');
+        e.target.reset();
+        navigateTo('stock');
+      } else {
+        alertBox.innerText = "Invalid Manager PIN";
+        alertBox.classList.remove('d-none');
+      }
+    });
+
+    document.getElementById('password-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const managerPin = document.getElementById('pwd-manager-pin').value;
+      const current = document.getElementById('pwd-current').value;
+      const newPwd = document.getElementById('pwd-new').value;
+      const confirmPwd = document.getElementById('pwd-confirm').value;
+      const alertBox = document.getElementById('password-alert');
+
+      if (managerPin !== MANAGER_PIN) {
+        alertBox.className = "alert alert-danger py-2";
+        alertBox.innerText = "Invalid Manager PIN.";
+        alertBox.classList.remove('d-none');
+        return;
+      }
+      if (current !== auth.password) {
+        alertBox.className = "alert alert-danger py-2";
+        alertBox.innerText = "Current password is incorrect.";
+        alertBox.classList.remove('d-none');
+        return;
+      }
+      if (newPwd !== confirmPwd) {
+        alertBox.className = "alert alert-danger py-2";
+        alertBox.innerText = "New passwords do not match.";
+        alertBox.classList.remove('d-none');
+        return;
+      }
+      auth.password = newPwd;
+      saveAuth();
+      alertBox.className = "alert alert-success py-2";
+      alertBox.innerText = "Password updated successfully!";
+      alertBox.classList.remove('d-none');
+      e.target.reset();
+    });
+
+    function logout() {
+      isLoggedIn = false;
+      isManagerUnlocked = false;
+      navigateTo('login');
+    }
+
+    function lockStock() {
+      isManagerUnlocked = false;
+      navigateTo('dashboard');
+    }
+
+    function toggleStockTotals() {
+      isStockTotalsVisible = !isStockTotalsVisible;
+      const btn = document.getElementById('btn-toggle-stock-totals');
+      if (isStockTotalsVisible) {
+        btn.innerHTML = "👁️ Hide Totals";
+        btn.classList.replace('btn-secondary', 'btn-outline-secondary');
+      } else {
+        btn.innerHTML = "👁️ Show Totals";
+        btn.classList.replace('btn-outline-secondary', 'btn-secondary');
+      }
+      renderStock();
+    }
+
+    function clearSaleModelInput() {
+      const modelInput = document.getElementById('sale-item');
+      modelInput.value = '';
+      autoFillSaleDetails();
+      modelInput.focus();
+    }
+
+    function searchStock() {
+      renderStock(document.getElementById('stock-search-input').value.trim().toLowerCase());
+    }
+    function clearStockSearch() {
+      document.getElementById('stock-search-input').value = '';
+      renderStock();
+    }
+    function searchSales() {
+      renderSales(document.getElementById('sales-search-input').value.trim().toLowerCase());
+    }
+    function clearSalesSearch() {
+      document.getElementById('sales-search-input').value = '';
+      renderSales();
+    }
+    function filterReturnSaleOptions() {
+      populateReturnSaleDropdown(document.getElementById('return-sale-search-input').value.trim().toLowerCase());
+    }
+    function clearReturnSaleSearch() {
+      document.getElementById('return-sale-search-input').value = '';
+      populateReturnSaleDropdown();
+    }
+    function searchReturns() {
+      renderReturns(document.getElementById('returns-search-input').value.trim().toLowerCase());
+    }
+    function clearReturnsSearch() {
+      document.getElementById('returns-search-input').value = '';
+      renderReturns();
+    }
+    function searchSupplierReturns() {
+      renderSupplierReturns(document.getElementById('sup-returns-search-input').value.trim().toLowerCase());
+    }
+    function clearSupplierReturnsSearch() {
+      document.getElementById('sup-returns-search-input').value = '';
+      renderSupplierReturns();
+    }
+    function searchRequisitions() {
+      renderRequisitions(document.getElementById('req-search-input').value.trim().toLowerCase());
+    }
+    function clearRequisitionsSearch() {
+      document.getElementById('req-search-input').value = '';
+      renderRequisitions();
+    }
+
+    function searchDashboardGoods() {
+      const query = document.getElementById('dash-goods-search-input').value.trim().toLowerCase();
+      const resultsContainer = document.getElementById('dash-goods-search-results');
+      if (!query) {
+        resultsContainer.innerHTML = `<tr><td colspan="4" class="text-center text-muted">Type in the search bar above to query active inventory</td></tr>`;
+        return;
+      }
+      const matchingGoods = db.stock.filter(s => 
+        (s.model && s.model.toLowerCase().includes(query)) ||
+        (s.category && s.category.toLowerCase().includes(query)) ||
+        (s.subcat && s.subcat.toLowerCase().includes(query))
+      );
+      if (matchingGoods.length === 0) {
+        resultsContainer.innerHTML = `<tr><td colspan="4" class="text-center text-danger">No available goods match your search query</td></tr>`;
+        return;
+      }
+      resultsContainer.innerHTML = matchingGoods.map(g => `
+        <tr>
+          <td><b>${g.model}</b></td>
+          <td><span class="badge bg-secondary">${g.subcat || 'Standard'}</span></td>
+          <td class="text-success fw-bold">₦${(g.sell_price || 0).toLocaleString()}</td>
+          <td><span class="badge ${g.qty > 10 ? 'bg-success' : 'bg-danger'}">${g.qty} pcs available</span></td>
+        </tr>
+      `).join('');
+    }
+
+    function clearDashboardGoodsSearch() {
+      document.getElementById('dash-goods-search-input').value = '';
+      searchDashboardGoods();
+    }
+
+    function renderAll() {
+      renderDashboard();
+      renderStock();
+      renderSales();
+      renderReturns();
+      renderSupplierReturns();
+      renderRequisitions();
+      renderMoniepointPayments();
+    }
+
+    function handleDashboardFilterChange() {
+      const filterType = document.getElementById('dash-date-filter').value;
+      const customPicker = document.getElementById('dash-custom-date');
+      if (filterType === 'custom') {
+        customPicker.classList.remove('d-none');
+      } else {
+        customPicker.classList.add('d-none');
+        renderDashboard();
+      }
+    }
+
+    function getFilteredDashboardPeriod() {
+      const filterType = document.getElementById('dash-date-filter').value;
+      const now = new Date();
+      const todayStr = now.toISOString().split('T')[0];
+      let filteredSales = [], filteredReturns = [], periodLabel = "Today";
+
+      if (filterType === 'today') {
+        periodLabel = `Today (${todayStr})`;
+        filteredSales = db.sales.filter(s => s.date === todayStr);
+        filteredReturns = db.returns.filter(r => r.date === todayStr);
+      } else if (filterType === 'yesterday') {
+        const yest = new Date(now);
+        yest.setDate(yest.getDate() - 1);
+        const yestStr = yest.toISOString().split('T')[0];
+        periodLabel = `Yesterday (${yestStr})`;
+        filteredSales = db.sales.filter(s => s.date === yestStr);
+        filteredReturns = db.returns.filter(r => r.date === yestStr);
+      } else if (filterType === 'this-week') {
+        const current = new Date(now);
+        const firstDay = current.getDate() - current.getDay();
+        const startOfWeek = new Date(current.setDate(firstDay)).toISOString().split('T')[0];
+        periodLabel = `This Week (Weekly Report: ${startOfWeek} to ${todayStr})`;
+        filteredSales = db.sales.filter(s => s.date && s.date >= startOfWeek && s.date <= todayStr);
+        filteredReturns = db.returns.filter(r => r.date && r.date >= startOfWeek && r.date <= todayStr);
+      } else if (filterType === 'this-month') {
+        const currentYearMonth = todayStr.substring(0, 7);
+        periodLabel = `This Month (${currentYearMonth})`;
+        filteredSales = db.sales.filter(s => s.date && s.date.startsWith(currentYearMonth));
+        filteredReturns = db.returns.filter(r => r.date && r.date.startsWith(currentYearMonth));
+      } else if (filterType === 'last-month') {
+        const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const lastMonthYear = lastMonthDate.getFullYear();
+        const lastMonthNum = String(lastMonthDate.getMonth() + 1).padStart(2, '0');
+        const lastMonthStr = `${lastMonthYear}-${lastMonthNum}`;
+        periodLabel = `Last Month (${lastMonthStr})`;
+        filteredSales = db.sales.filter(s => s.date && s.date.startsWith(lastMonthStr));
+        filteredReturns = db.returns.filter(r => r.date && r.date.startsWith(lastMonthStr));
+      } else if (filterType === 'this-year') {
+        const currentYear = now.getFullYear().toString();
+        periodLabel = `Yearly Report (Grouped by Month - ${currentYear})`;
+        filteredSales = db.sales.filter(s => s.date && s.date.startsWith(currentYear));
+        filteredReturns = db.returns.filter(r => r.date && r.date.startsWith(currentYear));
+      } else if (filterType === 'all-time') {
+        periodLabel = "All Time History";
+        filteredSales = db.sales;
+        filteredReturns = db.returns;
+      } else if (filterType === 'custom') {
+        const customDate = document.getElementById('dash-custom-date').value;
+        if (customDate) {
+          periodLabel = `Date: ${customDate}`;
+          filteredSales = db.sales.filter(s => s.date === customDate);
+          filteredReturns = db.returns.filter(r => r.date === customDate);
+        } else {
+          periodLabel = "Select Date...";
+          filteredSales = [];
+          filteredReturns = [];
+        }
+      }
+      return { filteredSales, filteredReturns, periodLabel };
+    }
+
+    function renderDashboard() {
+      const { filteredSales, filteredReturns, periodLabel } = getFilteredDashboardPeriod();
+      const badge = document.getElementById('dash-date-badge');
+      if (badge) badge.innerText = periodLabel;
+
+    // Safely calculate Sales, Cost, and Returns
+let totalSales = filteredSales.reduce((sum, s) => {
+  return sum + (Number(s.sell_price || 0) * Number(s.qty || 0));
+}, 0);
+
+let totalCost = filteredSales.reduce((sum, s) => {
+  return sum + (Number(s.cost_price || 0) * Number(s.qty || 0));
+}, 0);
+
+let returnedSales = filteredReturns.reduce((sum, r) => {
+  return sum + (Number(r.sell_price || 0) * Number(r.qty || 0));
+}, 0);
+
+let returnedCost = filteredReturns.reduce((sum, r) => {
+  return sum + (Number(r.cost_price || 0) * Number(r.qty || 0));
+}, 0);
+
+// Adjusted Net Metrics
+let netSales = totalSales - returnedSales;
+let netCost = totalCost - returnedCost;
+let grossProfit = netSales - netCost;
+
+let periodExpenses = Number(document.getElementById('dash-period-expenses')?.value || 0);
+let taxableProfit = grossProfit - periodExpenses;
+
+// Define the capped profit base per unit for CAC tax computation
+const MAX_CAC_PROFIT_PER_UNIT = 500; // Capped profit limit for CAC computation
+
+let totalCacFee = 0;
+
+// Iterate over each sale item to calculate capped CAC tax
+filteredSales.forEach(sale => {
+  let qty = Number(sale.qty || 0);
+  let sellPrice = Number(sale.sell_price || 0);
+  let costPrice = Number(sale.cost_price || 0);
+  
+  // Actual profit per unit
+  let profitPerUnit = sellPrice - costPrice;
+
+  if (profitPerUnit > 0) {
+    // Cap profit at ₦500 per unit for CAC tax assessment
+    let cacBasePerUnit = Math.min(profitPerUnit, MAX_CAC_PROFIT_PER_UNIT);
+    
+    // 7.5% on capped profit base
+    totalCacFee += Math.floor(cacBasePerUnit * 0.075) * qty;
+  }
+});
+
+let cacFee = totalCacFee;
+let netProfit = taxableProfit - cacFee;
+      
+// Safely update DOM elements
+document.getElementById('dash-sales').innerText = `₦${netSales.toLocaleString()}`;
+document.getElementById('dash-cost').innerText = `₦${netCost.toLocaleString()}`;
+document.getElementById('dash-gross').innerText = `₦${grossProfit.toLocaleString()}`;
+document.getElementById('dash-cac').innerText = `₦${cacFee.toLocaleString()}`;
+document.getElementById('dash-net').innerText = `₦${netProfit.toLocaleString()}`;
+      calculateCashDrawer();
+      searchDashboardGoods();
+
+      const top5Container = document.getElementById('top-5-low-stock-container');
+      const lowStockItems = db.stock.map((item, originalIndex) => ({ ...item, originalIndex })).filter(s => s.qty <= 10).sort((a, b) => a.qty - b.qty).slice(0, 5);
+
+      if (lowStockItems.length === 0) {
+        top5Container.innerHTML = '<p class="text-muted mb-0">All stock levels healthy! No critical low stock items.</p>';
+      } else {
+        top5Container.innerHTML = `
+          <div class="table-responsive">
+            <table class="table table-sm table-bordered table-striped mb-0">
+              <thead class="table-danger">
+                <tr><th>Model</th><th>Quality / Sub-Cat</th><th>Supplier</th><th>Remaining Stock</th></tr>
+              </thead>
+              <tbody>
+                ${lowStockItems.map(s => `
+                  <tr>
+                    <td><b>${s.model}</b></td>
+                    <td><span class="badge bg-secondary">${s.subcat || 'Standard'}</span></td>
+                    <td>${s.supplier || '-'}</td>
+                    <td><span class="badge bg-danger">${s.qty} pcs left</span></td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      const lowStockList = document.getElementById('low-stock-list');
+      const lowStockWithIndex = db.stock.map((item, originalIndex) => ({ ...item, originalIndex })).filter(s => s.qty <= 10);
+
+      if (lowStockWithIndex.length === 0) {
+        lowStockList.innerHTML = '<p class="text-muted mb-0">All stock levels healthy!</p>';
+      } else {
+        const groupedLowStock = {};
+        lowStockWithIndex.forEach(s => {
+          const key = s.subcat ? s.subcat.trim() : 'Standard';
+          if (!groupedLowStock[key]) groupedLowStock[key] = [];
+          groupedLowStock[key].push(s);
+        });
+
+        let html = '';
+        for (const [quality, items] of Object.entries(groupedLowStock)) {
+          html += `
+            <div class="mb-3">
+              <h6 class="fw-bold text-dark border-bottom pb-1 mb-2">🏷️ Quality / Sub-Cat: <span class="badge bg-secondary">${quality}</span></h6>
+              <div class="d-flex flex-wrap gap-2">
+                ${items.map(s => `
+                  <div class="badge bg-danger p-2 fs-6 d-inline-flex align-items-center gap-2">
+                    <input type="checkbox" class="form-check-input low-stock-checkbox" value="${s.originalIndex}">
+                    <span>${s.model} - <b>${s.qty} pcs remaining</b></span>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          `;
+        }
+        lowStockList.innerHTML = html;
+      }
+    }
+
+    function renderStock(filterQuery = "") {
+      const tbody = document.getElementById('stock-table-body');
+      const filteredStock = db.stock.map((item, originalIndex) => ({ ...item, originalIndex })).filter(item => {
+        if (!filterQuery) return true;
+        const q = filterQuery.toLowerCase();
+        return (item.model && item.model.toLowerCase().includes(q)) ||
+               (item.category && item.category.toLowerCase().includes(q)) ||
+               (item.subcat && item.subcat.toLowerCase().includes(q)) ||
+               (item.supplier && item.supplier.toLowerCase().includes(q));
+      });
+
+      const totalUnits = db.stock.reduce((sum, s) => sum + (parseInt(s.qty) || 0), 0);
+      const totalCostValue = db.stock.reduce((sum, s) => sum + ((parseInt(s.qty) || 0) * (parseInt(s.cost_price) || 0)), 0);
+
+      if (isStockTotalsVisible) {
+        document.getElementById('total-stock-units').innerText = `${totalUnits.toLocaleString()} pcs`;
+        document.getElementById('total-stock-value').innerText = `₦${totalCostValue.toLocaleString()}`;
+      } else {
+        document.getElementById('total-stock-units').innerText = `••••••`;
+        document.getElementById('total-stock-value').innerText = `••••••`;
+      }
+
+      if (filteredStock.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-3">No matching stock items found</td></tr>`;
+      } else {
+        tbody.innerHTML = filteredStock.map(item => `
+          <tr class="${item.qty <= 10 ? 'table-danger' : ''}">
+            <td><b>${item.model}</b></td>
+            <td>${item.category}</td>
+            <td><span class="badge bg-secondary">${item.subcat || 'Standard'}</span></td>
+            <td>${item.supplier || '-'}</td>
+            <td><b>${item.qty}</b></td>
+            <td class="text-warning fw-bold">₦${item.cost_price.toLocaleString()}</td>
+            <td class="text-success fw-bold">₦${item.sell_price.toLocaleString()}</td>
+            <td class="no-print">
+              <button class="btn btn-sm btn-primary me-1" onclick="openEditModal(${item.originalIndex})">Edit</button>
+              <button class="btn btn-sm btn-outline-secondary me-1" onclick="duplicateStockEntry(${item.originalIndex})" title="Duplicate details to create new stock">📋 Duplicate</button>
+              <button class="btn btn-sm btn-danger" onclick="deleteStock(${item.originalIndex})">Delete</button>
+            </td>
+          </tr>
+        `).join('');
+      }
+
+      const uniqueModels = [...new Set(db.stock.map(s => s.model))];
+      document.getElementById('sale-item-list').innerHTML = uniqueModels.map(m => `<option value="${m}">${m}</option>`).join('');
+      document.getElementById('sup-return-item-list').innerHTML = db.stock.map(s => {
+        const subInfo = s.subcat ? ` [${s.subcat}]` : '';
+        return `<option value="${s.model}">${s.model}${subInfo} (Stock: ${s.qty})</option>`;
+      }).join('');
+    }
+
+    function autoFillSaleDetails() {
+      const selectedModel = document.getElementById('sale-item').value.trim();
+      const qualitySelect = document.getElementById('sale-quality');
+      const priceInput = document.getElementById('sale-price');
+
+      if (!selectedModel) {
+        qualitySelect.innerHTML = '<option value="">-- Select Quality --</option>';
+        priceInput.value = '';
+        return;
+      }
+
+      const matchingItems = db.stock.filter(s => s.model.toLowerCase() === selectedModel.toLowerCase());
+      if (matchingItems.length > 0) {
+        const availableQualities = [...new Set(matchingItems.map(s => s.subcat || 'Standard'))];
+        qualitySelect.innerHTML = availableQualities.map(q => `<option value="${q}">${q}</option>`).join('');
+
+        const firstQuality = availableQualities[0];
+        const matchedItem = matchingItems.find(s => (s.subcat || 'Standard') === firstQuality);
+        if (matchedItem) {
+          priceInput.value = matchedItem.sell_price;
+        }
+      } else {
+        qualitySelect.innerHTML = '<option value="">-- Select Quality --</option>';
+        priceInput.value = '';
+      }
+      checkBulkPriceEligibility();
+    }
+
+    document.getElementById('sale-quality').addEventListener('change', () => {
+      const selectedModel = document.getElementById('sale-item').value.trim();
+      const selectedQuality = document.getElementById('sale-quality').value;
+      if (selectedModel && selectedQuality) {
+        const matchedItem = db.stock.find(s => 
+          s.model.toLowerCase() === selectedModel.toLowerCase() && 
+          (s.subcat || 'Standard').toLowerCase() === selectedQuality.toLowerCase()
+        );
+        if (matchedItem) {
+          document.getElementById('sale-price').value = matchedItem.sell_price;
+        }
+      }
+      checkBulkPriceEligibility();
+    });
+
+    function toggleBulkMode() {
+      checkBulkPriceEligibility();
+    }
+
+    function checkBulkPriceEligibility() {
+      const isBulkModeActive = document.getElementById('bulk-toggle-mode').checked;
+      const currentCartTotalQty = salesCart.reduce((sum, item) => sum + item.qty, 0);
+      const pendingInputQty = parseInt(document.getElementById('sale-qty').value) || 0;
+      const totalCombinedQty = currentCartTotalQty + pendingInputQty;
+      const priceInput = document.getElementById('sale-price');
+
+      if (isBulkModeActive && totalCombinedQty >= 5) {
+        priceInput.removeAttribute('readonly');
+        priceInput.classList.remove('bg-light');
+        priceInput.classList.add('border-warning');
+        priceInput.title = "Bulk mode active (Cart total qty ≥ 5): You can now edit this price!";
+      } else {
+        priceInput.setAttribute('readonly', true);
+        priceInput.classList.add('bg-light');
+        priceInput.classList.remove('border-warning');
+        priceInput.title = "";
+      }
+    }
+
+    function autoFillSupplier() {
+      const inputValue = document.getElementById('sup-return-item').value.trim();
+      const item = db.stock.find(s => s.model.toLowerCase() === inputValue.toLowerCase());
+      if (item && item.supplier) {
+        document.getElementById('sup-return-supplier').value = item.supplier;
+      }
+    }
+
+    function addItemToSalesCart() {
+      const modelName = document.getElementById('sale-item').value.trim();
+      const quality = document.getElementById('sale-quality').value || 'Standard';
+      const sellPrice = parseInt(document.getElementById('sale-price').value);
+      const qty = parseInt(document.getElementById('sale-qty').value);
+
+      if (!modelName) return alert("Please select or type a model!");
+      if (isNaN(qty) || qty <= 0) return alert("Quantity must be at least 1!");
+
+      const item = db.stock.find(s => 
+        s.model.toLowerCase() === modelName.toLowerCase() &&
+        (s.subcat || 'Standard').toLowerCase() === quality.toLowerCase()
+      ) || db.stock.find(s => s.model.toLowerCase() === modelName.toLowerCase());
+
+      if (!item) return alert("Selected model is not in stock!");
+
+      const cartQtyAlready = salesCart
+        .filter(c => c.stockIndex === db.stock.indexOf(item))
+        .reduce((sum, c) => sum + c.qty, 0);
+
+      if (item.qty < (cartQtyAlready + qty)) {
+        return alert(`Insufficient stock! You only have ${item.qty} pcs available (already added ${cartQtyAlready} to cart).`);
+      }
+
+      salesCart.push({
+        stockIndex: db.stock.indexOf(item),
+        model: item.model,
+        quality: quality,
+        qty: qty,
+        cost_price: item.cost_price,
+        sell_price: sellPrice || item.sell_price
+      });
+
+      document.getElementById('sale-item').value = '';
+      document.getElementById('sale-quality').innerHTML = '<option value="">-- Select Quality --</option>';
+      document.getElementById('sale-price').value = '';
+      document.getElementById('sale-qty').value = 1;
+      
+      renderSalesCart();
+    }
+
+    function renderSalesCart() {
+      const container = document.getElementById('sales-cart-container');
+      const tbody = document.getElementById('sales-cart-tbody');
+      const totalDisplay = document.getElementById('sales-cart-total');
+      const totalQtyDisplay = document.getElementById('sales-cart-total-qty');
+      
+      if (salesCart.length === 0) {
+        container.classList.add('d-none');
+        checkBulkPriceEligibility();
+        return;
+      }
+      
+      container.classList.remove('d-none');
+      let grandTotal = 0;
+      let totalQty = 0;
+
+      salesCart.forEach(item => { totalQty += Number(item.qty || 0); });
+      const allowPriceEdit = totalQty >= 5;
+
+      tbody.innerHTML = salesCart.map((item, idx) => {
+        const subtotal = item.sell_price * item.qty;
+        grandTotal += subtotal;
+
+        const unitPriceDisplay = allowPriceEdit
+          ? `<input type="number" min="0" step="0.01" class="form-control form-control-sm cart-price-input" data-index="${idx}" value="${item.sell_price}" style="width: 100px;">`
+          : `₦${item.sell_price.toLocaleString()}`;
+
+        return `
+          <tr>
+            <td><b>${item.model}</b></td>
+            <td><span class="badge bg-secondary">${item.quality}</span></td>
+            <td>${item.qty}</td>
+            <td>${unitPriceDisplay}</td>
+            <td class="fw-bold text-success">₦${subtotal.toLocaleString()}</td>
+            <td><button class="btn btn-xs btn-danger py-0 px-2" onclick="removeFromSalesCart(${idx})">✖</button></td>
+          </tr>
+        `;
+      }).join('');
+
+      totalDisplay.innerText = `₦${grandTotal.toLocaleString()}`;
+      totalQtyDisplay.innerText = `${totalQty} pcs`;
+
+      if (allowPriceEdit) {
+        document.querySelectorAll('.cart-price-input').forEach(input => {
+          input.addEventListener('change', (e) => {
+            const index = e.target.getAttribute('data-index');
+            const newPrice = parseFloat(e.target.value);
+            if (!isNaN(newPrice) && newPrice >= 0) {
+              salesCart[index].sell_price = newPrice;
+              renderSalesCart();
+            }
+          });
+        });
+      }
+
+      checkBulkPriceEligibility();
+    }
+
+    function removeFromSalesCart(index) {
+      salesCart.splice(index, 1);
+      renderSalesCart();
+    }
+
+    function clearSalesCart() {
+      salesCart = [];
+      renderSalesCart();
+    }
+
+    function handleSalesFilterChange() {
+      const filterType = document.getElementById('sales-period-filter').value;
+      const customPicker = document.getElementById('sales-custom-date');
+      if (filterType === 'custom') {
+        customPicker.classList.remove('d-none');
+      } else {
+        customPicker.classList.add('d-none');
+        renderSales();
+      }
+    }
+
+    function getFilteredSalesData() {
+      const filterType = document.getElementById('sales-period-filter').value;
+      const now = new Date();
+      const todayStr = now.toISOString().split('T')[0];
+      let salesData = [], periodLabel = "All Time History";
+
+      if (filterType === 'today') {
+        periodLabel = `Today (${todayStr})`;
+        salesData = db.sales.filter(s => s.date === todayStr);
+      } else if (filterType === 'yesterday') {
+        const yest = new Date(now);
+        yest.setDate(yest.getDate() - 1);
+        const yestStr = yest.toISOString().split('T')[0];
+        periodLabel = `Yesterday (${yestStr})`;
+        salesData = db.sales.filter(s => s.date === yestStr);
+      } else if (filterType === 'this-week') {
+        const current = new Date(now);
+        const firstDay = current.getDate() - current.getDay();
+        const startOfWeek = new Date(current.setDate(firstDay)).toISOString().split('T')[0];
+        periodLabel = `This Week (${startOfWeek} to ${todayStr})`;
+        salesData = db.sales.filter(s => s.date && s.date >= startOfWeek && s.date <= todayStr);
+      } else if (filterType === 'this-month') {
+        const currentYearMonth = todayStr.substring(0, 7);
+        periodLabel = `This Month (${currentYearMonth})`;
+        salesData = db.sales.filter(s => s.date && s.date.startsWith(currentYearMonth));
+      } else if (filterType === 'all-time') {
+        periodLabel = "All Time History";
+        salesData = db.sales;
+      } else if (filterType === 'custom') {
+        const customDate = document.getElementById('sales-custom-date').value;
+        if (customDate) {
+          periodLabel = `Date: ${customDate}`;
+          salesData = db.sales.filter(s => s.date === customDate);
+        } else {
+          periodLabel = "Select Date...";
+          salesData = [];
+        }
+      }
+      return { salesData, periodLabel };
+    }
+
+    function renderSales(searchQuery = "") {
+      const tbody = document.getElementById('sales-table-body');
+      const { salesData, periodLabel } = getFilteredSalesData();
+      document.getElementById('sales-badge-period').innerText = periodLabel;
+
+      let filteredSales = salesData.slice().reverse().filter(sale => {
+        if (!searchQuery) return true;
+        const q = searchQuery.toLowerCase();
+        return (sale.model && sale.model.toLowerCase().includes(q)) ||
+               (sale.quality && sale.quality.toLowerCase().includes(q)) ||
+               (sale.customer && sale.customer.toLowerCase().includes(q)) ||
+               (sale.paymentMethod && sale.paymentMethod.toLowerCase().includes(q)) ||
+               (sale.date && sale.date.includes(q));
+      });
+
+      if (filteredSales.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-3">No matching sales records found for this period</td></tr>`;
+      } else {
+        tbody.innerHTML = filteredSales.map(sale => {
+          const paymentBadge = sale.paymentMethod === 'Transfer' ? '<span class="badge bg-info text-dark">Transfer 💳</span>' : '<span class="badge bg-success">Cash 💵</span>';
+          return `
+            <tr>
+              <td>${sale.date}</td>
+              <td><b>${sale.model}</b></td>
+              <td><span class="badge bg-secondary">${sale.quality || 'Standard'}</span></td>
+              <td>${sale.customer}</td>
+              <td>${paymentBadge}</td>
+              <td>${sale.qty}</td>
+              <td>₦${sale.sell_price.toLocaleString()}</td>
+              <td><b class="text-success">₦${(sale.sell_price * sale.qty).toLocaleString()}</b></td>
+              <td class="no-print">
+                <button class="btn btn-sm btn-outline-primary" onclick="printReceipt('${sale.date}', '${sale.model}', '${sale.quality || 'Standard'}', '${sale.customer}', '${sale.paymentMethod || 'Cash'}', ${sale.qty}, ${sale.sell_price})">🧾 Receipt</button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      }
+      populateReturnSaleDropdown();
+    }
+
+    function printFilteredSales() {
+      const { periodLabel } = getFilteredSalesData();
+      document.getElementById('sales-print-subtitle').innerText = `Sales History Report - ${periodLabel}`;
+      window.print();
+    }
+
+    function sendSalesToGmail() {
+      const { salesData, periodLabel } = getFilteredSalesData();
+      if (salesData.length === 0) return alert(`No sales records available for "${periodLabel}" to send!`);
+
+      let emailBody = `SKY MODERNIZE SAVE TECHNOLOGY LTD - Sales Report\n`;
+      emailBody += `Report Period: ${periodLabel}\n\n`;
+      emailBody += `--- COMPLETED SALES ---\n`;
+      emailBody += `Date | Model | Quality | Customer | Payment | Qty | Unit Price | Total Price\n`;
+      emailBody += `------------------------------------------------------------------------------------\n`;
+
+      let totalAmount = 0;
+      salesData.forEach(s => {
+        const itemTotal = s.sell_price * s.qty;
+        totalAmount += itemTotal;
+        emailBody += `${s.date} | ${s.model} | ${s.quality || 'Standard'} | ${s.customer} | ${s.paymentMethod || 'Cash'} | ${s.qty} pcs | ₦${s.sell_price.toLocaleString()} | ₦${itemTotal.toLocaleString()}\n`;
+      });
+      emailBody += `------------------------------------------------------------------------------------\n`;
+      emailBody += `Total Sales Revenue (${periodLabel}): ₦${totalAmount.toLocaleString()}\n\n`;
+
+      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(`SKY MODERNIZE - Sales Report (${periodLabel})`)}&body=${encodeURIComponent(emailBody)}`;
+      window.open(gmailUrl, '_blank');
+    }
+
+    function printReceipt(date, model, quality, customer, paymentMethod, qty, price) {
+      const total = qty * price;
+      const receiptWindow = window.open('', '_blank', 'width=400,height=600');
+      receiptWindow.document.write(`
+        <html>
+          <head>
+            <title>Receipt - SKY MODERNIZE</title>
+            <style>
+              body { font-family: monospace; padding: 20px; font-size: 12px; }
+              .center { text-align: center; }
+              hr { border-top: 1px dashed #000; }
+              .flex { display: flex; justify-content: space-between; }
+            </style>
+          </head>
+          <body>
+            <div class="center">
+              <h3>SKY MODERNIZE SAVE TECHNOLOGY LTD</h3>
+              <p>Official Sales Receipt</p>
+            </div>
+            <hr>
+            <p><b>Date:</b> ${date}</p>
+            <p><b>Customer:</b> ${customer}</p>
+            <p><b>Payment Method:</b> ${paymentMethod}</p>
+            <hr>
+            <p><b>Item:</b> ${model}</p>
+            <p><b>Quality/Grade:</b> ${quality}</p>
+            <p><b>Qty:</b> ${qty}</p>
+            <p><b>Unit Price:</b> ₦${price.toLocaleString()}</p>
+            <hr>
+            <div class="flex">
+              <h4>Total Paid:</h4>
+              <h4>₦${total.toLocaleString()}</h4>
+            </div>
+            <hr>
+            <div class="center">
+              <p>THANKS FOR YOUR PATRONAGE!!!</p>
+            </div>
+            <script>
+              window.onload = function() { window.print(); window.close(); }
+            <\/script>
+          </body>
+        </html>
+      `);
+      receiptWindow.document.close();
+    }
+
+    document.getElementById('sales-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const customerName = document.getElementById('sale-customer').value.trim();
+      const paymentMethod = document.getElementById('sale-payment-method').value;
+
+      let itemsToCheckout = [];
+      const singleModel = document.getElementById('sale-item').value.trim();
+      const singleQuality = document.getElementById('sale-quality').value || 'Standard';
+      const singlePrice = parseInt(document.getElementById('sale-price').value);
+      const singleQty = parseInt(document.getElementById('sale-qty').value);
+
+      if (salesCart.length > 0) {
+        itemsToCheckout = salesCart;
+      } else if (singleModel) {
+        if (isNaN(singleQty) || singleQty <= 0) return alert("Quantity must be at least 1!");
+        const item = db.stock.find(s => 
+          s.model.toLowerCase() === singleModel.toLowerCase() &&
+          (s.subcat || 'Standard').toLowerCase() === singleQuality.toLowerCase()
+        ) || db.stock.find(s => s.model.toLowerCase() === singleModel.toLowerCase());
+
+        if (!item) return alert("Selected model is not in stock!");
+        if (item.qty < singleQty) return alert(`Insufficient stock! Only ${item.qty} pcs available.`);
+
+        itemsToCheckout.push({
+          stockIndex: db.stock.indexOf(item),
+          model: item.model,
+          quality: singleQuality,
+          qty: singleQty,
+          cost_price: item.cost_price,
+          sell_price: singlePrice || item.sell_price
+        });
+      } else {
+        return alert("Please add items to cart or fill out the sale entry form!");
+      }
+
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      itemsToCheckout.forEach(cartItem => {
+        const stockItem = db.stock[cartItem.stockIndex];
+        if (stockItem) {
+          stockItem.qty -= cartItem.qty;
+        }
+        db.sales.push({
+          date: todayStr,
+          model: cartItem.model,
+          quality: cartItem.quality,
+          customer: customerName,
+          paymentMethod: paymentMethod,
+          qty: cartItem.qty,
+          cost_price: cartItem.cost_price,
+          sell_price: cartItem.sell_price
+        });
+      });
+
+      salesCart = [];
+      renderSalesCart();
+      document.getElementById('sales-form').reset();
+      document.getElementById('sale-item').value = '';
+      document.getElementById('sale-quality').innerHTML = '<option value="">-- Select Quality --</option>';
+      document.getElementById('sale-price').value = '';
+      document.getElementById('sale-qty').value = 1;
+      document.getElementById('bulk-toggle-mode').checked = false;
+      checkBulkPriceEligibility();
+
+      saveDB();
+      alert("✅ Sale successfully recorded and inventory updated!");
+    });
+
+// --- MANUAL IN-PAGE REFRESH HANDLER ---
+async function manualAppRefresh() {
+  const btn = document.getElementById('refresh-btn');
+  if (!btn) {
+    console.error("Refresh button element not found!");
+    return;
+  }
+  
+  const originalHtml = btn.innerHTML;
+  
+  // Show loading spinner state
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Refreshing...`;
+
+  try {
+    // 1. Pull latest cloud data from Supabase
+    if (typeof initTripleSavingSync === 'function') {
+      await initTripleSavingSync();
+    }
+    
+    // 2. Pull latest OPay/payment transactions if the function exists
+    if (typeof triggerCloudTransactionSync === 'function') {
+      await triggerCloudTransactionSync();
+    }
+
+    // 3. Re-render all views and tables on your screen
+    if (typeof renderAll === 'function') {
+      renderAll();
+    }
+
+    console.log("App data successfully refreshed from cloud.");
+  } catch (err) {
+    console.error("Refresh failed:", err);
+  } finally {
+    // Restore button back to normal state
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.innerHTML = originalHtml;
+    }, 500);
+  }
+}
+    
+    function populateReturnSaleDropdown(filterQuery = "") {
+      const returnSelect = document.getElementById('return-sale-idx');
+      if (!returnSelect) return;
+      const filteredSalesWithIdx = db.sales.map((s, idx) => ({ ...s, originalIdx: idx })).filter(s => {
+        if (!filterQuery) return true;
+        const q = filterQuery.toLowerCase();
+        return (s.model && s.model.toLowerCase().includes(q)) ||
+               (s.customer && s.customer.toLowerCase().includes(q)) ||
+               (s.date && s.date.includes(q));
+      });
+
+      if (filteredSalesWithIdx.length === 0) {
+        returnSelect.innerHTML = '<option value="">-- No sales available --</option>';
+      } else {
+        returnSelect.innerHTML = filteredSalesWithIdx.slice().reverse().map(s => `
+          <option value="${s.originalIdx}">[${s.date}] ${s.model} (${s.quality || 'Standard'}) - Qty: ${s.qty} - Customer: ${s.customer}</option>
+        `).join('');
+      }
+    }
+
+    document.getElementById('returns-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const saleIdx = parseInt(document.getElementById('return-sale-idx').value);
+      const returnQty = parseInt(document.getElementById('return-qty').value);
+      const reason = document.getElementById('return-reason').value.trim();
+      const isExchanged = document.getElementById('return-is-exchanged').checked;
+
+      if (isNaN(saleIdx) || db.sales[saleIdx] === undefined) return alert("Please select a valid sold item to return.");
+      const originalSale = db.sales[saleIdx];
+
+      if (isNaN(returnQty) || returnQty <= 0 || returnQty > originalSale.qty) {
+        return alert(`Invalid return quantity! Max returnable qty for this sale is ${originalSale.qty}.`);
+      }
+
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      db.returns.push({
+        date: todayStr,
+        model: originalSale.model,
+        customer: originalSale.customer,
+        qty: returnQty,
+        reason: reason,
+        isExchanged: isExchanged,
+        sell_price: originalSale.sell_price,
+        cost_price: originalSale.cost_price
+      });
+
+      if (isExchanged) {
+        const matchingStock = db.stock.find(s => 
+          s.model.toLowerCase() === originalSale.model.toLowerCase() &&
+          (s.subcat || 'Standard').toLowerCase() === (originalSale.quality || 'Standard').toLowerCase()
+        ) || db.stock.find(s => s.model.toLowerCase() === originalSale.model.toLowerCase());
+
+        if (matchingStock) {
+          matchingStock.qty -= returnQty;
+        }
+      }
+
+      clearCustomerReturnForm();
+      saveDB();
+      alert("🔄 Customer return processed successfully!");
+    });
+
+    function handleReturnsFilterChange() {
+      const filterType = document.getElementById('returns-period-filter').value;
+      const customPicker = document.getElementById('returns-custom-date');
+      if (filterType === 'custom') {
+        customPicker.classList.remove('d-none');
+      } else {
+        customPicker.classList.add('d-none');
+        renderReturns();
+      }
+    }
+
+    function getFilteredReturnsData() {
+      const filterType = document.getElementById('returns-period-filter').value;
+      const now = new Date();
+      const todayStr = now.toISOString().split('T')[0];
+      let returnsData = [], periodLabel = "All Time History";
+
+      if (filterType === 'today') {
+        periodLabel = `Today (${todayStr})`;
+        returnsData = db.returns.filter(r => r.date === todayStr);
+      } else if (filterType === 'yesterday') {
+        const yest = new Date(now);
+        yest.setDate(yest.getDate() - 1);
+        const yestStr = yest.toISOString().split('T')[0];
+        periodLabel = `Yesterday (${yestStr})`;
+        returnsData = db.returns.filter(r => r.date === yestStr);
+      } else if (filterType === 'this-week') {
+        const current = new Date(now);
+        const firstDay = current.getDate() - current.getDay();
+        const startOfWeek = new Date(current.setDate(firstDay)).toISOString().split('T')[0];
+        periodLabel = `This Week (${startOfWeek} to ${todayStr})`;
+        returnsData = db.returns.filter(r => r.date && r.date >= startOfWeek && r.date <= todayStr);
+      } else if (filterType === 'this-month') {
+        const currentYearMonth = todayStr.substring(0, 7);
+        periodLabel = `This Month (${currentYearMonth})`;
+        returnsData = db.returns.filter(r => r.date && r.date.startsWith(currentYearMonth));
+      } else if (filterType === 'all-time') {
+        periodLabel = "All Time History";
+        returnsData = db.returns;
+      } else if (filterType === 'custom') {
+        const customDate = document.getElementById('returns-custom-date').value;
+        if (customDate) {
+          periodLabel = `Date: ${customDate}`;
+          returnsData = db.returns.filter(r => r.date === customDate);
+        } else {
+          periodLabel = "Select Date...";
+          returnsData = [];
+        }
+      }
+      return { returnsData, periodLabel };
+    }
+
+    function renderReturns(searchQuery = "") {
+      const tbody = document.getElementById('returns-table-body');
+      const { returnsData, periodLabel } = getFilteredReturnsData();
+      document.getElementById('returns-badge-period').innerText = periodLabel;
+
+      let filteredReturns = returnsData.slice().reverse().filter(ret => {
+        if (!searchQuery) return true;
+        const q = searchQuery.toLowerCase();
+        return (ret.model && ret.model.toLowerCase().includes(q)) ||
+               (ret.customer && ret.customer.toLowerCase().includes(q)) ||
+               (ret.reason && ret.reason.toLowerCase().includes(q)) ||
+               (ret.date && ret.date.includes(q));
+      });
+
+      if (filteredReturns.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-3">No matching customer return records found</td></tr>`;
+      } else {
+        tbody.innerHTML = filteredReturns.map((ret, index) => {
+          const exchangeBadge = ret.isExchanged 
+            ? '<span class="badge bg-danger">Replacement Issued 🔄</span>' 
+            : '<span class="badge bg-secondary">Refund 💵</span>';
+          return `
+            <tr>
+              <td>${ret.date}</td>
+              <td><b>${ret.model}</b></td>
+              <td>${ret.customer}</td>
+              <td>${ret.qty}</td>
+              <td>${ret.reason}</td>
+              <td>${exchangeBadge}</td>
+              <td class="no-print">
+                <button class="btn btn-sm btn-danger" onclick="deleteCustomerReturn(${index})">Delete</button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      }
+    }
+
+    function deleteCustomerReturn(index) {
+      if (confirm("Delete this customer return record?")) {
+        db.returns.splice(db.returns.length - 1 - index, 1);
+        saveDB();
+      }
+    }
+
+    function printFilteredReturns() {
+      const { periodLabel } = getFilteredReturnsData();
+      document.getElementById('returns-print-subtitle').innerText = `Customer Returns History Report - ${periodLabel}`;
+      window.print();
+    }
+
+    function sendReturnsToGmail() {
+      const { returnsData, periodLabel } = getFilteredReturnsData();
+      if (returnsData.length === 0) return alert(`No customer returns available for "${periodLabel}" to send!`);
+
+      let emailBody = `SKY MODERNIZE SAVE TECHNOLOGY LTD - Customer Returns Report\n`;
+      emailBody += `Report Period: ${periodLabel}\n\n`;
+      returnsData.forEach(r => {
+        emailBody += `${r.date} | Model: ${r.model} | Customer: ${r.customer} | Qty: ${r.qty} | Reason: ${r.reason} | Status: ${r.isExchanged ? 'Replacement' : 'Refund'}\n`;
+      });
+
+      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(`SKY MODERNIZE - Customer Returns Report (${periodLabel})`)}&body=${encodeURIComponent(emailBody)}`;
+      window.open(gmailUrl, '_blank');
+    }
+
+    document.getElementById('supplier-returns-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const model = document.getElementById('sup-return-item').value.trim();
+      const supplier = document.getElementById('sup-return-supplier').value.trim();
+      const qty = parseInt(document.getElementById('sup-return-qty').value);
+      const status = document.getElementById('sup-return-status').value;
+      const reason = document.getElementById('sup-return-reason').value.trim();
+
+      if (!model || !supplier || isNaN(qty) || qty <= 0) return alert("Please fill out all required supplier return fields correctly.");
+
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      db.supplierReturns.push({
+        date: todayStr,
+        model: model,
+        supplier: supplier,
+        qty: qty,
+        status: status,
+        reason: reason
+      });
+
+      if (status === 'Sent Back' || status === 'Pending') {
+        const matchingStock = db.stock.find(s => s.model.toLowerCase() === model.toLowerCase());
+        if (matchingStock) {
+          matchingStock.qty = Math.max(0, matchingStock.qty - qty);
+        }
+      }
+
+      clearSupplierReturnForm();
+      saveDB();
+      alert("📦 Supplier return successfully recorded!");
+    });
+
+    function handleSupplierReturnsFilterChange() {
+      const filterType = document.getElementById('sup-returns-period-filter').value;
+      const customPicker = document.getElementById('sup-returns-custom-date');
+      if (filterType === 'custom') {
+        customPicker.classList.remove('d-none');
+      } else {
+        customPicker.classList.add('d-none');
+        renderSupplierReturns();
+      }
+    }
+
+    function getFilteredSupplierReturnsData() {
+      const filterType = document.getElementById('sup-returns-period-filter').value;
+      const now = new Date();
+      const todayStr = now.toISOString().split('T')[0];
+      let supReturnsData = [], periodLabel = "This Month";
+
+      if (filterType === 'today') {
+        periodLabel = `Today (${todayStr})`;
+        supReturnsData = db.supplierReturns.filter(r => r.date === todayStr);
+      } else if (filterType === 'yesterday') {
+        const yest = new Date(now);
+        yest.setDate(yest.getDate() - 1);
+        const yestStr = yest.toISOString().split('T')[0];
+        periodLabel = `Yesterday (${yestStr})`;
+        supReturnsData = db.supplierReturns.filter(r => r.date === yestStr);
+      } else if (filterType === 'this-week') {
+        const current = new Date(now);
+        const firstDay = current.getDate() - current.getDay();
+        const startOfWeek = new Date(current.setDate(firstDay)).toISOString().split('T')[0];
+        periodLabel = `This Week (${startOfWeek} to ${todayStr})`;
+        supReturnsData = db.supplierReturns.filter(r => r.date && r.date >= startOfWeek && r.date <= todayStr);
+      } else if (filterType === 'this-month') {
+        const currentYearMonth = todayStr.substring(0, 7);
+        periodLabel = `This Month (${currentYearMonth})`;
+        supReturnsData = db.supplierReturns.filter(r => r.date && r.date.startsWith(currentYearMonth));
+      } else if (filterType === 'all-time') {
+        periodLabel = "All Time History";
+        supReturnsData = db.supplierReturns;
+      } else if (filterType === 'custom') {
+        const customDate = document.getElementById('sup-returns-custom-date').value;
+        if (customDate) {
+          periodLabel = `Date/Month: ${customDate}`;
+          supReturnsData = db.supplierReturns.filter(r => r.date.startsWith(customDate));
+        } else {
+          periodLabel = "Select Date...";
+          supReturnsData = [];
+        }
+      }
+      return { supReturnsData, periodLabel };
+    }
+
+    function renderSupplierReturns(searchQuery = "") {
+      const tbody = document.getElementById('supplier-returns-table-body');
+      const { supReturnsData, periodLabel } = getFilteredSupplierReturnsData();
+      document.getElementById('sup-returns-badge-period').innerText = periodLabel;
+
+      let filtered = supReturnsData.slice().reverse().filter(r => {
+        if (!searchQuery) return true;
+        const q = searchQuery.toLowerCase();
+        return (r.model && r.model.toLowerCase().includes(q)) ||
+               (r.supplier && r.supplier.toLowerCase().includes(q)) ||
+               (r.reason && r.reason.toLowerCase().includes(q)) ||
+               (r.status && r.status.toLowerCase().includes(q));
+      });
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-3">No matching supplier returns found</td></tr>`;
+      } else {
+        tbody.innerHTML = filtered.map((r, index) => {
+          let badgeClass = "bg-warning text-dark";
+          if (r.status === 'Sent Back') badgeClass = "bg-info text-dark";
+          if (r.status === 'Replaced / Received') badgeClass = "bg-success";
+          return `
+            <tr>
+              <td>${r.date}</td>
+              <td><b>${r.model}</b></td>
+              <td>${r.supplier}</td>
+              <td>${r.qty}</td>
+              <td>${r.reason}</td>
+              <td><span class="badge ${badgeClass}">${r.status}</span></td>
+              <td class="no-print">
+                <button class="btn btn-sm btn-danger" onclick="deleteSupplierReturn(${index})">Delete</button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      }
+    }
+
+    function deleteSupplierReturn(index) {
+      if (confirm("Delete this supplier return record?")) {
+        db.supplierReturns.splice(db.supplierReturns.length - 1 - index, 1);
+        saveDB();
+      }
+    }
+
+    function printFilteredSupplierReturns() {
+      const { periodLabel } = getFilteredSupplierReturnsData();
+      document.getElementById('sup-returns-print-subtitle').innerText = `Supplier Returns Bulk Report - ${periodLabel}`;
+      window.print();
+    }
+
+    function sendSupplierReturnsToGmail() {
+      const { supReturnsData, periodLabel } = getFilteredSupplierReturnsData();
+      if (supReturnsData.length === 0) return alert(`No supplier returns available for "${periodLabel}" to send!`);
+
+      let emailBody = `SKY MODERNIZE SAVE TECHNOLOGY LTD - Supplier Returns Report\n`;
+      emailBody += `Report Period: ${periodLabel}\n\n`;
+      supReturnsData.forEach(r => {
+        emailBody += `${r.date} | Model: ${r.model} | Supplier: ${r.supplier} | Qty: ${r.qty} | Status: ${r.status} | Reason: ${r.reason}\n`;
+      });
+
+      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(`SKY MODERNIZE - Supplier Returns Report (${periodLabel})`)}&body=${encodeURIComponent(emailBody)}`;
+      window.open(gmailUrl, '_blank');
+    }
+
+    document.getElementById('requisition-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const item = document.getElementById('req-item').value.trim();
+      const category = document.getElementById('req-cat').value.trim();
+      const qty = parseInt(document.getElementById('req-qty').value);
+      const cost = parseInt(document.getElementById('req-cost').value) || 0;
+      const supplier = document.getElementById('req-supplier').value.trim();
+      const notes = document.getElementById('req-notes').value.trim();
+
+      if (!item || !category || isNaN(qty) || qty <= 0) return alert("Please fill out all required requisition fields.");
+
+      const reqId = "REQ-" + Math.floor(1000 + Math.random() * 9000);
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      db.requisitions.push({
+        id: reqId,
+        date: todayStr,
+        item: item,
+        category: category,
+        qty: qty,
+        cost: cost,
+        supplier: supplier,
+        notes: notes,
+        status: "Pending"
+      });
+
+      document.getElementById('requisition-form').reset();
+      saveDB();
+      alert("📋 Purchase requisition submitted successfully!");
+    });
+
+    function renderRequisitions(searchQuery = "") {
+      const tbody = document.getElementById('requisition-table-body');
+      let filtered = db.requisitions.slice().reverse().filter(r => {
+        if (!searchQuery) return true;
+        const q = searchQuery.toLowerCase();
+        return (r.item && r.item.toLowerCase().includes(q)) ||
+               (r.category && r.category.toLowerCase().includes(q)) ||
+               (r.supplier && r.supplier.toLowerCase().includes(q)) ||
+               (r.id && r.id.toLowerCase().includes(q)) ||
+               (r.status && r.status.toLowerCase().includes(q));
+      });
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="10" class="text-center text-muted py-3">No purchase requisitions found</td></tr>`;
+      } else {
+        tbody.innerHTML = filtered.map((r, index) => {
+          const estTotal = (r.cost || 0) * r.qty;
+          let badgeClass = "bg-warning text-dark";
+          if (r.status === 'Approved') badgeClass = "bg-success";
+          if (r.status === 'Declined') badgeClass = "bg-danger";
+          return `
+            <tr>
+              <td><code>${r.id}</code></td>
+              <td>${r.date}</td>
+              <td><b>${r.item}</b></td>
+              <td><span class="badge bg-secondary">${r.category}</span></td>
+              <td><b>${r.qty}</b></td>
+              <td>₦${(r.cost || 0).toLocaleString()}</td>
+              <td class="text-success fw-bold">₦${estTotal.toLocaleString()}</td>
+              <td>${r.supplier || '-'}</td>
+              <td><span class="badge ${badgeClass}">${r.status}</span></td>
+              <td class="no-print">
+                <button class="btn btn-sm btn-outline-success me-1" onclick="updateRequisitionStatus(${db.requisitions.length - 1 - index}, 'Approved')">Approve</button>
+                <button class="btn btn-sm btn-outline-danger me-1" onclick="updateRequisitionStatus(${db.requisitions.length - 1 - index}, 'Declined')">Decline</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteRequisition(${db.requisitions.length - 1 - index})">Delete</button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      }
+    }
+
+    function updateRequisitionStatus(index, newStatus) {
+      db.requisitions[index].status = newStatus;
+      saveDB();
+    }
+
+    function deleteRequisition(index) {
+      if (confirm("Delete this purchase requisition order?")) {
+        db.requisitions.splice(index, 1);
+        saveDB();
+      }
+    }
+
+    function printFilteredRequisitions() {
+      window.print();
+    }
+
+    function sendRequisitionToGmail() {
+      if (db.requisitions.length === 0) return alert("No purchase requisitions available to send!");
+      let emailBody = `SKY MODERNIZE SAVE TECHNOLOGY LTD - Purchase Requisitions\n\n`;
+      db.requisitions.forEach(r => {
+        emailBody += `Req ID: ${r.id} | Date: ${r.date} | Item: ${r.item} | Qty: ${r.qty} | Est Cost: ₦${((r.cost || 0) * r.qty).toLocaleString()} | Status: ${r.status}\n`;
+      });
+      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent("SKY MODERNIZE - Purchase Requisitions")}&body=${encodeURIComponent(emailBody)}`;
+      window.open(gmailUrl, '_blank');
+    }
+
+    document.getElementById('stock-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const model = document.getElementById('stk-model').value.trim();
+      const category = document.getElementById('stk-cat').value.trim();
+      const subcat = document.getElementById('stk-subcat').value.trim();
+      const qty = parseInt(document.getElementById('stk-qty').value);
+      const cost_price = parseInt(document.getElementById('stk-cost').value);
+      const sell_price = parseInt(document.getElementById('stk-sell').value);
+      const supplier = document.getElementById('stk-supplier').value.trim();
+
+      if (!model || !category || isNaN(qty) || isNaN(cost_price) || isNaN(sell_price)) {
+        return alert("Please fill out all required stock fields correctly.");
+      }
+
+      db.stock.push({ model, category, subcat, qty, cost_price, sell_price, supplier });
+      document.getElementById('stock-form').reset();
+      saveDB();
+      alert("✅ Stock entry successfully added!");
+    });
+
+    function openEditModal(index) {
+      const item = db.stock[index];
+      if (!item) return;
+      document.getElementById('edit-stk-index').value = index;
+      document.getElementById('edit-stk-model').value = item.model;
+      document.getElementById('edit-stk-cat').value = item.category;
+      document.getElementById('edit-stk-subcat').value = item.subcat || '';
+      document.getElementById('edit-stk-qty').value = item.qty;
+      document.getElementById('edit-stk-cost').value = item.cost_price;
+      document.getElementById('edit-stk-sell').value = item.sell_price;
+      document.getElementById('edit-stk-supplier').value = item.supplier || '';
+      
+      const modal = new bootstrap.Modal(document.getElementById('editStockModal'));
+      modal.show();
+    }
+
+    document.getElementById('edit-stock-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const index = parseInt(document.getElementById('edit-stk-index').value);
+      if (isNaN(index) || !db.stock[index]) return;
+
+      db.stock[index] = {
+        model: document.getElementById('edit-stk-model').value.trim(),
+        category: document.getElementById('edit-stk-cat').value.trim(),
+        subcat: document.getElementById('edit-stk-subcat').value.trim(),
+        qty: parseInt(document.getElementById('edit-stk-qty').value),
+        cost_price: parseInt(document.getElementById('edit-stk-cost').value),
+        sell_price: parseInt(document.getElementById('edit-stk-sell').value),
+        supplier: document.getElementById('edit-stk-supplier').value.trim()
+      };
+
+      const modalElement = document.getElementById('editStockModal');
+      const modalInstance = bootstrap.Modal.getInstance(modalElement);
+      modalInstance.hide();
+
+      saveDB();
+      alert("✅ Stock item updated successfully!");
+    });
+
+    function deleteStock(index) {
+      if (confirm("Are you sure you want to delete this stock item?")) {
+        db.stock.splice(index, 1);
+        saveDB();
+      }
+    }
+             function populateSupplierReturnCategories() {
+  const catSelect = document.getElementById('sup-return-category-filter');
+  if (!catSelect) return;
+  const categories = [...new Set(db.stock.map(s => s.category).filter(Boolean))];
+  catSelect.innerHTML = '<option value="">All Categories</option>' + 
+    categories.map(c => `<option value="${c}">${c}</option>`).join('');
+  updateSupplierReturnModelList();
+}
+
+function updateSupplierReturnModelList() {
+  const selectedCat = document.getElementById('sup-return-category-filter').value;
+  const datalist = document.getElementById('sup-return-item-list');
+  if (!datalist) return;
+
+  const filteredStock = selectedCat 
+    ? db.stock.filter(s => s.category === selectedCat) 
+    : db.stock;
+
+  const uniqueModels = [...new Set(filteredStock.map(s => s.model))];
+  datalist.innerHTML = uniqueModels.map(m => `<option value="${m}">`).join('');
+}
+    
+        function populateSalesCategories() {
+  const catSelect = document.getElementById('sale-category-filter');
+  if (!catSelect) return;
+  const categories = [...new Set(db.stock.map(s => s.category).filter(Boolean))];
+  catSelect.innerHTML = '<option value="">All Categories</option>' + 
+    categories.map(c => `<option value="${c}">${c}</option>`).join('');
+  updateSaleModelList();
+}
+
+function updateSaleModelList() {
+  const selectedCat = document.getElementById('sale-category-filter').value;
+  const datalist = document.getElementById('sale-item-list');
+  if (!datalist) return;
+  
+  const filteredStock = selectedCat 
+    ? db.stock.filter(s => s.category === selectedCat) 
+    : db.stock;
+    
+  const uniqueModels = [...new Set(filteredStock.map(s => s.model))];
+  datalist.innerHTML = uniqueModels.map(m => `<option value="${m}">`).join('');
+}
+    
+     function populateDashboardCategories() {
+  const select = document.getElementById('dash-goods-category-select');
+  if (!select) return;
+  const categories = [...new Set(db.stock.map(s => s.category).filter(Boolean))];
+  select.innerHTML = '<option value="">All Categories</option>' + 
+    categories.map(c => `<option value="${c}">${c}</option>`).join('');
+}
+
+function searchDashboardGoods() {
+  const query = document.getElementById('dash-goods-search-input').value.trim().toLowerCase();
+  const selectedCat = document.getElementById('dash-goods-category-select').value;
+  const resultsContainer = document.getElementById('dash-goods-search-results');
+
+  if (!query && !selectedCat) {
+    resultsContainer.innerHTML = `<tr><td colspan="4" class="text-center text-muted">Select a category or type above to query inventory</td></tr>`;
+    return;
+  }
+
+  const matchingGoods = db.stock.filter(s => {
+    const matchesCategory = !selectedCat || s.category === selectedCat;
+    const matchesQuery = !query || (
+      (s.model && s.model.toLowerCase().includes(query)) ||
+      (s.category && s.category.toLowerCase().includes(query)) ||
+      (s.subcat && s.subcat.toLowerCase().includes(query))
+    );
+    return matchesCategory && matchesQuery;
+  });
+
+  if (matchingGoods.length === 0) {
+    resultsContainer.innerHTML = `<tr><td colspan="4" class="text-center text-danger">No matching goods found</td></tr>`;
+    return;
+  }
+
+  resultsContainer.innerHTML = matchingGoods.map(g => `
+    <tr>
+      <td><b>${g.model}</b></td>
+      <td><span class="badge bg-secondary">${g.subcat || 'Standard'}</span></td>
+      <td class="text-success fw-bold">₦${(g.sell_price || 0).toLocaleString()}</td>
+      <td><span class="badge ${g.qty > 10 ? 'bg-success' : 'bg-danger'}">${g.qty} pcs available</span></td>
+    </tr>
+  `).join('');
+}
+
+function clearDashboardGoodsSearch() {
+  document.getElementById('dash-goods-search-input').value = '';
+  document.getElementById('dash-goods-category-select').value = '';
+  searchDashboardGoods();
+}
+    
+ async function refreshDashboardData() {
+  const refreshBtn = document.getElementById('refresh-btn');
+  if (refreshBtn) refreshBtn.innerHTML = '🔄 Refreshing...';
+
+  try {
+    // Call your existing data-loading functions here 
+    // (e.g., the functions that fetch from Supabase and update your dashboard cards)
+    if (typeof loadDashboardSummary === 'function') await loadDashboardSummary();
+    if (typeof loadStockData === 'function') await loadStockData();
+    
+    console.log("Dashboard refreshed successfully!");
+  } catch (error) {
+    console.error("Error refreshing data:", error);
+  } finally {
+    if (refreshBtn) refreshBtn.innerHTML = '🔄 Refresh';
+  }
+}   
+    // Check saved theme on page load
+document.addEventListener('DOMContentLoaded', () => {
+  const savedTheme = localStorage.getItem('app_theme') || 'light';
+  document.documentElement.setAttribute('data-bs-theme', savedTheme);
+  updateThemeButton(savedTheme);
+});
+
+function toggleTheme() {
+  const currentTheme = document.documentElement.getAttribute('data-bs-theme');
+  const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+  
+  document.documentElement.setAttribute('data-bs-theme', newTheme);
+  localStorage.setItem('app_theme', newTheme);
+  updateThemeButton(newTheme);
+}
+
+function updateThemeButton(theme) {
+  const btn = document.getElementById('theme-toggle-btn');
+  if (!btn) return;
+  
+  if (theme === 'dark') {
+    btn.innerHTML = '☀️ Light Mode';
+    btn.classList.replace('btn-outline-secondary', 'btn-outline-warning');
+  } else {
+    btn.innerHTML = '🌙 Dark Mode';
+    btn.classList.replace('btn-outline-warning', 'btn-outline-secondary');
+  }
+}
+
+         function renderAll() {
+  populateDashboardCategories();
+  populateSalesCategories();
+  populateSupplierReturnCategories();
+  renderDashboard();
+  renderStock();
+  renderSales();
+  renderReturns();
+  renderSupplierReturns();
+  renderRequisitions();
+  renderMoniepointPayments();
+}
+    
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js')
+        .then((reg) => console.log('Service Worker registered! Scope:', reg.scope))
+        .catch((err) => console.log('Service Worker registration failed:', err));
+    });
+  }
+</script>
 </body>
 </html>
