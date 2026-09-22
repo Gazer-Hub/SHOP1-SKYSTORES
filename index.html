@@ -1,98 +1,1246 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#0f172a">
-  <title>SKY MODERNIZE SAVE TECHNOLOGY LTD | Inventory</title>
-  <link rel="manifest" href="/manifest.json">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-  <link rel="stylesheet" href="styles.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SKY MODERNIZE SAVE TECHNOLOGY LTD - Inventory</title>
+   <!-- PWA Manifest Link -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#000000">
+ 
+  <!-- Google Fonts for Modern Typography -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Bootstrap 5.3 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- html2pdf Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <!-- Supabase CDN Client Library -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  
+  <style>
+  
+    .page { display: none; }
+    .page.active { display: block; }
+
+    [data-bs-theme="dark"] body {
+  background-color: #121212 !important;
+  color: #f8f9fa !important;
+}
+    :root {
+      --primary-color: #0f172a;
+      --accent-color: #2563eb;
+      --success-color: #16a34a;
+      --transition-speed: 0.2s;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f8fafc;
+      color: #334155;
+      overflow-x: hidden;
+    }
+
+    .page { display: none; opacity: 0; transition: opacity 0.25s ease-in-out; }
+    .page.active { display: block; opacity: 1; }
+
+    /* Custom Navbar Styling */
+    .navbar {
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+    
+    .navbar-brand {
+      letter-spacing: 0.5px;
+      font-weight: 700;
+      color: #38bdf8 !important;
+    }
+
+    .nav-link-btn {
+      font-size: 0.85rem;
+      font-weight: 500;
+      border-radius: 6px;
+      transition: all var(--transition-speed);
+    }
+
+    /* Cards & Glassmorphism Aesthetics */
+    .card {
+      border: none;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+      transition: transform var(--transition-speed), box-shadow var(--transition-speed);
+      background: #ffffff;
+    }
+
+    .card:hover {
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+    }
+
+    .card-header {
+      background-color: transparent;
+      border-bottom: 1px solid #f1f5f9;
+      font-weight: 600;
+      padding: 1rem 1.25rem;
+    }
+
+    /* Tables */
+    .table {
+      font-size: 0.9rem;
+    }
+    
+    .table th {
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.05em;
+      background-color: #f8fafc !important;
+      color: #64748b;
+      border-bottom: 2px solid #e2e8f0;
+    }
+
+    .table td {
+      vertical-align: middle;
+      padding: 0.85rem 0.75rem;
+    }
+
+    /* Buttons */
+    .btn {
+      font-weight: 500;
+      border-radius: 8px;
+      padding: 0.5rem 1rem;
+      font-size: 0.875rem;
+      transition: all var(--transition-speed);
+    }
+
+    .btn-primary { background-color: var(--accent-color); border-color: var(--accent-color); }
+    .btn-primary:hover { background-color: #1d4ed8; border-color: #1d4ed8; }
+
+    /* Toast Notifications */
+    #moniepoint-toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 9999;
+    }
+
+    .toast {
+      border-radius: 10px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15);
+      border: none;
+    }
+
+    /* Styling for the Sales Interface Refresh Button */
+#refresh-btn {
+  background-color: blue;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  color: #fff;
+  transition: all 0.2s ease-in-out;
+  font-size: 0.85rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.375rem;
+}
+
+#refresh-btn:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.8);
+  color: #fff;
+}
+
+#refresh-btn:active {
+  transform: scale(0.96);
+}
+
+/* Spinner alignment tweaks inside button */
+#refresh-btn .spinner-border {
+  width: 0.9rem;
+  height: 0.9rem;
+  border-width: 0.15em;
+}
+    
+   @media print {
+  .no-print, nav, button, .card-header, form, .input-group, .modal, 
+  .sales-filter-container, .returns-filter-container, .sup-filter-container, .req-filter-container {
+    display: none !important;
+  }
+  
+  body {
+    font-size: 11pt !important;
+    background-color: #fff !important;
+    color: #000 !important;
+  }
+  
+  .container {
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  
+  .card {
+    border: none !important;
+    box-shadow: none !important;
+  }
+  
+  .table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  .table th, .table td {
+    border: 1px solid #cbd5e1 !important;
+    padding: 6px !important;
+    background-color: transparent !important;
+  }
+
+  .print-title {
+    display: block !important;
+    text-align: center;
+    margin-bottom: 20px;
+  }
+
+  .cac-print-section {
+    display: block !important;
+    border: 2px solid #0f172a;
+    padding: 15px;
+    margin-top: 20px;
+    border-radius: 8px;
+    page-break-inside: avoid;
+  }
+
+  /* Prevent row breaking across pages */
+  tr {
+    page-break-inside: avoid;
+  }
+}
+
+.print-title {
+  display: none;
+}
+
+.cac-print-section {
+  display: none;
+}
+  </style>
 </head>
 <body>
-  <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="true"></div>
 
-  <nav id="main-nav" class="navbar navbar-expand-lg navbar-dark no-print" hidden>
+  <!-- Real-time Moniepoint Payment Notification Popup Container -->
+  <div id="moniepoint-toast-container">
+    <div id="moniepoint-toast" class="toast align-items-center text-white bg-success border-0 shadow-lg" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="d-flex">
+        <div class="toast-body fs-6 py-3">
+          <i class="fa-solid fa-circle-check me-2"></i><strong>Moniepoint Alert:</strong> <span id="toast-message">New payment received!</span>
+        </div>
+        <button type="button" class="btn-close btn-close-white me-3 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Professional Navigation Header -->
+  <nav id="main-nav" class="navbar navbar-expand-lg navbar-dark px-3 mb-4 no-print" style="display: none;">
     <div class="container-fluid">
-      <a class="navbar-brand fw-bold" href="#"><i class="fa-solid fa-boxes-stacked me-2"></i>SKY MODERNIZE SAVE TECHNOLOGY LTD</a>
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav-menu" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button>
-      <div id="nav-menu" class="collapse navbar-collapse justify-content-end">
-        <div class="nav-actions mt-3 mt-lg-0">
-          <button class="btn nav-btn" data-page="dashboard"><i class="fa-solid fa-chart-pie me-1"></i>Dashboard</button>
-          <button class="btn nav-btn" data-page="stock"><i class="fa-solid fa-warehouse me-1"></i>Stock</button>
-          <button class="btn nav-btn" data-page="sales"><i class="fa-solid fa-cart-shopping me-1"></i>Sales</button>
-          <button class="btn nav-btn" data-page="returns"><i class="fa-solid fa-rotate-left me-1"></i>Returns</button>
-          <button class="btn nav-btn" data-page="cash-drawer"><i class="fa-solid fa-cash-register me-1"></i>Till Count</button>
-          <button class="btn nav-btn" data-page="purchase-requisition"><i class="fa-solid fa-clipboard-list me-1"></i>Requisition</button>
-          <button class="btn nav-btn" data-page="change-password"><i class="fa-solid fa-key me-1"></i>Password</button>
-          <button id="theme-toggle" class="btn nav-btn" type="button" aria-label="Toggle dark mode"><i class="fa-solid fa-moon"></i></button>
-          <button id="logout-btn" class="btn btn-danger" type="button"><i class="fa-solid fa-right-from-bracket me-1"></i>Logout</button>
+      <a class="navbar-brand d-flex align-items-center gap-2" href="#">
+        <i class="fa-solid fa-boxes-stacked fa-lg"></i>
+        <span> SKY MODERNIZE SAVE TECHNOLOGY LTD </span>
+      </a>
+      <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+        <div class="d-flex gap-2 flex-wrap align-items-center mt-3 mt-lg-0">
+          <button class="btn btn-sm btn-outline-light nav-link-btn" onclick="navigateTo('dashboard')"><i class="fa-solid fa-chart-pie me-1"></i> Dashboard</button>
+          <button class="btn btn-sm btn-outline-light nav-link-btn" onclick="navigateTo('stock')"><i class="fa-solid fa-warehouse me-1"></i> Stock 🔒</button>
+          <button class="btn btn-sm btn-outline-light nav-link-btn" onclick="navigateTo('sales')"><i class="fa-solid fa-cart-shopping me-1"></i> Sales</button>
+          <button class="btn btn-sm btn-outline-light nav-link-btn" onclick="navigateTo('cash-drawer')"><i class="fa-solid fa-cash-register me-1"></i> Till Count</button>
+          <button class="btn btn-sm btn-outline-info nav-link-btn" onclick="navigateTo('moniepoint')"><i class="fa-solid fa-credit-card me-1"></i> Payments</button>
+          <button class="btn btn-sm btn-outline-light nav-link-btn" onclick="navigateTo('returns')"><i class="fa-solid fa-rotate-left me-1"></i> Returns</button>
+          <button class="btn btn-sm btn-outline-warning nav-link-btn" onclick="navigateTo('supplier-returns')"><i class="fa-solid fa-truck-ramp-box me-1"></i> Vendor Box</button>
+          <button class="btn btn-sm btn-outline-info nav-link-btn" onclick="navigateTo('purchase-requisition')"><i class="fa-solid fa-clipboard-list me-1"></i> Requisition</button>
+          <button class="btn btn-sm btn-outline-light" onclick="navigateTo('change-password')"><i class="fa-solid fa-key me-1"></i> password </button>
+          
+          <div class="vr bg-secondary opacity-50 mx-1"></div>
+          
+          <button class="btn btn-sm btn-outline-secondary nav-link-btn text-light" id="theme-toggle-btn" onclick="toggleTheme()"><i class="fa-solid fa-moon"></i></button>
+          <button type="button" class="btn btn-sm btn-outline-light nav-link-btn" onclick="window.location.reload();" title="Refresh Application"><i class="fa-solid fa-rotate"></i></button>
+          <button class="btn btn-danger btn-sm nav-link-btn fw-bold px-3" onclick="logout()"><i class="fa-solid fa-right-from-bracket me-1"></i> Logout</button>
         </div>
       </div>
     </div>
   </nav>
 
-  <main class="container py-4">
-    <section id="page-login" class="page active">
-      <div class="login-wrap">
-        <div class="card login-card">
-          <div class="login-header text-center text-white">
-            <i class="fa-solid fa-shield-halved fa-3x text-info mb-3"></i>
-            <h2 class="fw-bold">SKY MODERNIZE SAVE TECHNOLOGY LTD</h2>
-            <p class="mb-0 text-white-50">Inventory and point-of-sale management</p>
-          </div>
-          <div class="card-body p-4 p-md-5">
-            <div id="login-alert" class="alert alert-danger d-none" role="alert"></div>
-            <form id="login-form">
-              <label class="form-label fw-semibold" for="login-username">Username</label>
-              <input id="login-username" class="form-control mb-3" autocomplete="username" required>
-              <label class="form-label fw-semibold" for="login-password">Password</label>
-              <input id="login-password" type="password" class="form-control mb-4" autocomplete="current-password" required>
-              <button class="btn btn-primary w-100 fw-bold" type="submit"><i class="fa-solid fa-right-to-bracket me-2"></i>Sign in</button>
-            </form>
-            <p class="text-muted small text-center mt-4 mb-0">Use your configured account credentials.</p>
+  <div class="container pb-5">
+
+    <!-- Landing / Login Interface -->
+    <div id="page-login" class="page active">
+      <div class="row justify-content-center align-items-center min-vh-75 mt-5">
+        <div class="col-12 col-md-8 col-lg-5">
+          <div class="card shadow-lg border-0 rounded-4 overflow-hidden">
+            <div class="bg-dark text-white p-4 text-center">
+              <div class="mb-3">
+                <span class="fa-stack fa-2x text-info">
+                  <i class="fa-solid fa-circle fa-stack-2x text-dark"></i>
+                  <i class="fa-solid fa-shield-halved fa-stack-1x"></i>
+                </span>
+              </div>
+              <h3 class="fw-bold mb-1">SKY MODERNIZE SAVE TECHNOLOGY LTD</h3>
+              <p class="text-secondary small mb-0">Professional Multi-Branch Inventory & POS Software[cite: 1]</p>
+            </div>
+            <div class="card-body p-4 p-md-5">
+              <div id="login-alert" class="alert alert-danger py-2 d-none small" role="alert"></div>
+
+              <form id="login-form">
+                <div class="mb-3">
+                  <label class="form-label small fw-bold text-muted">USERNAME</label>
+                  <div class="input-group">
+                    <span class="input-group-text bg-light border-end-0"><i class="fa-solid fa-user text-muted"></i></span>
+                    <input id="login-username" class="form-control bg-light border-start-0" placeholder="Enter username" required>
+                  </div>
+                </div>
+                <div class="mb-4">
+                  <label class="form-label small fw-bold text-muted">PASSWORD</label>
+                  <div class="input-group">
+                    <span class="input-group-text bg-light border-end-0"><i class="fa-solid fa-lock text-muted"></i></span>
+                    <input id="login-password" type="password" class="form-control bg-light border-start-0" placeholder="Enter password" required>
+                  </div>
+                </div>
+                <button type="submit" class="btn btn-primary w-100 fw-bold py-2 shadow-sm">
+                  <i class="fa-solid fa-right-to-bracket me-2"></i> Access Enterprise System
+                </button>
+              </form>
+              <div class="text-center mt-4 text-muted small">
+                <span>Secured with Supabase Cloud Triple Saving Engine[cite: 1]</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </section>
+    </div>
 
-    <section id="page-dashboard" class="page">
-      <div class="page-heading"><div><h1>Executive Dashboard</h1><p>Business performance and inventory overview.</p></div><button id="print-dashboard" class="btn btn-dark no-print"><i class="fa-solid fa-print me-1"></i>Print</button></div>
-      <div class="row g-3 mb-4" id="dashboard-stats">
-        <div class="col-6 col-lg-3"><div class="card stat-card"><span>Revenue</span><strong id="stat-revenue">₦0</strong></div></div>
-        <div class="col-6 col-lg-3"><div class="card stat-card"><span>Cost of Sales</span><strong id="stat-cost">₦0</strong></div></div>
-        <div class="col-6 col-lg-3"><div class="card stat-card"><span>Gross Profit</span><strong id="stat-profit">₦0</strong></div></div>
-        <div class="col-6 col-lg-3"><div class="card stat-card"><span>Stock Value</span><strong id="stat-stock">₦0</strong></div></div>
+    <!-- Manager Authentication Interface -->
+    <div id="page-manager-auth" class="page">
+      <div class="row justify-content-center mt-5">
+        <div class="col-12 col-md-6 col-lg-4">
+          <div class="card shadow border-warning">
+            <div class="card-body p-4 text-center">
+              <div class="text-warning mb-3">
+                <i class="fa-solid fa-triangle-exclamation fa-3x"></i>
+              </div>
+              <h4 class="fw-bold mb-1">Manager Authorization</h4>
+              <p class="text-muted small mb-4">Enter secure authorization PIN to modify stock records</p>
+              
+              <div id="manager-alert" class="alert alert-danger py-2 d-none small" role="alert"></div>
+
+              <form id="manager-form">
+                <div class="mb-3">
+                  <input id="manager-pin" type="password" class="form-control text-center fs-4 tracking-widest" placeholder="••••" maxlength="4" required autofocus>
+                </div>
+                <button type="submit" class="btn btn-warning w-100 fw-bold py-2 mb-2">Authorize Access</button>
+                <button type="button" class="btn btn-outline-secondary w-100 btn-sm" onclick="navigateTo('dashboard')">Return to Dashboard</button>
+              </form>
+            </div>
+          </div>
+        </div>
       </div>
-      <div class="card"><div class="card-header fw-bold">Low Stock (10 units or fewer)</div><div id="low-stock-list" class="card-body"></div></div>
-    </section>
+    </div>
 
-    <section id="page-stock" class="page">
-      <div class="page-heading"><div><h1>Stock Management</h1><p>Add, search, edit, export, and remove inventory items.</p></div><div class="no-print"><button id="export-stock" class="btn btn-outline-primary"><i class="fa-solid fa-download me-1"></i>Export CSV</button><button id="backup-stock" class="btn btn-outline-secondary ms-2"><i class="fa-solid fa-database me-1"></i>Backup</button><button id="restore-stock" class="btn btn-outline-success ms-2">Restore</button><input id="restore-input" type="file" accept="application/json" hidden></div></div>
-      <div class="card mb-4 no-print"><div class="card-header fw-bold">Add Inventory Item</div><div class="card-body"><form id="stock-form" class="row g-3"><div class="col-md-2"><input id="stock-model" class="form-control" placeholder="Model" required></div><div class="col-md-2"><input id="stock-category" class="form-control" placeholder="Category" required></div><div class="col-md-2"><input id="stock-quality" class="form-control" placeholder="Quality"></div><div class="col-md-1"><input id="stock-qty" type="number" min="1" class="form-control" placeholder="Qty" required></div><div class="col-md-2"><input id="stock-cost" type="number" min="0" class="form-control" placeholder="Cost" required></div><div class="col-md-2"><input id="stock-price" type="number" min="0" class="form-control" placeholder="Selling price" required></div><div class="col-md-1"><input id="stock-supplier" class="form-control" placeholder="Supplier"></div><div class="col-12"><button class="btn btn-success w-100 fw-bold" type="submit">Save Item</button></div></form></div></div>
-      <div class="card"><div class="card-header"><input id="stock-search" class="form-control" placeholder="Search inventory..."></div><div class="table-responsive"><table class="table table-hover mb-0"><thead><tr><th>Model</th><th>Category</th><th>Quality</th><th>Supplier</th><th>Qty</th><th>Cost</th><th>Price</th><th class="no-print">Actions</th></tr></thead><tbody id="stock-table"></tbody></table></div></div>
-    </section>
+    <!-- Password Management Interface -->
+    <div id="page-change-password" class="page">
+      <div class="row justify-content-center mt-4">
+        <div class="col-12 col-md-6 col-lg-5">
+          <div class="card shadow border-0">
+            <div class="card-header bg-dark text-white">
+              <h5 class="mb-0 fw-bold"><i class="fa-solid fa-key me-2 text-warning"></i> Security & Credential Management</h5>
+            </div>
+            <div class="card-body p-4">
+              <div id="password-alert" class="alert py-2 d-none small" role="alert"></div>
+              <form id="password-form">
+                <div class="mb-3">
+                  <label class="form-label small fw-bold">Manager Verification PIN 🔒</label>
+                  <input id="pwd-manager-pin" type="password" class="form-control" placeholder="Enter PIN" required>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label small fw-bold">Current Password</label>
+                  <input id="pwd-current" type="password" class="form-control" placeholder="Current password" required>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label small fw-bold">New Secure Password</label>
+                  <input id="pwd-new" type="password" class="form-control" placeholder="New password" required>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label small fw-bold">Confirm New Password</label>
+                  <input id="pwd-confirm" type="password" class="form-control" placeholder="Confirm password" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-100 fw-bold">Update Credentials</button>
+                <button type="button" class="btn btn-outline-secondary w-100 mt-2 btn-sm" onclick="navigateTo('dashboard')">Cancel</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
 
-    <section id="page-sales" class="page">
-      <div class="page-heading"><div><h1>Point of Sale</h1><p>Record sales and update inventory automatically.</p></div><button id="export-sales" class="btn btn-outline-primary no-print">Export CSV</button></div>
-      <div class="card mb-4 no-print"><div class="card-header fw-bold">Record Sale</div><div class="card-body"><form id="sales-form" class="row g-3"><div class="col-md-3"><input id="sale-model" class="form-control" list="sale-models" placeholder="Model" required><datalist id="sale-models"></datalist></div><div class="col-md-2"><input id="sale-quality" class="form-control" placeholder="Quality"></div><div class="col-md-2"><input id="sale-qty" type="number" min="1" class="form-control" placeholder="Qty" required></div><div class="col-md-2"><input id="sale-price" type="number" min="0" class="form-control" placeholder="Unit price" required></div><div class="col-md-3"><input id="sale-customer" class="form-control" placeholder="Customer" required></div><div class="col-md-3"><select id="sale-payment" class="form-select"><option>Cash</option><option>Transfer</option></select></div><div class="col-md-9"><button class="btn btn-success w-100 fw-bold" type="submit">Complete Sale</button></div></form></div></div>
-      <div class="card"><div class="table-responsive"><table class="table table-hover mb-0"><thead><tr><th>Date</th><th>Model</th><th>Quality</th><th>Customer</th><th>Payment</th><th>Qty</th><th>Total</th><th class="no-print">Actions</th></tr></thead><tbody id="sales-table"></tbody></table></div></div>
-    </section>
+    <!-- Dashboard Interface -->
+    <div id="page-dashboard" class="page">
+      <div class="print-title">
+        <h2>SKY MODERNIZE SAVE TECHNOLOGY LTD</h2>
+        <h4>Executive Financial & CAC (7.5%) Audit Report</h4>
+        <hr>
+      </div>
 
-    <section id="page-returns" class="page"><div class="page-heading"><div><h1>Customer Returns</h1><p>Record refunds and returned products.</p></div></div><div class="card mb-4 no-print"><div class="card-header fw-bold">Process Return</div><div class="card-body"><form id="returns-form" class="row g-3"><div class="col-md-3"><select id="return-sale" class="form-select" required></select></div><div class="col-md-2"><input id="return-qty" type="number" min="1" class="form-control" placeholder="Qty" required></div><div class="col-md-4"><input id="return-reason" class="form-control" placeholder="Reason" required></div><div class="col-md-3"><button class="btn btn-danger w-100" type="submit">Process Return</button></div></form></div></div><div class="card"><div class="table-responsive"><table class="table mb-0"><thead><tr><th>Date</th><th>Model</th><th>Customer</th><th>Qty</th><th>Reason</th><th class="no-print">Actions</th></tr></thead><tbody id="returns-table"></tbody></table></div></div></section>
+      <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2 no-print">
+        <div>
+          <h3 class="fw-bold mb-1">Executive Dashboard</h3>
+          <p class="text-muted small mb-0">Real-time business performance analytics & tax monitoring.</p>
+        </div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <button id="btn-toggle-dashboard-summary" class="btn btn-sm btn-outline-secondary" onclick="toggleDashboardSummary()"><i class="fa-solid fa-eye-slash me-1"></i> Hide Summary</button>
+          <button class="btn btn-sm btn-dark" onclick="printCACReport()"><i class="fa-solid fa-print me-1"></i> Print CAC Audit Report</button>
+          <select id="dash-date-filter" class="form-select form-select-sm" style="width: auto;" onchange="handleDashboardFilterChange()">
+            <option value="today" selected>Today</option>
+            <option value="yesterday">Yesterday</option>
+            <option value="this-week">This Week</option>
+            <option value="this-month">This Month</option>
+            <option value="last-month">Last Month</option>
+            <option value="this-year">This Year (Grouped)</option>
+            <option value="all-time">All Time</option>
+            <option value="custom">Custom Date...</option>
+          </select>
+          <input type="date" id="dash-custom-date" class="form-control form-control-sm d-none" style="width: auto;" onchange="renderDashboard()">
+          <span class="badge bg-primary fs-6 px-3 py-2" id="dash-date-badge">Today</span>
+        </div>
+      </div>
+      
+      <div id="dashboard-summary-container">
+        <div class="row g-3 mb-3">
+          <div class="col-md-2 col-6">
+            <div class="card text-center h-100"><div class="card-body p-3"><h6 class="text-muted small fw-bold">Revenue</h6><h4 class="text-success fw-bold mb-0" id="dash-sales">₦0</h4></div></div>
+          </div>
+          <div class="col-md-2 col-6">
+            <div class="card text-center h-100"><div class="card-body p-3"><h6 class="text-muted small fw-bold">Cost Price</h6><h4 class="text-warning fw-bold mb-0" id="dash-cost">₦0</h4></div></div>
+          </div>
+          <div class="col-md-2 col-6">
+            <div class="card text-center h-100"><div class="card-body p-3"><h6 class="text-muted small fw-bold">Refunds</h6><h4 class="text-danger fw-bold mb-0" id="dash-returns">₦0</h4></div></div>
+          </div>
+          <div class="col-md-2 col-6">
+            <div class="card text-center h-100"><div class="card-body p-3"><h6 class="text-muted small fw-bold">Gross Profit</h6><h4 class="text-info fw-bold mb-0" id="dash-gross">₦0</h4></div></div>
+          </div>
+          <div class="col-md-2 col-6">
+            <div class="card text-center border-danger h-100"><div class="card-body p-3"><h6 class="text-muted small fw-bold">CAC (7.5%)</h6><h4 class="text-danger fw-bold mb-0" id="dash-cac">₦0</h4></div></div>
+          </div>
+          <div class="col-md-2 col-6">
+            <div class="card text-center border-success h-100"><div class="card-body p-3"><h6 class="text-muted small fw-bold">Net Profit</h6><h4 class="text-success fw-bold mb-0" id="dash-net">₦0</h4></div></div>
+          </div>
+        </div>
+        
+        <div class="row mb-4 no-print">
+          <div class="col-md-4 offset-md-8">
+            <div class="input-group input-group-sm shadow-sm">
+              <span class="input-group-text bg-warning text-dark fw-bold">Operating Expenses (₦)</span>
+              <input type="number" id="dash-period-expenses" class="form-control" min="0" value="0" placeholder="Enter expenses" oninput="renderDashboard()">
+              <button class="btn btn-outline-secondary" type="button" onclick="document.getElementById('dash-period-expenses').value=0; renderDashboard();">Reset</button>
+            </div>
+          </div>
+        </div>
+      </div>
 
-    <section id="page-cash-drawer" class="page"><div class="page-heading"><div><h1>Till Count</h1><p>Reconcile physical cash against cash sales.</p></div></div><div class="card"><div class="card-body"><div class="row g-3"><div class="col-md-6"><div class="denomination" data-value="1000"><label>₦1,000 notes</label><input class="cash-count form-control" type="number" min="0" value="0"></div><div class="denomination" data-value="500"><label>₦500 notes</label><input class="cash-count form-control" type="number" min="0" value="0"></div><div class="denomination" data-value="200"><label>₦200 notes</label><input class="cash-count form-control" type="number" min="0" value="0"></div><div class="denomination" data-value="100"><label>₦100 notes</label><input class="cash-count form-control" type="number" min="0" value="0"></div></div><div class="col-md-6"><p>Expected cash sales: <strong id="expected-cash">₦0</strong></p><p>Counted cash: <strong id="counted-cash">₦0</strong></p><p>Variance: <strong id="cash-variance">₦0</strong></p><textarea id="cash-notes" class="form-control mb-3" placeholder="Notes"></textarea><button id="print-cash" class="btn btn-success w-100">Print Reconciliation</button></div></div></div></div></section>
+      <div class="cac-print-section mb-4">
+        <h3 class="text-center">SKY MODERNIZE SAVE TECHNOLOGY LTD </h3>
+        <h5 class="text-center text-muted">Official CAC (7.5%) Tax Compliance Printout</h5>
+        <p class="text-center small"><b>Period:</b> <span id="printout-period-label">Today</span></p>
+        <hr>
+        <div id="cac-print-dynamic-content">
+          <table class="table table-bordered">
+            <tr><td><b>Total Sales Revenue:</b></td><td id="print-val-sales">₦0</td></tr>
+            <tr><td><b>Total Cost Price:</b></td><td id="print-val-cost">₦0</td></tr>
+            <tr><td><b>Total Customer Refunds:</b></td><td id="print-val-returns">₦0</td></tr>
+            <tr><td><b>Gross Profit:</b></td><td id="print-val-gross">₦0</td></tr>
+            <tr><td><b>Period Operating Expenses:</b></td><td id="print-val-expenses">₦0</td></tr>
+            <tr class="table-danger"><td><b>CAC Tax Deduction Amount (7.5%):</b></td><td id="print-val-cac">₦0</td></tr>
+            <tr class="table-success"><td><b>Final Net Profit:</b></td><td id="print-val-net">₦0</td></tr>
+          </table>
+        </div>
+        <div class="row mt-5">
+          <div class="col-6"><p class="small">Authorized Auditor Signature: <br>___________________________</p></div>
+          <div class="col-6 text-end"><p class="small">Date Verified: <br>___________________________</p></div>
+        </div>
+      </div>
 
-    <section id="page-purchase-requisition" class="page"><div class="page-heading"><div><h1>Purchase Requisition</h1><p>Create replenishment requests for low stock items.</p></div></div><div class="card mb-4 no-print"><div class="card-body"><form id="requisition-form" class="row g-3"><div class="col-md-4"><input id="requisition-item" class="form-control" placeholder="Item" required></div><div class="col-md-2"><input id="requisition-qty" type="number" min="1" class="form-control" placeholder="Qty" required></div><div class="col-md-3"><input id="requisition-supplier" class="form-control" placeholder="Preferred supplier"></div><div class="col-md-3"><button class="btn btn-info text-white w-100" type="submit">Submit Request</button></div></form></div></div><div class="card"><div class="table-responsive"><table class="table mb-0"><thead><tr><th>ID</th><th>Date</th><th>Item</th><th>Qty</th><th>Supplier</th><th>Status</th></tr></thead><tbody id="requisition-table"></tbody></table></div></div></section>
+      <div class="row g-4">
+        <div class="col-lg-6">
+          <div class="card border-danger shadow-sm h-100">
+            <div class="card-header bg-danger text-white fw-bold d-flex justify-content-between align-items-center">
+              <span><i class="fa-solid fa-fire me-1"></i> Critical Low Stock Models (&le; 10 pcs)</span>
+              <span class="badge bg-light text-dark">High Priority</span>
+            </div>
+            <div class="card-body p-0" id="top-5-low-stock-container">
+              <p class="text-muted p-3 mb-0">No low stock items currently.</p>
+            </div>
+          </div>
+        </div>
 
-    <section id="page-change-password" class="page"><div class="login-wrap"><div class="card login-card"><div class="card-header fw-bold">Change Password</div><div class="card-body"><form id="password-form"><input id="new-password" type="password" class="form-control mb-3" minlength="6" placeholder="New password" required><input id="confirm-password" type="password" class="form-control mb-3" placeholder="Confirm password" required><button class="btn btn-primary w-100" type="submit">Update Password</button></form></div></div></div></section>
-  </main>
+        <div class="col-lg-6">
+          <div class="card border-info shadow-sm h-100">
+            <div class="card-header bg-info text-white fw-bold d-flex justify-content-between align-items-center">
+              <span><i class="fa-solid fa-magnifying-glass me-1"></i> Quick Inventory Lookup</span>
+              <span class="small text-white-50">Instant Pricing & Stock Check</span>
+            </div>
+           <div class="card-body">
+       <div class="input-group mb-3 gap-1">
+        <select id="dash-goods-category-select" class="form-select form-select-sm" style="max-width: 140px;" onchange="searchDashboardGoods()">
+         <option value="">All Categories</option>
+       </select>
+        <input type="text" id="dash-goods-search-input" class="form-control form-control-sm" placeholder="Search model name, quality..." onkeyup="searchDashboardGoods()">
+       <button class="btn btn-sm btn-outline-secondary" type="button" onclick="clearDashboardGoodsSearch()">Clear</button>
+     </div>
+       <div class="table-responsive" style="max-height: 200px; overflow-y: auto;">
+           <table class="table table-sm table-hover mb-0">
+            <thead class="table-light sticky-top">
+            <tr><th>Model</th><th>Quality</th><th>Price (₦)</th><th>Stock</th></tr>
+             </thead>
+               <tbody id="dash-goods-search-results">
+               <tr><td colspan="4" class="text-center text-muted small py-3">Select a category or type above to query inventory</td></tr>
+               </tbody>
+              </table>
+             </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="app.js"></script>
+      <div class="card mt-4 border-warning shadow-sm">
+        <div class="card-header bg-warning text-dark fw-bold d-flex justify-content-between align-items-center">
+          <span><i class="fa-solid fa-triangle-exclamation me-1"></i> Low Stock Grouped Inventory</span>
+          <button class="btn btn-sm btn-dark" onclick="requestBulkLowStockRequisition()"><i class="fa-solid fa-file-invoice me-1"></i> Request Selected in Bulk</button>
+        </div>
+        <div class="card-body" id="low-stock-list"></div>
+      </div>
+    </div>
+
+    <!-- Moniepoint Payment History Interface Tab -->
+    <div id="page-moniepoint" class="page">
+      <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+          <h3 class="fw-bold mb-1"><i class="fa-solid fa-credit-card text-info me-2"></i> Moniepoint Payment Integration[cite: 1]</h3>
+          <p class="text-muted small mb-0">Automated webhook gateway for direct customer transfer reconciliation.</p>
+        </div>
+        <div class="no-print d-flex align-items-center gap-2 flex-wrap">
+          <span class="badge bg-secondary px-3 py-2">Webhook Status: Active & Synced</span>[cite: 1]
+          <button class="btn btn-outline-primary btn-sm" onclick="exportMoniepointToCSV()"><i class="fa-solid fa-download me-1"></i> Export CSV</button>
+        </div>
+      </div>
+
+      <div class="d-flex align-items-center mb-3 gap-2">
+        <label for="moniepoint-date-filter" class="fw-bold small text-muted">FILTER PERIOD:</label>
+        <select id="moniepoint-date-filter" class="form-select form-select-sm w-auto" onchange="filterMoniepointPayments()">
+          <option value="today" selected>Today</option>
+          <option value="yesterday">Yesterday</option>
+          <option value="this_week">This Week</option>
+          <option value="last_month">Last Month</option>
+          <option value="all">All Time History</option>
+        </select>
+      </div>  
+    
+      <div class="row g-3 mb-4">
+        <div class="col-md-6">
+          <div class="card text-center border-success shadow-sm">
+            <div class="card-body py-3">
+              <h6 class="text-muted small fw-bold">Total Moniepoint Inflows (Filtered Period)</h6>
+              <h3 class="text-success fw-bold mb-0" id="moniepoint-total-amount">₦0</h3>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="card text-center border-primary shadow-sm">
+            <div class="card-body py-3">
+              <h6 class="text-muted small fw-bold">Total Successful Transactions</h6>
+              <h3 class="text-primary fw-bold mb-0" id="moniepoint-total-count">0</h3>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card shadow-sm">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-3">
+          <span class="fw-bold">Moniepoint Transfer History Logs</span>
+          <div class="input-group input-group-sm" style="max-width: 320px;">
+            <input type="text" id="moniepoint-search-input" class="form-control" placeholder="Search sender, ref..." onkeyup="searchMoniepointPayments()">
+            <button class="btn btn-outline-light" type="button" id="refresh-payments-btn"><i class="fa-solid fa-sync"></i></button>
+          </div>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-striped align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Date & Time</th>
+                  <th>Reference / Session ID</th>
+                  <th>Sender Name</th>
+                  <th>Account Number</th>
+                  <th>Amount (₦)</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="payment-table-body">
+                <tr><td colspan="6" class="text-center text-muted py-4">No Moniepoint payment records loaded.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cash Drawer Reconciliation Interface -->
+    <div id="page-cash-drawer" class="page">
+      <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+          <h3 class="fw-bold mb-1"><i class="fa-solid fa-cash-register text-success me-2"></i> Cash Drawer Reconciliation</h3>
+          <p class="text-muted small mb-0">Perform daily till count and audit cash drawer discrepancies.</p>
+        </div>
+        <button class="btn btn-sm btn-outline-secondary" onclick="resetCashDrawer()"><i class="fa-solid fa-rotate-right me-1"></i> Clear Drawer Form</button>
+      </div>
+
+      <div class="card border-success shadow-sm">
+        <div class="card-header bg-success text-white fw-bold">
+          <span>Till Count & Denomination Breakdown</span>
+        </div>
+        <div class="card-body p-4">
+          <div class="row g-4">
+            <div class="col-md-6">
+              <h6 class="fw-bold text-secondary mb-3">Nigerian Naira Denominations</h6>
+              <div class="table-responsive">
+                <table class="table table-sm table-bordered align-middle mb-0">
+                  <thead class="table-light">
+                    <tr><th>Denomination</th><th>Physical Count</th><th>Subtotal</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr><td>₦1,000 Note</td><td><input type="number" min="0" value="0" class="form-control form-control-sm cash-denom" data-val="1000" oninput="calculateCashDrawer()"></td><td class="fw-bold" id="sub-1000">₦0</td></tr>
+                    <tr><td>₦500 Note</td><td><input type="number" min="0" value="0" class="form-control form-control-sm cash-denom" data-val="500" oninput="calculateCashDrawer()"></td><td class="fw-bold" id="sub-500">₦0</td></tr>
+                    <tr><td>₦200 Note</td><td><input type="number" min="0" value="0" class="form-control form-control-sm cash-denom" data-val="200" oninput="calculateCashDrawer()"></td><td class="fw-bold" id="sub-200">₦0</td></tr>
+                    <tr><td>₦100 Note</td><td><input type="number" min="0" value="0" class="form-control form-control-sm cash-denom" data-val="100" oninput="calculateCashDrawer()"></td><td class="fw-bold" id="sub-100">₦0</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div class="col-md-6 d-flex flex-column justify-content-between">
+              <div>
+                <h6 class="fw-bold text-secondary mb-3">Reconciliation Summary</h6>
+                <ul class="list-group mb-3 shadow-sm">
+                  <li class="list-group-item d-flex justify-content-between align-items-center py-3">
+                    <span>Expected Cash Sales (Today):</span>
+                    <strong id="drawer-expected-sales" class="text-primary fs-5">₦0</strong>
+                  </li>
+                  <li class="list-group-item d-flex justify-content-between align-items-center py-3">
+                    <span>Physical Cash Counted:</span>
+                    <strong id="drawer-total-counted" class="text-success fs-5">₦0</strong>
+                  </li>
+                  <li class="list-group-item d-flex justify-content-between align-items-center py-3">
+                    <span>Variance / Difference:</span>
+                    <strong id="drawer-variance" class="text-dark fs-5">₦0</strong>
+                  </li>
+                </ul>
+                <div class="mb-3">
+                  <label class="form-label small fw-bold text-muted">RECONCILIATION NOTES / AUDITOR NAME</label>
+                  <input id="drawer-notes" class="form-control" placeholder="e.g., Verified by Store Manager">
+                </div>
+              </div>
+              <button class="btn btn-success fw-bold py-2 shadow-sm" onclick="printCashReconciliation()">
+                <i class="fa-solid fa-print me-2"></i> Print Drawer Reconciliation Slip
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stock Management Interface -->
+    <div id="page-stock" class="page">
+      <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+          <h3 class="fw-bold mb-1"><i class="fa-solid fa-warehouse text-primary me-2"></i> Stock Management</h3>
+          <p class="text-muted small mb-0">Secure inventory database with triple-saving backup protection.</p>
+        </div>
+        <div class="no-print d-flex gap-2 flex-wrap">
+          <button class="btn btn-sm btn-outline-primary" onclick="exportStockToCSV()"><i class="fa-solid fa-download me-1"></i> Export CSV</button>
+          <button class="btn btn-sm btn-outline-info" onclick="exportBackupJSON()"><i class="fa-solid fa-database me-1"></i> Backup JSON</button>
+          <button class="btn btn-sm btn-outline-success" onclick="document.getElementById('import-file-input').click()"><i class="fa-solid fa-upload me-1"></i> Restore</button>
+          <input type="file" id="import-file-input" accept=".json" class="d-none" onchange="importBackupJSON(event)">
+          <button id="btn-toggle-stock-totals" class="btn btn-sm btn-outline-secondary" onclick="toggleStockTotals()">👁️ Hide Totals</button>
+          <button class="btn btn-sm btn-warning fw-bold" onclick="lockStock()">Lock Stock 🔒</button>
+        </div>
+      </div>
+
+      <div class="row g-3 mb-4">
+        <div class="col-md-6">
+          <div class="card text-center border-primary shadow-sm">
+            <div class="card-body py-3">
+              <h6 class="text-muted small fw-bold">Total Goods in Stock</h6>
+              <h3 class="text-primary fw-bold mb-0" id="total-stock-units">0 pcs</h3>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="card text-center border-warning shadow-sm">
+            <div class="card-body py-3">
+              <h6 class="text-muted small fw-bold">Total Stock Cost Value</h6>
+              <h3 class="text-warning fw-bold mb-0" id="total-stock-value">₦0</h3>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mb-4 no-print shadow-sm">
+        <div class="card-header bg-dark text-white fw-bold"><i class="fa-solid fa-plus me-1"></i> Add New Stock Entry</div>
+        <div class="card-body p-4">
+          <form id="stock-form" class="row g-3">
+            <div class="col-md-2">
+              <label class="form-label small fw-bold text-muted">MODEL</label>
+              <input id="stk-model" class="form-control" placeholder="e.g. iPhone 13" required>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small fw-bold text-muted">CATEGORY</label>
+              <input id="stk-cat" class="form-control" placeholder="e.g. Phones" required>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small fw-bold text-muted">QUALITY / SUB-CAT</label>
+              <input id="stk-subcat" class="form-control" placeholder="e.g. Grade A">
+            </div>
+            <div class="col-md-1">
+              <label class="form-label small fw-bold text-muted">QTY</label>
+              <input id="stk-qty" type="number" min="1" class="form-control" placeholder="Qty" required>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small fw-bold text-muted">COST PRICE (₦)</label>
+              <input id="stk-cost" type="number" min="0" class="form-control" placeholder="Cost" required>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small fw-bold text-muted">SELL PRICE (₦)</label>
+              <input id="stk-sell" type="number" min="0" class="form-control" placeholder="Price" required>
+            </div>
+            <div class="col-md-1">
+              <label class="form-label small fw-bold text-muted">SUPPLIER</label>
+              <input id="stk-supplier" class="form-control" placeholder="Vendor">
+            </div>
+            <div class="col-12 mt-3">
+              <button class="btn btn-success fw-bold w-100 py-2 shadow-sm">
+                <i class="fa-solid fa-circle-plus me-2"></i> Save Stock Entry to Database
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div class="card shadow-sm">
+        <div class="card-header bg-white py-3 no-print">
+          <div class="row align-items-center">
+            <div class="col-md-5">
+              <div class="input-group input-group-sm">
+                <input type="text" id="stock-search-input" class="form-control" placeholder="Search stock inventory..." onkeyup="if(event.key==='Enter') searchStock()">
+                <button class="btn btn-primary" type="button" onclick="searchStock()">Search</button>
+                <button class="btn btn-outline-secondary" type="button" onclick="clearStockSearch()">Clear</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-striped align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Model</th>
+                  <th>Category</th>
+                  <th>Quality / Sub-Cat</th>
+                  <th>Supplier</th>
+                  <th>Qty</th>
+                  <th>Cost Price</th>
+                  <th>Selling Price</th>
+                  <th class="no-print text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="stock-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sales Management Interface -->
+    <div id="page-sales" class="page">
+      <div class="print-title">
+        <h2>SKY MODERNIZE SAVE TECHNOLOGY LTD </h2>
+        <h4 id="sales-print-subtitle">Sales History Report</h4>
+        <hr>
+      </div>
+
+      <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+          <h3 class="fw-bold mb-1"><i class="fa-solid fa-cart-shopping text-success me-2"></i> Point of Sale & Sales Management</h3>
+          <p class="text-muted small mb-0">Process multi-item customer checkout and review transaction records.</p>
+        </div>
+        <div class="no-print d-flex align-items-center gap-2 flex-wrap sales-filter-container">
+          <select id="sales-period-filter" class="form-select form-select-sm" style="width: auto;" onchange="handleSalesFilterChange()">
+            <option value="today">Today</option>
+            <option value="yesterday">Yesterday</option>
+            <option value="this-week">This Week</option>
+            <option value="this-month">This Month</option>
+            <option value="all-time" selected>All Time History</option>
+            <option value="custom">Custom Date...</option>
+          </select>
+          <input type="date" id="sales-custom-date" class="form-control form-control-sm d-none" style="width: auto;" onchange="renderSales()">
+          <button class="btn btn-outline-primary btn-sm" onclick="exportSalesToCSV()"><i class="fa-solid fa-download me-1"></i> Export CSV</button>
+          <button class="btn btn-outline-dark btn-sm" onclick="printFilteredSales()"><i class="fa-solid fa-print me-1"></i> Print Report</button>
+          <button id="refresh-btn" class="btn btn-outline-light btn-sm d-flex align-items-center gap-1" onclick="manualAppRefresh()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-clockwise" viewBox="0 0 16 16">
+             <path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/>
+             <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/>
+              </svg>
+               <span>Refresh Data</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="card mb-4 no-print border-success shadow-sm">
+        <div class="card-header bg-success text-white fw-bold d-flex justify-content-between align-items-center">
+          <span><i class="fa-solid fa-basket-shopping me-1"></i> Multi-Item Shopping Cart Checkout</span>
+          <div class="form-check form-switch m-0 text-white">
+            <input class="form-check-input" type="checkbox" id="bulk-toggle-mode" onchange="toggleBulkMode()">
+            <label class="form-check-label small fw-bold" for="bulk-toggle-mode">Bulk Mode (Cart Qty &ge; 5 Editable Price)</label>
+          </div>
+        </div>
+        <div class="card-body p-4">
+              <div class="row g-3 align-items-end mb-3">
+      <div class="col-12">
+       <label class="form-label small fw-bold text-muted">CATEGORY</label>
+        <select id="sale-category-filter" class="form-select" onchange="updateSaleModelList()">
+        <option value="">All Categories</option>
+      </select>
+        </div>
+     <div class="col-md-3">
+              <label class="form-label small fw-bold text-muted">SELECT MODEL</label>
+              <div class="input-group">
+                <input id="sale-item" class="form-control" list="sale-item-list" placeholder="Search model..." oninput="autoFillSaleDetails()" autocomplete="off">
+                <button class="btn btn-outline-secondary" type="button" onclick="clearSaleModelInput()">✖</button>
+              </div>
+              <datalist id="sale-item-list"></datalist>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small fw-bold text-muted">QUALITY / SUB-CAT</label>
+              <select id="sale-quality" class="form-select">
+                <option value="">-- Select Quality --</option>
+              </select>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small fw-bold text-muted">UNIT PRICE (₦)</label>
+              <input id="sale-price" type="number" min="1" class="form-control bg-light" placeholder="Auto-filled" readonly>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small fw-bold text-muted">QUANTITY</label>
+              <input id="sale-qty" type="number" class="form-control" min="1" value="1" oninput="checkBulkPriceEligibility()">
+            </div>
+            <div class="col-md-3">
+              <button type="button" class="btn btn-outline-success fw-bold w-100 shadow-sm" onclick="addItemToSalesCart()">
+                <i class="fa-solid fa-cart-plus me-1"></i> Add Item to Cart
+              </button>
+            </div>
+          </div>
+
+          <div id="sales-cart-container" class="d-none border rounded p-3 bg-light mb-4">
+            <h6 class="fw-bold text-success mb-2"><i class="fa-solid fa-shopping-cart me-1"></i> Customer Cart Summary</h6>
+            <div class="table-responsive">
+              <table class="table table-sm table-bordered bg-white mb-2">
+                <thead>
+                  <tr class="table-secondary">
+                    <th>Model</th><th>Quality</th><th>Qty</th><th>Unit Price</th><th>Subtotal</th><th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="sales-cart-tbody"></tbody>
+              </table>
+            </div>
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+              <h5 class="mb-0 fw-bold">Total Qty: <span id="sales-cart-total-qty" class="text-primary">0 pcs</span> | Total Amount: <span id="sales-cart-total" class="text-success">₦0</span></h5>
+              <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearSalesCart()">Clear Cart</button>
+            </div>
+          </div>
+
+          <form id="sales-form" class="row g-3 border-top pt-3">
+            <div class="col-md-5">
+              <label class="form-label small fw-bold text-muted">CUSTOMER NAME</label>
+              <input id="sale-customer" class="form-control" placeholder="Enter customer full name" required>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small fw-bold text-muted">PAYMENT METHOD</label>
+              <select id="sale-payment-method" class="form-select" required>
+                <option value="Cash">Cash 💵</option>
+                <option value="Transfer">Transfer 💳 </option>
+              </select>
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+              <button type="submit" class="btn btn-success fw-bold w-100 py-2 shadow-sm">
+                <i class="fa-solid fa-circle-check me-2"></i> Complete & Record Sale
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div class="card shadow-sm">
+        <div class="card-header bg-white py-3 no-print">
+          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <h5 class="mb-0 fw-bold">Sales History (<span id="sales-badge-period" class="text-primary">All Time</span>)</h5>
+            <div class="input-group input-group-sm" style="max-width: 320px;">
+              <input type="text" id="sales-search-input" class="form-control" placeholder="Search sales history..." onkeyup="if(event.key==='Enter') searchSales()">
+              <button class="btn btn-primary" type="button" onclick="searchSales()">Search</button>
+              <button class="btn btn-outline-secondary" type="button" onclick="clearSalesSearch()">Clear</button>
+            </div>
+          </div>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-striped align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Model</th>
+                  <th>Quality</th>
+                  <th>Customer</th>
+                  <th>Payment</th>
+                  <th>Qty</th>
+                  <th>Unit Price</th>
+                  <th>Total Amount</th>
+                  <th class="no-print text-end">Action</th>
+                </tr>
+              </thead>
+              <tbody id="sales-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Customer Returns Interface -->
+    <div id="page-returns" class="page">
+      <div class="print-title">
+        <h2>SKY MODERNIZE SAVE TECHNOLOGY LTD </h2>
+        <h4 id="returns-print-subtitle">Customer Returns History Report</h4>
+        <hr>
+      </div>
+
+      <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+          <h3 class="fw-bold mb-1"><i class="fa-solid fa-rotate-left text-danger me-2"></i> Customer Returns Management</h3>
+          <p class="text-muted small mb-0">Process product returns, refunds, and item exchanges securely.</p>
+        </div>
+        <div class="no-print d-flex align-items-center gap-2 flex-wrap returns-filter-container">
+          <select id="returns-period-filter" class="form-select form-select-sm" style="width: auto;" onchange="handleReturnsFilterChange()">
+            <option value="today">Today</option>
+            <option value="yesterday">Yesterday</option>
+            <option value="this-week">This Week</option>
+            <option value="this-month">This Month</option>
+            <option value="all-time" selected>All Time History</option>
+            <option value="custom">Custom Date...</option>
+          </select>
+          <input type="date" id="returns-custom-date" class="form-control form-control-sm d-none" style="width: auto;" onchange="renderReturns()">
+          <button class="btn btn-outline-primary btn-sm" onclick="exportReturnsToCSV()"><i class="fa-solid fa-download me-1"></i> Export CSV</button>
+          <button class="btn btn-outline-dark btn-sm" onclick="printFilteredReturns()"><i class="fa-solid fa-print me-1"></i> Print Report</button>
+        </div>
+      </div>
+
+      <div class="card mb-4 no-print shadow-sm">
+        <div class="card-header bg-danger text-white fw-bold"><i class="fa-solid fa-file-circle-minus me-1"></i> Process Customer Return</div>
+        <div class="card-body p-4">
+          <form id="returns-form" class="row g-3">
+            <div class="col-md-3">
+              <label class="form-label small fw-bold text-muted">SELECT SOLD ITEM</label>
+              <div class="input-group mb-2 input-group-sm">
+                <input type="text" id="return-sale-search-input" class="form-control" placeholder="Filter sold items..." onkeyup="filterReturnSaleOptions()">
+                <button class="btn btn-primary" type="button" onclick="filterReturnSaleOptions()">Filter</button>
+              </div>
+              <select id="return-sale-idx" class="form-select" required></select>
+            </div>
+            <div class="col-md-1">
+              <label class="form-label small fw-bold text-muted">QTY</label>
+              <input id="return-qty" type="number" class="form-control" min="1" required>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small fw-bold text-muted">REASON FOR RETURN</label>
+              <input id="return-reason" class="form-control" placeholder="e.g. Defective screen" required>
+            </div>
+            <div class="col-md-5">
+              <label class="form-label small fw-bold text-danger">EXCHANGE STATUS</label>
+              <div class="form-check mt-1 mb-2">
+                <input class="form-check-input" type="checkbox" id="return-is-exchanged">
+                <label class="form-check-label small fw-bold text-dark" for="return-is-exchanged">
+                  Issue replacement item 🔄 (Auto-deduct stock)
+                </label>
+              </div>
+              <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-danger flex-grow-1 fw-bold shadow-sm">Process Return</button>
+                <button type="button" class="btn btn-outline-secondary fw-bold" onclick="clearCustomerReturnForm()">Clear</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div class="card shadow-sm">
+        <div class="card-header bg-white py-3 no-print">
+          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <h5 class="mb-0 fw-bold">Customer Return History (<span id="returns-badge-period" class="text-primary">All Time</span>)</h5>
+            <div class="input-group input-group-sm" style="max-width: 320px;">
+              <input type="text" id="returns-search-input" class="form-control" placeholder="Search returns..." onkeyup="if(event.key==='Enter') searchReturns()">
+              <button class="btn btn-primary" type="button" onclick="searchReturns()">Search</button>
+              <button class="btn btn-outline-secondary" type="button" onclick="clearReturnsSearch()">Clear</button>
+            </div>
+          </div>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-striped align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Model</th>
+                  <th>Customer</th>
+                  <th>Qty</th>
+                  <th>Reason</th>
+                  <th>Exchange Status</th>
+                  <th class="no-print text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="returns-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Supplier Returns Interface -->
+    <div id="page-supplier-returns" class="page">
+      <div id="supplier-returns-printable-area">
+        <div class="print-title">
+          <h2>SKY MODERNIZE SAVE TECHNOLOGY LTD </h2>
+          <h4 id="sup-returns-print-subtitle">Supplier Returns Bulk Report</h4>
+          <hr>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+          <div>
+            <h3 class="fw-bold mb-1"><i class="fa-solid fa-truck-ramp-box text-warning me-2"></i> Supplier Returns Management</h3>
+            <p class="text-muted small mb-0">Track defective goods returned to suppliers and vendors.</p>
+          </div>
+          <div class="no-print d-flex align-items-center gap-2 flex-wrap sup-filter-container">
+            <select id="sup-returns-period-filter" class="form-select form-select-sm" style="width: auto;" onchange="handleSupplierReturnsFilterChange()">
+              <option value="this-month" selected>This Month</option>
+              <option value="today">Today</option>
+              <option value="yesterday">Yesterday</option>
+              <option value="this-week">This Week</option>
+              <option value="all-time">All Time History</option>
+              <option value="custom">Custom Date...</option>
+            </select>
+            <input type="date" id="sup-returns-custom-date" class="form-control form-control-sm d-none" style="width: auto;" onchange="renderSupplierReturns()">
+            <button class="btn btn-outline-primary btn-sm" onclick="exportSupplierReturnsToCSV()"><i class="fa-solid fa-download me-1"></i> Export CSV</button>
+            <button class="btn btn-outline-danger btn-sm" onclick="exportSupplierReturnsPDF()"><i class="fa-solid fa-file-pdf me-1"></i> Export PDF</button>
+            <button class="btn btn-outline-dark btn-sm fw-bold" onclick="printFilteredSupplierReturns()"><i class="fa-solid fa-print me-1"></i> Print</button>
+          </div>
+        </div>
+
+        <div class="card mb-4 border-warning no-print shadow-sm">
+          <div class="card-header bg-warning text-dark fw-bold"><i class="fa-solid fa-box-open me-1"></i> Process Supplier Return</div>
+          <div class="card-body p-4">
+<form id="supplier-returns-form" class="row g-3">
+      <div class="col-12">
+         <label class="form-label small fw-bold text-muted">CATEGORY</label>
+              <select id="sup-return-category-filter" class="form-select" onchange="updateSupplierReturnModelList()">
+             <option value="">All Categories</option>
+             </select>
+          </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-bold text-muted">MODEL</label>
+                <input id="sup-return-item" class="form-control" list="sup-return-item-list" placeholder="Type model..." required oninput="autoFillSupplier()" autocomplete="off">
+                <datalist id="sup-return-item-list"></datalist>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small fw-bold text-muted">SUPPLIER NAME</label>
+                <input id="sup-return-supplier" class="form-control" placeholder="Supplier name" required>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label small fw-bold text-muted">QUANTITY</label>
+                <input id="sup-return-qty" type="number" class="form-control" min="1" required>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small fw-bold text-muted">CUSTODY STATUS</label>
+                <select id="sup-return-status" class="form-select">
+                  <option value="Pending">Pending Custody ⏳</option>
+                  <option value="Sent Back">Sent to Supplier 🚚</option>
+                  <option value="Replaced / Received">Replaced / Restocked 🔄</option>
+                </select>
+              </div>
+              <div class="col-12">
+                <input id="sup-return-reason" class="form-control" placeholder="Reason for returning to supplier..." required>
+              </div>
+              <div class="col-12 d-flex gap-2">
+                <button type="submit" class="btn btn-warning flex-grow-1 fw-bold shadow-sm text-dark">Record Supplier Return</button>
+                <button type="button" class="btn btn-outline-secondary fw-bold" onclick="clearSupplierReturnForm()">Clear</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div class="card shadow-sm">
+          <div class="card-header bg-white py-3 no-print">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+              <h5 class="mb-0 fw-bold">Supplier Returns Batch List (<span id="sup-returns-badge-period" class="text-primary">This Month</span>)</h5>
+              <div class="input-group input-group-sm" style="max-width: 320px;">
+                <input type="text" id="sup-returns-search-input" class="form-control" placeholder="Search records..." onkeyup="if(event.key==='Enter') searchSupplierReturns()">
+                <button class="btn btn-primary" type="button" onclick="searchSupplierReturns()">Search</button>
+                <button class="btn btn-outline-secondary" type="button" onclick="clearSupplierReturnsSearch()">Clear</button>
+              </div>
+            </div>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-striped align-middle mb-0">
+                <thead>
+                  <tr><th>Date</th><th>Model</th><th>Supplier</th><th>Qty</th><th>Reason</th><th>Status</th><th class="no-print text-end">Action</th></tr>
+                </thead>
+                <tbody id="supplier-returns-table-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Purchase Requisition Interface -->
+    <div id="page-purchase-requisition" class="page">
+      <div class="print-title">
+        <h2>SKY MODERNIZE SAVE TECHNOLOGY LTD </h2>
+        <h4 id="req-print-subtitle">Purchase Requisition Form</h4>
+        <hr>
+      </div>
+
+      <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+          <h3 class="fw-bold mb-1"><i class="fa-solid fa-clipboard-list text-info me-2"></i> Purchase Requisitions</h3>
+          <p class="text-muted small mb-0">Manage stock replenishment requests and procurement orders.</p>
+        </div>
+        <div class="no-print d-flex align-items-center gap-2 flex-wrap req-filter-container">
+          <button class="btn btn-outline-primary btn-sm" onclick="exportRequisitionsToCSV()"><i class="fa-solid fa-download me-1"></i> Export CSV</button>
+          <button class="btn btn-outline-danger btn-sm" onclick="exportRequisitionsPDF()"><i class="fa-solid fa-file-pdf me-1"></i> Export PDF</button>
+          <button class="btn btn-outline-dark btn-sm fw-bold" onclick="printFilteredRequisitions()"><i class="fa-solid fa-print me-1"></i> Print</button>
+        </div>
+      </div>
+
+      <div class="card mb-4 border-info no-print shadow-sm">
+        <div class="card-header bg-info text-white fw-bold"><i class="fa-solid fa-cart-flatbed me-1"></i> Request Needed Stock Procurement</div>
+        <div class="card-body p-4">
+          <form id="requisition-form" class="row g-3">
+            <div class="col-md-3">
+              <label class="form-label small fw-bold text-muted">ITEM MODEL</label>
+              <input id="req-item" class="form-control" placeholder="e.g. iPhone 14 Pro" required>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small fw-bold text-muted">SPECS / CAT</label>
+              <input id="req-cat" class="form-control" placeholder="e.g. Grade A" required>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small fw-bold text-muted">QTY NEEDED</label>
+              <input id="req-qty" type="number" class="form-control" min="1" required>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small fw-bold text-muted">EST. COST (₦)</label>
+              <input id="req-cost" type="number" min="0" class="form-control" placeholder="Unit cost">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small fw-bold text-muted">PREFERRED VENDOR</label>
+              <input id="req-supplier" class="form-control" placeholder="Supplier name">
+            </div>
+            <div class="col-md-9">
+              <input id="req-notes" class="form-control" placeholder="Urgent notes or justification...">
+            </div>
+            <div class="col-md-3">
+              <button class="btn btn-info text-white fw-bold w-100 shadow-sm">Submit Requisition</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div id="requisition-printable-area">
+        <div class="card shadow-sm">
+          <div class="card-header bg-white py-3 no-print">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+              <h5 class="mb-0 fw-bold">Requisition Orders List</h5>
+              <div class="input-group input-group-sm" style="max-width: 320px;">
+                <input type="text" id="req-search-input" class="form-control" placeholder="Search requisitions..." onkeyup="if(event.key==='Enter') searchRequisitions()">
+                <button class="btn btn-primary" type="button" onclick="searchRequisitions()">Search</button>
+                <button class="btn btn-outline-secondary" type="button" onclick="clearRequisitionsSearch()">Clear</button>
+              </div>
+            </div>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-striped align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>Req ID</th><th>Date</th><th>Model</th><th>Specs</th><th>Qty</th><th>Est. Cost</th><th>Total</th><th>Vendor</th><th>Status</th><th class="no-print text-end">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="requisition-table-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Stock Edit Modal -->
+  <div class="modal fade" id="editStockModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content shadow-lg border-0">
+        <div class="modal-header bg-dark text-white">
+          <h5 class="modal-title fw-bold"><i class="fa-solid fa-pen-to-square me-2"></i> Edit Stock Details</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form id="edit-stock-form">
+          <div class="modal-body p-4">
+            <input type="hidden" id="edit-stk-index">
+            <div class="mb-3">
+              <label class="form-label small fw-bold">Model</label>
+              <input id="edit-stk-model" class="form-control" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-bold">Category</label>
+              <input id="edit-stk-cat" class="form-control" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-bold">Quality / Sub-Cat</label>
+              <input id="edit-stk-subcat" class="form-control">
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-bold">Quantity</label>
+              <input id="edit-stk-qty" type="number" min="1" class="form-control" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-bold">Cost Price (₦)</label>
+              <input id="edit-stk-cost" type="number" min="0" class="form-control" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-bold">Selling Price (₦)</label>
+              <input id="edit-stk-sell" type="number" min="0" class="form-control" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-bold">Supplier</label>
+              <input id="edit-stk-supplier" class="form-control">
+            </div>
+          </div>
+          <div class="modal-footer bg-light">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary btn-sm px-4">Save Changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
 </body>
-</html>
