@@ -1291,137 +1291,990 @@
       toast.show();
     }
 
-    
-    // --- SUPABASE STOCK & SALES TABLES CONFIG ---
-    // stock table columns: id, model, category, subcat, qty, cost_price, sell_price, supplier, created_at
-    // sales table columns: id, stock_id, model, category, subcat/quality, qty, cost_price, sell_price, customer, payment_method, date, total_amount, created_at
-
-    // --- LOAD FROM SUPABASE STOCK & SALES TABLES ---
-    async function initTripleSavingSync() {
-      if (!supabaseClient) { console.warn('Supabase not configured'); return; }
-      try {
-        // 1. Load stock
-        const { data: stockData, error: stockError } = await supabaseClient.from('stock').select('*').order('id', {ascending: true});
-        if (!stockError && stockData) {
-          db.stock = stockData.map(row => ({
-            id: row.id,
-            model: row.model,
-            category: row.category,
-            subcat: row.subcat || row.quality || '',
-            qty: row.qty,
-            cost_price: row.cost_price || row.buy_price || 0,
-            sell_price: row.sell_price || 0,
-            supplier: row.supplier || ''
-          }));
-          console.log(`Loaded ${db.stock.length} stock items from Supabase stock table`);
-        } else if (stockError) {
-          console.error('Stock load error:', stockError.message);
-        }
-
-        // 2. Load sales
-        const { data: salesData, error: salesError } = await supabaseClient.from('sales').select('*').order('id', {ascending: true});
-        if (!salesError && salesData) {
-          db.sales = salesData.map(row => ({
-            id: row.id,
-            date: row.date || (row.created_at ? row.created_at.split('T')[0] : new Date().toISOString().split('T')[0]),
-            model: row.model,
-            quality: row.quality || row.subcat || 'Standard',
-            customer: row.customer || row.customer_name || '',
-            paymentMethod: row.payment_method || row.paymentMethod || 'Cash',
-            qty: row.qty,
-            cost_price: row.cost_price || 0,
-            sell_price: row.sell_price || row.unit_price || 0,
-            stock_id: row.stock_id
-          }));
-          console.log(`Loaded ${db.sales.length} sales from Supabase sales table`);
-        } else if (salesError) {
-          console.error('Sales load error:', salesError.message);
-        }
-
-        localStorage.setItem(DB_KEY, JSON.stringify(db));
-        renderAll();
-      } catch (err) {
-        console.error('Error loading from stock/sales tables:', err);
-      }
-    }
-
-    // --- SAVE STOCK TO SUPABASE stock TABLE ---
-    async function saveStockToSupabase(item) {
-      if (!supabaseClient) return null;
-      try {
-        const { data, error } = await supabaseClient.from('stock').insert([{
-          model: item.model,
-          category: item.category,
-          subcat: item.subcat,
-          qty: item.qty,
-          cost_price: item.cost_price,
-          sell_price: item.sell_price,
-          supplier: item.supplier
-        }]).select().single();
-        if (error) throw error;
-        return data;
-      } catch (e) {
-        console.error('Stock table save failed:', e.message);
-        return null;
-      }
-    }
-
-    async function updateStockInSupabase(id, updates) {
-      if (!supabaseClient || !id) return;
-      try {
-        const { error } = await supabaseClient.from('stock').update(updates).eq('id', id);
-        if (error) throw error;
-      } catch (e) {
-        console.error('Stock table update failed:', e.message);
-      }
-    }
-
-    async function deleteStockFromSupabase(id) {
-      if (!supabaseClient || !id) return;
-      try {
-        const { error } = await supabaseClient.from('stock').delete().eq('id', id);
-        if (error) throw error;
-      } catch (e) {
-        console.error('Stock table delete failed:', e.message);
-      }
-    }
-
-    // --- SAVE SALE TO SUPABASE sales TABLE ---
-    async function saveSaleToSupabase(saleItem) {
-      if (!supabaseClient) return null;
-      try {
-        const { data, error } = await supabaseClient.from('sales').insert([{
-          stock_id: saleItem.stock_id || null,
-          model: saleItem.model,
-          quality: saleItem.quality,
-          customer: saleItem.customer,
-          payment_method: saleItem.paymentMethod,
-          qty: saleItem.qty,
-          cost_price: saleItem.cost_price,
-          sell_price: saleItem.sell_price,
-          date: saleItem.date,
-          total_amount: (saleItem.sell_price * saleItem.qty),
-          category: saleItem.category || ''
-        }]).select().single();
-        if (error) throw error;
-        return data;
-      } catch (e) {
-        console.error('Sales table save failed:', e.message);
-        return null;
-      }
-    }
-
-    // --- TRIPLE SAVING: now syncs to stock & sales tables separately ---
-    function saveDB() {
+    // --- TRIPLE SAVING METHOD IMPLEMENTATION ---
+    async function saveDB() {
       localStorage.setItem(DB_KEY, JSON.stringify(db));
-      // Legacy inventory table sync kept for backup but main is stock/sales
+
       if (supabaseClient) {
         try {
-          // Also keep backup in inventory table if exists
-          supabaseClient.from('inventory').upsert({ id: 1, payload: db, updated_at: new Date().toISOString() }).then(()=>{});
-        } catch {}
+          const { error } = await supabaseClient
+            .from('inventory')
+            .upsert({ id: 1, payload: db, updated_at: new Date().toISOString() });
+          
+          if (error) {
+            console.error('Supabase sync error:', error.message);
+          }
+        } catch (err) {
+          console.error('Network error during Supabase triple saving sync:', err);
+        }
+      }
+
+      renderAll();
+    }
+
+    async function initTripleSavingSync() {
+      if (supabaseClient) {
+        try {
+          const { data, error } = await supabaseClient
+            .from('inventory')
+            .select('payload')
+            .eq('id', 1)
+            .single();
+          
+          if (data && data.payload && !error) {
+            db = data.payload;
+            if (!db.supplierReturns) db.supplierReturns = [];
+            if (!db.requisitions) db.requisitions = [];
+            if (!db.moniepointPayments) db.moniepointPayments = [];
+            localStorage.setItem(DB_KEY, JSON.stringify(db));
+          }
+        } catch (e) {
+          console.log('Using local backup storage fallback.');
+        }
       }
       renderAll();
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      initTripleSavingSync();
+    });
+
+let allMoniepointPayments = [];
+
+async function fetchPaymentHistory() {
+  try {
+    const { data: payments, error } = await supabaseClient
+      .from('payments')
+      .select('*')
+      .order('datetime', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching payments:', error.message);
+      return;
+    }
+
+async function triggerCloudTransactionSync() {
+  try {
+    // Calls your Netlify serverless function quietly in the background
+    await fetch('/.netlify/functions/sync-moniepoint');
+  } catch (e) {
+    console.log('Background sync skipped, using local cache.');
+  }
+}
+
+// Run it right alongside your startup sync
+window.addEventListener('DOMContentLoaded', async () => {
+  await triggerCloudTransactionSync();
+  initTripleSavingSync();
+});
+    
+    // Save all fetched records globally
+    allMoniepointPayments = payments || [];
+    
+    // Run the filter / render logic based on the selected dropdown value
+    filterMoniepointPayments();
+
+  } catch (err) {
+    console.error('Unexpected error loading payments:', err);
+  }
+}
+
+function filterMoniepointPayments() {
+  const filterValue = document.getElementById('moniepoint-date-filter')?.value || 'today';
+  const paymentTableBody = document.getElementById('payment-table-body');
+  if (!paymentTableBody) return;
+
+  paymentTableBody.innerHTML = '';
+
+  const now = new Date();
+  
+  // Define time boundaries based on current date (August 6, 2026)
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  
+  const yesterdayStart = new Date(todayStart);
+  yesterdayStart.setDate(todayStart.getDate() - 1);
+  
+  const thisWeekStart = new Date(todayStart);
+  thisWeekStart.setDate(todayStart.getDate() - todayStart.getDay()); // Start of week (Sunday)
+  
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  // Filter the master list
+  const filteredPayments = allMoniepointPayments.filter(payment => {
+    if (!payment.datetime) return false;
+    const paymentDate = new Date(payment.datetime);
+
+    if (filterValue === 'today') {
+      return paymentDate >= todayStart;
+    } else if (filterValue === 'yesterday') {
+      return paymentDate >= yesterdayStart && paymentDate < todayStart;
+    } else if (filterValue === 'this_week') {
+      return paymentDate >= thisWeekStart;
+    } else if (filterValue === 'last_month') {
+      return paymentDate >= lastMonthStart && paymentDate < lastMonthEnd;
+    } else {
+      return true; // 'all'
+    }
+  });
+
+  if (filteredPayments.length === 0) {
+    paymentTableBody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">No payments recorded for this period.</td></tr>`;
+    document.getElementById('moniepoint-total-amount').innerText = '₦0';
+    document.getElementById('moniepoint-total-count').innerText = '0';
+    return;
+  }
+
+  let totalInflow = 0;
+  let successfulCount = 0;
+
+  filteredPayments.forEach((payment) => {
+    const amount = Number(payment.amount || 0);
+    const status = (payment.status || '').toUpperCase();
+
+    if (status === 'SUCCESSFUL') {
+      totalInflow += amount;
+      successfulCount += 1;
+    }
+
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td>${payment.datetime ? new Date(payment.datetime).toLocaleString() : ''}</td>
+      <td>${payment.reference || ''}</td>
+      <td>${payment.sender_name || 'unknown'}</td>
+      <td>${payment.account_number || 'unknown'}</td>
+      <td>₦${amount.toLocaleString()}</td>
+      <td>${payment.status || ''}</td>
+    `;
+    paymentTableBody.appendChild(row);
+  });
+
+  // Update summary cards dynamically
+  const inflowEl = document.getElementById('moniepoint-total-amount');
+  const countEl = document.getElementById('moniepoint-total-count');
+  
+  if (inflowEl) inflowEl.innerText = `₦${totalInflow.toLocaleString()}`;
+  if (countEl) countEl.innerText = successfulCount;
+}
+
+// Run on page load
+document.addEventListener('DOMContentLoaded', fetchPaymentHistory);
+    // --- CSV EXPORT UTILITY ---
+    function downloadCSV(csvContent, filename) {
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute("download", filename);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    function exportStockToCSV() {
+      if (db.stock.length === 0) return alert("No stock data available to export.");
+      let csv = "Model,Category,Quality/Sub-Cat,Supplier,Quantity,Cost Price (NGN),Selling Price (NGN)\n";
+      db.stock.forEach(s => {
+        csv += `"${s.model}","${s.category}","${s.subcat || ''}","${s.supplier || ''}",${s.qty},${s.cost_price},${s.sell_price}\n`;
+      });
+      downloadCSV(csv, `Stock_Inventory_${new Date().toISOString().split('T')[0]}.csv`);
+    }
+
+    function exportMoniepointToCSV() {
+      if (db.moniepointPayments.length === 0) return alert("No Moniepoint payment records available to export.");
+      let csv = "DateTime,Reference,SenderName,AccountNumber,Amount (NGN),Status\n";
+      db.moniepointPayments.forEach(p => {
+        csv += `"${p.datetime}","${p.reference}","${p.senderName}","${p.accountNumber}",${p.amount},"${p.status}"\n`;
+      });
+      downloadCSV(csv, `Moniepoint_Payments_${new Date().toISOString().split('T')[0]}.csv`);
+    }
+
+    function simulateMoniepointWebhookTest() {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const testPayment = {
+        datetime: todayStr + " " + new Date().toTimeString().split(' ')[0],
+        reference: "MP-TXN-" + Math.floor(100000 + Math.random() * 900000),
+        senderName: "TEST CUSTOMER",
+        accountNumber: "99" + Math.floor(10000000 + Math.random() * 90000000),
+        amount: 55000,
+        status: "SUCCESS"
+      };
+      db.moniepointPayments.push(testPayment);
+      saveDB();
+      showMoniepointToast(`Payment of ₦55,000 received from TEST CUSTOMER!`);
+    }
+
+    function searchMoniepointPayments() {
+      renderMoniepointPayments(document.getElementById('moniepoint-search-input').value.trim().toLowerCase());
+    }
+
+    function clearMoniepointSearch() {
+      document.getElementById('moniepoint-search-input').value = '';
+      renderMoniepointPayments();
+    }
+
+    function renderMoniepointPayments(filterQuery = "") {
+      const tbody = document.getElementById('payment-table-body');
+      const payments = db.moniepointPayments || [];
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      const todaysPayments = payments.filter(p => p.datetime && p.datetime.startsWith(todayStr));
+      
+      document.getElementById('moniepoint-total-amount').innerText = `₦${todaysPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0).toLocaleString()}`;
+      document.getElementById('moniepoint-total-count').innerText = todaysPayments.length;
+
+      const filtered = payments.slice().reverse().filter(p => {
+        if (!filterQuery) return true;
+        const q = filterQuery.toLowerCase();
+        return (p.senderName && p.senderName.toLowerCase().includes(q)) ||
+               (p.reference && p.reference.toLowerCase().includes(q)) ||
+               (p.accountNumber && p.accountNumber.toLowerCase().includes(q)) ||
+               (p.amount && p.amount.toString().includes(q));
+      });
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">No matching Moniepoint payment records found</td></tr>`;
+      } else {
+        tbody.innerHTML = filtered.map(p => `
+          <tr>
+            <td>${p.datetime}</td>
+            <td><code>${p.reference}</code></td>
+            <td><b>${p.senderName}</b></td>
+            <td>${p.accountNumber}</td>
+            <td class="text-success fw-bold">₦${Number(p.amount).toLocaleString()}</td>
+            <td><span class="badge bg-success">${p.status}</span></td>
+          </tr>
+        `).join('');
+      }
+    }
+document.getElementById('refresh-payments-btn').addEventListener('click', async () => {
+    const refreshBtn = document.getElementById('refresh-payments-btn');
+
+
+  async function manualAppRefresh() {
+  const btn = document.getElementById('refresh-btn');
+  const originalHtml = btn.innerHTML;
+  
+  // Show loading state on button
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Refreshing...`;
+
+  try {
+    // 1. Pull latest cloud data from Supabase
+    if (typeof initTripleSavingSync === 'function') {
+      await initTripleSavingSync();
+    }
+    
+    // 2. If you added the automated payment history sync function, call it too
+    if (typeof triggerCloudTransactionSync === 'function') {
+      await triggerCloudTransactionSync();
+    }
+
+    // 3. Re-render all dashboard views, sales panels, and OPay histories
+    if (typeof renderAll === 'function') {
+      renderAll();
+    }
+
+    console.log("App data successfully refreshed from cloud.");
+  } catch (err) {
+    console.error("Refresh failed:", err);
+  } finally {
+    // Restore button back to normal state
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.innerHTML = originalHtml;
+    }, 500); // Small half-second delay for smooth visual feedback
+  }
+}
+  
+    // Optional: Add a loading class or disable button to prevent spamming
+    refreshBtn.disabled = true;
+    refreshBtn.textContent = 'Refreshing...';
+
+    try {
+        // Call your existing function that fetches data from the payments table
+        await fetchPaymentHistory(); 
+    } catch (error) {
+        console.error('Failed to refresh payment history:', error);
+    } finally {
+        // Reset button state
+        refreshBtn.disabled = false;
+        refreshBtn.textContent = 'Refresh';
+    }
+});
+    
+    function exportSalesToCSV() {
+      const { salesData, periodLabel } = getFilteredSalesData();
+      if (salesData.length === 0) return alert("No sales records available to export for this period.");
+      let csv = "Date,Model,Quality,Customer,Payment Method,Quantity,Unit Price (NGN),Total Amount (NGN)\n";
+      salesData.forEach(s => {
+        csv += `"${s.date}","${s.model}","${s.quality || ''}","${s.customer}","${s.paymentMethod || 'Cash'}",${s.qty},${s.sell_price},${s.sell_price * s.qty}\n`;
+      });
+      downloadCSV(csv, `Sales_Report_${periodLabel.replace(/[^a-zA-Z0-9]/g, '_')}.csv`);
+    }
+
+    function exportReturnsToCSV() {
+      const { returnsData, periodLabel } = getFilteredReturnsData();
+      if (returnsData.length === 0) return alert("No customer return records available to export for this period.");
+      let csv = "Date,Model,Customer,Quantity,Reason,Status\n";
+      returnsData.forEach(r => {
+        csv += `"${r.date}","${r.model}","${r.customer}",${r.qty},"${r.reason}","${r.isExchanged ? 'Replacement Issued' : 'Refund'}"\n`;
+      });
+      downloadCSV(csv, `Customer_Returns_${periodLabel.replace(/[^a-zA-Z0-9]/g, '_')}.csv`);
+    }
+
+    function exportSupplierReturnsToCSV() {
+      const { supReturnsData, periodLabel } = getFilteredSupplierReturnsData();
+      if (supReturnsData.length === 0) return alert("No supplier return records available to export for this period.");
+      let csv = "Date,Model,Supplier,Quantity,Reason,Status\n";
+      supReturnsData.forEach(r => {
+        csv += `"${r.date}","${r.model}","${r.supplier}",${r.qty},"${r.reason}","${r.status}"\n`;
+      });
+      downloadCSV(csv, `Supplier_Returns_${periodLabel.replace(/[^a-zA-Z0-9]/g, '_')}.csv`);
+    }
+
+    function exportRequisitionsToCSV() {
+      if (db.requisitions.length === 0) return alert("No purchase requisitions available to export.");
+      let csv = "Req ID,Date,Item Needed,Category,Qty Needed,Est Unit Cost (NGN),Est Total Cost (NGN),Preferred Supplier,Status,Notes\n";
+      db.requisitions.forEach(r => {
+        csv += `"${r.id}","${r.date}","${r.item}","${r.category}",${r.qty},${r.cost || 0},${(r.cost || 0) * r.qty},"${r.supplier || ''}","${r.status}","${r.notes || ''}"\n`;
+      });
+      downloadCSV(csv, `Purchase_Requisitions_${new Date().toISOString().split('T')[0]}.csv`);
+    }
+
+    function exportRequisitionsPDF() {
+      if (db.requisitions.length === 0) return alert("No requisition records to export.");
+      const element = document.getElementById('requisition-printable-area');
+      const opt = {
+        margin:       0.5,
+        filename:     `Purchase_Requisitions_${new Date().toISOString().split('T')[0]}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2 },
+        jsPDF:        { unit: 'in', format: 'letter', orientation: 'landscape' }
+      };
+      html2pdf().set(opt).from(element).save();
+    }
+
+    function exportSupplierReturnsPDF() {
+      const { supReturnsData, periodLabel } = getFilteredSupplierReturnsData();
+      if (supReturnsData.length === 0) return alert("No supplier return records to export for this period.");
+      const element = document.getElementById('supplier-returns-printable-area');
+      const opt = {
+        margin:       0.5,
+        filename:     `Supplier_Returns_${periodLabel.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2 },
+        jsPDF:        { unit: 'in', format: 'letter', orientation: 'landscape' }
+      };
+      html2pdf().set(opt).from(element).save();
+    }
+
+    function exportBackupJSON() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `SKY_MODERNIZE_BACKUP_${new Date().toISOString().split('T')[0]}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    }
+
+    function importBackupJSON(event) {
+      const fileReader = new FileReader();
+      fileReader.onload = function(e) {
+        try {
+          const importedDB = JSON.parse(e.target.result);
+          if (importedDB && typeof importedDB === 'object' && Array.isArray(importedDB.stock)) {
+            if (confirm("Restoring from backup will overwrite current system data. Continue?")) {
+              db = importedDB;
+              saveDB();
+              alert("System successfully restored from backup!");
+            }
+          } else {
+            alert("Invalid backup file format!");
+          }
+        } catch (err) {
+          alert("Error parsing backup file: " + err.message);
+        }
+      };
+      if (event.target.files[0]) {
+        fileReader.readAsText(event.target.files[0]);
+      }
+    }
+
+    function clearCustomerReturnForm() {
+      document.getElementById('returns-form').reset();
+      document.getElementById('return-sale-search-input').value = '';
+      populateReturnSaleDropdown();
+    }
+
+    function clearSupplierReturnForm() {
+      document.getElementById('supplier-returns-form').reset();
+    }
+
+    function duplicateStockEntry(index) {
+      const item = db.stock[index];
+      if (!item) return;
+      document.getElementById('stk-model').value = item.model;
+      document.getElementById('stk-cat').value = item.category;
+      document.getElementById('stk-subcat').value = item.subcat || '';
+      document.getElementById('stk-qty').value = item.qty;
+      document.getElementById('stk-cost').value = item.cost_price;
+      document.getElementById('stk-sell').value = item.sell_price;
+      document.getElementById('stk-supplier').value = item.supplier || '';
+      document.getElementById('stk-model').focus();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function requestBulkLowStockRequisition() {
+      const checkboxes = document.querySelectorAll('.low-stock-checkbox:checked');
+      if (checkboxes.length === 0) return alert("Please check at least one low stock item to request in bulk!");
+      let addedCount = 0;
+      checkboxes.forEach(cb => {
+        const idx = parseInt(cb.value);
+        const item = db.stock[idx];
+        if (item) {
+          const reqId = "REQ-" + Math.floor(1000 + Math.random() * 9000);
+          db.requisitions.push({
+            id: reqId,
+            item: item.model,
+            category: item.subcat ? `${item.category} / ${item.subcat}` : item.category,
+            qty: Math.max(10, 20 - item.qty),
+            cost: item.cost_price || 0,
+            supplier: item.supplier || '',
+            notes: `Bulk Low Stock Requisition: Only ${item.qty} pcs remaining in stock.`,
+            status: "Pending",
+            date: new Date().toISOString().split('T')[0]
+          });
+          addedCount++;
+        }
+      });
+      saveDB();
+      alert(`📋 ${addedCount} Purchase Requisitions successfully created in bulk! View them in the Purchase Requisition tab.`);
+    }
+
+    function toggleDashboardSummary() {
+      isDashboardSummaryVisible = !isDashboardSummaryVisible;
+      const container = document.getElementById('dashboard-summary-container');
+      const btn = document.getElementById('btn-toggle-dashboard-summary');
+      if (isDashboardSummaryVisible) {
+        container.style.display = 'block';
+        btn.innerHTML = "👁️ Hide Dashboard Summary";
+        btn.classList.replace('btn-secondary', 'btn-outline-secondary');
+      } else {
+        container.style.display = 'none';
+        btn.innerHTML = "👁️ Show Dashboard Summary";
+        btn.classList.replace('btn-outline-secondary', 'btn-secondary');
+      }
+    }
+
+    function printCACReport() {
+      const { periodLabel, filteredSales, filteredReturns } = getFilteredDashboardPeriod();
+      const filterType = document.getElementById('dash-date-filter').value;
+      const periodExpenses = parseInt(document.getElementById('dash-period-expenses').value) || 0;
+      document.getElementById('printout-period-label').innerText = periodLabel;
+
+      const dynamicContentContainer = document.getElementById('cac-print-dynamic-content');
+
+      if (filterType === 'this-week' || filterType === 'this-month' || filterType === 'last-month') {
+    // Safely calculate Sales, Cost, and Returns
+let totalSales = filteredSales.reduce((sum, s) => {
+  return sum + (Number(s.sell_price || 0) * Number(s.qty || 0));
+}, 0);
+
+let totalCost = filteredSales.reduce((sum, s) => {
+  return sum + (Number(s.cost_price || 0) * Number(s.qty || 0));
+}, 0);
+
+let returnedSales = filteredReturns.reduce((sum, r) => {
+  return sum + (Number(r.sell_price || 0) * Number(r.qty || 0));
+}, 0);
+
+let returnedCost = filteredReturns.reduce((sum, r) => {
+  return sum + (Number(r.cost_price || 0) * Number(r.qty || 0));
+}, 0);
+
+// Adjusted Net Metrics
+let netSales = totalSales - returnedSales;
+let netCost = totalCost - returnedCost;
+let grossProfit = netSales - netCost;
+
+let periodExpenses = Number(document.getElementById('dash-period-expenses')?.value || 0);
+let taxableProfit = grossProfit - periodExpenses;
+
+// Define the capped profit base per unit for CAC tax computation
+const MAX_CAC_PROFIT_PER_UNIT = 500; // Capped profit limit for CAC computation
+
+let totalCacFee = 0;
+
+// Iterate over each sale item to calculate capped CAC tax
+filteredSales.forEach(sale => {
+  let qty = Number(sale.qty || 0);
+  let sellPrice = Number(sale.sell_price || 0);
+  let costPrice = Number(sale.cost_price || 0);
+  
+  // Actual profit per unit
+  let profitPerUnit = sellPrice - costPrice;
+
+  if (profitPerUnit > 0) {
+    // Cap profit at ₦500 per unit for CAC tax assessment
+    let cacBasePerUnit = Math.min(profitPerUnit, MAX_CAC_PROFIT_PER_UNIT);
+    
+    // 7.5% on capped profit base
+    totalCacFee += Math.floor(cacBasePerUnit * 0.075) * qty;
+  }
+});
+
+let cacFee = totalCacFee;
+let netProfit = taxableProfit - cacFee;
+        
+        dynamicContentContainer.innerHTML = `
+          <h6 class="text-center fw-bold mb-3">CAC Audit & Tax Summary</h6>
+          <table class="table table-bordered">
+            <tr><td><b>Total Sales Revenue:</b></td><td>₦${totalSales.toLocaleString()}</td></tr>
+            <tr><td><b>Total Cost Price:</b></td><td>₦${totalCost.toLocaleString()}</td></tr>
+            <tr><td><b>Total Customer Refunds:</b></td><td>₦${totalReturns.toLocaleString()}</td></tr>
+            <tr><td><b>Gross Profit:</b></td><td>₦${grossProfit.toLocaleString()}</td></tr>
+            <tr><td><b>Period Operating Expenses:</b></td><td>₦${periodExpenses.toLocaleString()}</td></tr>
+            <tr class="table-danger"><td><b>Official CAC Tax Deduction (7.5%):</b></td><td><b>₦${cacFee.toLocaleString()}</b></td></tr>
+            <tr class="table-success"><td><b>Final Net Profit:</b></td><td>₦${netProfit.toLocaleString()}</td></tr>
+          </table>
+        `;
+      } else if (filterType === 'this-year') {
+        const monthlyGroups = {};
+        for (let m = 1; m <= 12; m++) {
+          const monthStr = m < 10 ? `0${m}` : `${m}`;
+          monthlyGroups[monthStr] = { sales: 0, cost: 0, returns: 0 };
+        }
+
+        filteredSales.forEach(s => {
+          if (s.date && s.date.length >= 7) {
+            const mKey = s.date.substring(5, 7);
+            if (monthlyGroups[mKey]) {
+              monthlyGroups[mKey].sales += (s.sell_price * s.qty);
+              monthlyGroups[mKey].cost += (s.cost_price * s.qty);
+            }
+          }
+        });
+
+        filteredReturns.forEach(r => {
+          if (r.date && r.date.length >= 7) {
+            const mKey = r.date.substring(5, 7);
+            if (monthlyGroups[mKey]) {
+              monthlyGroups[mKey].returns += (r.sell_price * r.qty);
+            }
+          }
+        });
+
+        const monthNames = {
+          "01": "January", "02": "February", "03": "March", "04": "April",
+          "05": "May", "06": "June", "07": "July", "08": "August",
+          "09": "September", "10": "October", "11": "November", "12": "December"
+        };
+
+        let tableRows = '';
+        let annualTotalCAC = 0;
+
+        for (const [mKey, data] of Object.entries(monthlyGroups)) {
+          const gross = data.sales - data.cost - data.returns;
+          const taxable = gross - periodExpenses;
+          const cacAmt = taxable > 0 ? Math.floor(taxable * 0.075) : 0;
+          annualTotalCAC += cacAmt;
+          tableRows += `
+            <tr>
+              <td>${monthNames[mKey]}</td>
+              <td>₦${data.sales.toLocaleString()}</td>
+              <td>₦${gross.toLocaleString()}</td>
+              <td class="table-danger"><b>₦${cacAmt.toLocaleString()}</b></td>
+            </tr>
+          `;
+        }
+
+        dynamicContentContainer.innerHTML = `
+          <h6 class="text-center fw-bold mb-3">Yearly CAC (7.5%) Audit Report — Grouped by Month</h6>
+          <table class="table table-bordered table-sm align-middle">
+            <thead class="table-light">
+              <tr><th>Month</th><th>Sales Revenue</th><th>Gross Profit</th><th>CAC 7.5% Tax Amount</th></tr>
+            </thead>
+            <tbody>
+              ${tableRows}
+              <tr class="table-dark fw-bold">
+                <td colspan="3" class="text-end">Total Annual CAC 7.5% Tax Amount:</td>
+                <td>₦${annualTotalCAC.toLocaleString()}</td>
+              </tr>
+            </tbody>
+          </table>
+        `;
+      } else {
+        dynamicContentContainer.innerHTML = `
+          <table class="table table-bordered">
+            <tr><td><b>Total Sales Revenue:</b></td><td>${document.getElementById('dash-sales').innerText}</td></tr>
+            <tr><td><b>Total Cost Price:</b></td><td>${document.getElementById('dash-cost').innerText}</td></tr>
+            <tr><td><b>Total Customer Refunds:</b></td><td>${document.getElementById('dash-returns').innerText}</td></tr>
+            <tr><td><b>Gross Profit:</b></td><td>${document.getElementById('dash-gross').innerText}</td></tr>
+            <tr><td><b>Period Operating Expenses:</b></td><td>₦${periodExpenses.toLocaleString()}</td></tr>
+            <tr class="table-danger"><td><b>CAC Tax Deduction Amount (7.5%):</b></td><td><b>${document.getElementById('dash-cac').innerText}</b></td></tr>
+            <tr class="table-success"><td><b>Final Net Profit:</b></td><td>${document.getElementById('dash-net').innerText}</td></tr>
+          </table>
+        `;
+      }
+
+      window.print();
+    }
+
+    function calculateCashDrawer() {
+      const denomInputs = document.querySelectorAll('.cash-denom');
+      let totalCounted = 0;
+      denomInputs.forEach(input => {
+        const val = parseInt(input.getAttribute('data-val')) || 0;
+        const count = parseInt(input.value) || 0;
+        const subtotal = val * count;
+        const subEl = document.getElementById(`sub-${val}`);
+        if (subEl) subEl.innerText = `₦${subtotal.toLocaleString()}`;
+        totalCounted += subtotal;
+      });
+      const totalCountedEl = document.getElementById('drawer-total-counted');
+      if (totalCountedEl) totalCountedEl.innerText = `₦${totalCounted.toLocaleString()}`;
+
+      const todayStr = new Date().toISOString().split('T')[0];
+      const todayCashSales = db.sales.filter(s => s.date === todayStr && (!s.paymentMethod || s.paymentMethod === 'Cash'));
+      const expectedSales = todayCashSales.reduce((sum, s) => sum + (s.sell_price * s.qty), 0);
+      
+      const expectedSalesEl = document.getElementById('drawer-expected-sales');
+      if (expectedSalesEl) expectedSalesEl.innerText = `₦${expectedSales.toLocaleString()}`;
+
+      const variance = totalCounted - expectedSales;
+      const varianceEl = document.getElementById('drawer-variance');
+      if (varianceEl) {
+        varianceEl.innerText = `₦${variance.toLocaleString()}`;
+        if (variance === 0) {
+          varianceEl.className = "text-success fw-bold";
+        } else if (variance > 0) {
+          varianceEl.className = "text-primary fw-bold";
+        } else {
+          varianceEl.className = "text-danger fw-bold";
+        }
+      }
+    }
+
+    function resetCashDrawer() {
+      document.querySelectorAll('.cash-denom').forEach(input => input.value = 0);
+      const notesEl = document.getElementById('drawer-notes');
+      if (notesEl) notesEl.value = '';
+      calculateCashDrawer();
+    }
+
+    function printCashReconciliation() {
+      const totalCounted = document.getElementById('drawer-total-counted').innerText;
+      const expectedSales = document.getElementById('drawer-expected-sales').innerText;
+      const variance = document.getElementById('drawer-variance').innerText;
+      const notes = document.getElementById('drawer-notes').value || 'None';
+
+      const printWin = window.open('', '_blank', 'width=500,height=600');
+      printWin.document.write(`
+        <html>
+          <head>
+            <title>Cash Drawer Reconciliation - SKY MODERNIZE</title>
+            <style>
+              body { font-family: monospace; padding: 20px; font-size: 13px; }
+              .center { text-align: center; }
+              hr { border-top: 1px dashed #000; }
+            </style>
+          </head>
+          <body>
+            <div class="center">
+              <h3>SKY MODERNIZE SAVE TECHNOLOGY LTD</h3>
+              <p>Cash Drawer Reconciliation Slip</p>
+              <p>${new Date().toISOString().split('T')[0]}</p>
+            </div>
+            <hr>
+            <p><b>Expected Cash Sales:</b> ${expectedSales}</p>
+            <p><b>Physical Cash Counted:</b> ${totalCounted}</p>
+            <p><b>Variance / Difference:</b> ${variance}</p>
+            <p><b>Notes:</b> ${notes}</p>
+            <hr>
+            <p>Attendant Signature: ______________________</p>
+            <script>
+              window.onload = function() { window.print(); window.close(); }
+            <\/script>
+          </body>
+        </html>
+      `);
+      printWin.document.close();
+    }
+
+    function navigateTo(pageId) {
+      if (!isLoggedIn && pageId !== 'login') {
+        showPage('login');
+        return;
+      }
+      if (pageId === 'stock' && !isManagerUnlocked) {
+        showPage('manager-auth');
+        return;
+      }
+      showPage(pageId);
+    }
+
+    function showPage(pageId) {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.getElementById(`page-${pageId}`).classList.add('active');
+      const nav = document.getElementById('main-nav');
+      nav.style.display = (pageId === 'login') ? 'none' : 'flex';
+    }
+
+    document.getElementById('login-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const user = document.getElementById('login-username').value;
+      const pass = document.getElementById('login-password').value;
+      const alertBox = document.getElementById('login-alert');
+      if (user === auth.username && pass === auth.password) {
+        isLoggedIn = true;
+        alertBox.classList.add('d-none');
+        e.target.reset();
+        navigateTo('dashboard');
+      fetchPaymentHistory();
+      
+      } else {
+        alertBox.innerText = "Invalid credentials";
+        alertBox.classList.remove('d-none');
+      }
+    });
+
+    document.getElementById('manager-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const pin = document.getElementById('manager-pin').value;
+      const alertBox = document.getElementById('manager-alert');
+      if (pin === MANAGER_PIN) {
+        isManagerUnlocked = true;
+        alertBox.classList.add('d-none');
+        e.target.reset();
+        navigateTo('stock');
+      } else {
+        alertBox.innerText = "Invalid Manager PIN";
+        alertBox.classList.remove('d-none');
+      }
+    });
+
+    document.getElementById('password-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const managerPin = document.getElementById('pwd-manager-pin').value;
+      const current = document.getElementById('pwd-current').value;
+      const newPwd = document.getElementById('pwd-new').value;
+      const confirmPwd = document.getElementById('pwd-confirm').value;
+      const alertBox = document.getElementById('password-alert');
+
+      if (managerPin !== MANAGER_PIN) {
+        alertBox.className = "alert alert-danger py-2";
+        alertBox.innerText = "Invalid Manager PIN.";
+        alertBox.classList.remove('d-none');
+        return;
+      }
+      if (current !== auth.password) {
+        alertBox.className = "alert alert-danger py-2";
+        alertBox.innerText = "Current password is incorrect.";
+        alertBox.classList.remove('d-none');
+        return;
+      }
+      if (newPwd !== confirmPwd) {
+        alertBox.className = "alert alert-danger py-2";
+        alertBox.innerText = "New passwords do not match.";
+        alertBox.classList.remove('d-none');
+        return;
+      }
+      auth.password = newPwd;
+      saveAuth();
+      alertBox.className = "alert alert-success py-2";
+      alertBox.innerText = "Password updated successfully!";
+      alertBox.classList.remove('d-none');
+      e.target.reset();
+    });
+
+    function logout() {
+      isLoggedIn = false;
+      isManagerUnlocked = false;
+      navigateTo('login');
+    }
+
+    function lockStock() {
+      isManagerUnlocked = false;
+      navigateTo('dashboard');
+    }
+
+    function toggleStockTotals() {
+      isStockTotalsVisible = !isStockTotalsVisible;
+      const btn = document.getElementById('btn-toggle-stock-totals');
+      if (isStockTotalsVisible) {
+        btn.innerHTML = "👁️ Hide Totals";
+        btn.classList.replace('btn-secondary', 'btn-outline-secondary');
+      } else {
+        btn.innerHTML = "👁️ Show Totals";
+        btn.classList.replace('btn-outline-secondary', 'btn-secondary');
+      }
+      renderStock();
+    }
+
+    function clearSaleModelInput() {
+      const modelInput = document.getElementById('sale-item');
+      modelInput.value = '';
+      autoFillSaleDetails();
+      modelInput.focus();
+    }
+
+    function searchStock() {
+      renderStock(document.getElementById('stock-search-input').value.trim().toLowerCase());
+    }
+    function clearStockSearch() {
+      document.getElementById('stock-search-input').value = '';
+      renderStock();
+    }
+    function searchSales() {
+      renderSales(document.getElementById('sales-search-input').value.trim().toLowerCase());
+    }
+    function clearSalesSearch() {
+      document.getElementById('sales-search-input').value = '';
+      renderSales();
+    }
+    function filterReturnSaleOptions() {
+      populateReturnSaleDropdown(document.getElementById('return-sale-search-input').value.trim().toLowerCase());
+    }
+    function clearReturnSaleSearch() {
+      document.getElementById('return-sale-search-input').value = '';
+      populateReturnSaleDropdown();
+    }
+    function searchReturns() {
+      renderReturns(document.getElementById('returns-search-input').value.trim().toLowerCase());
+    }
+    function clearReturnsSearch() {
+      document.getElementById('returns-search-input').value = '';
+      renderReturns();
+    }
+    function searchSupplierReturns() {
+      renderSupplierReturns(document.getElementById('sup-returns-search-input').value.trim().toLowerCase());
+    }
+    function clearSupplierReturnsSearch() {
+      document.getElementById('sup-returns-search-input').value = '';
+      renderSupplierReturns();
+    }
+    function searchRequisitions() {
+      renderRequisitions(document.getElementById('req-search-input').value.trim().toLowerCase());
+    }
+    function clearRequisitionsSearch() {
+      document.getElementById('req-search-input').value = '';
+      renderRequisitions();
+    }
+
+    function searchDashboardGoods() {
+      const query = document.getElementById('dash-goods-search-input').value.trim().toLowerCase();
+      const resultsContainer = document.getElementById('dash-goods-search-results');
+      if (!query) {
+        resultsContainer.innerHTML = `<tr><td colspan="4" class="text-center text-muted">Type in the search bar above to query active inventory</td></tr>`;
+        return;
+      }
+      const matchingGoods = db.stock.filter(s => 
+        (s.model && s.model.toLowerCase().includes(query)) ||
+        (s.category && s.category.toLowerCase().includes(query)) ||
+        (s.subcat && s.subcat.toLowerCase().includes(query))
+      );
+      if (matchingGoods.length === 0) {
+        resultsContainer.innerHTML = `<tr><td colspan="4" class="text-center text-danger">No available goods match your search query</td></tr>`;
+        return;
+      }
+      resultsContainer.innerHTML = matchingGoods.map(g => `
+        <tr>
+          <td><b>${g.model}</b></td>
+          <td><span class="badge bg-secondary">${g.subcat || 'Standard'}</span></td>
+          <td class="text-success fw-bold">₦${(g.sell_price || 0).toLocaleString()}</td>
+          <td><span class="badge ${g.qty > 10 ? 'bg-success' : 'bg-danger'}">${g.qty} pcs available</span></td>
+        </tr>
+      `).join('');
+    }
+
+    function clearDashboardGoodsSearch() {
+      document.getElementById('dash-goods-search-input').value = '';
+      searchDashboardGoods();
+    }
+
+    function renderAll() {
+      renderDashboard();
+      renderStock();
+      renderSales();
+      renderReturns();
+      renderSupplierReturns();
+      renderRequisitions();
+      renderMoniepointPayments();
+    }
+
+    function handleDashboardFilterChange() {
+      const filterType = document.getElementById('dash-date-filter').value;
+      const customPicker = document.getElementById('dash-custom-date');
+      if (filterType === 'custom') {
+        customPicker.classList.remove('d-none');
+      } else {
+        customPicker.classList.add('d-none');
+        renderDashboard();
+      }
+    }
+
+    function getFilteredDashboardPeriod() {
+      const filterType = document.getElementById('dash-date-filter').value;
+      const now = new Date();
+      const todayStr = now.toISOString().split('T')[0];
+      let filteredSales = [], filteredReturns = [], periodLabel = "Today";
+
+      if (filterType === 'today') {
+        periodLabel = `Today (${todayStr})`;
+        filteredSales = db.sales.filter(s => s.date === todayStr);
+        filteredReturns = db.returns.filter(r => r.date === todayStr);
+      } else if (filterType === 'yesterday') {
+        const yest = new Date(now);
+        yest.setDate(yest.getDate() - 1);
+        const yestStr = yest.toISOString().split('T')[0];
+        periodLabel = `Yesterday (${yestStr})`;
+        filteredSales = db.sales.filter(s => s.date === yestStr);
+        filteredReturns = db.returns.filter(r => r.date === yestStr);
+      } else if (filterType === 'this-week') {
+        const current = new Date(now);
+        const firstDay = current.getDate() - current.getDay();
+        const startOfWeek = new Date(current.setDate(firstDay)).toISOString().split('T')[0];
+        periodLabel = `This Week (Weekly Report: ${startOfWeek} to ${todayStr})`;
+        filteredSales = db.sales.filter(s => s.date && s.date >= startOfWeek && s.date <= todayStr);
+        filteredReturns = db.returns.filter(r => r.date && r.date >= startOfWeek && r.date <= todayStr);
+      } else if (filterType === 'this-month') {
+        const currentYearMonth = todayStr.substring(0, 7);
+        periodLabel = `This Month (${currentYearMonth})`;
+        filteredSales = db.sales.filter(s => s.date && s.date.startsWith(currentYearMonth));
+        filteredReturns = db.returns.filter(r => r.date && r.date.startsWith(currentYearMonth));
+      } else if (filterType === 'last-month') {
+        const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const lastMonthYear = lastMonthDate.getFullYear();
+        const lastMonthNum = String(lastMonthDate.getMonth() + 1).padStart(2, '0');
+        const lastMonthStr = `${lastMonthYear}-${lastMonthNum}`;
+        periodLabel = `Last Month (${lastMonthStr})`;
+        filteredSales = db.sales.filter(s => s.date && s.date.startsWith(lastMonthStr));
+        filteredReturns = db.returns.filter(r => r.date && r.date.startsWith(lastMonthStr));
+      } else if (filterType === 'this-year') {
+        const currentYear = now.getFullYear().toString();
+        periodLabel = `Yearly Report (Grouped by Month - ${currentYear})`;
+        filteredSales = db.sales.filter(s => s.date && s.date.startsWith(currentYear));
+        filteredReturns = db.returns.filter(r => r.date && r.date.startsWith(currentYear));
+      } else if (filterType === 'all-time') {
+        periodLabel = "All Time History";
+        filteredSales = db.sales;
+        filteredReturns = db.returns;
+      } else if (filterType === 'custom') {
+        const customDate = document.getElementById('dash-custom-date').value;
+        if (customDate) {
+          periodLabel = `Date: ${customDate}`;
+          filteredSales = db.sales.filter(s => s.date === customDate);
+          filteredReturns = db.returns.filter(r => r.date === customDate);
+        } else {
+          periodLabel = "Select Date...";
+          filteredSales = [];
+          filteredReturns = [];
+        }
+      }
+      return { filteredSales, filteredReturns, periodLabel };
     }
 
     function renderDashboard() {
@@ -1951,7 +2804,7 @@ document.getElementById('dash-net').innerText = `₦${netProfit.toLocaleString()
       receiptWindow.document.close();
     }
 
-    document.getElementById('sales-form').addEventListener('submit', async (e) => {
+    document.getElementById('sales-form').addEventListener('submit', (e) => {
       e.preventDefault();
       const customerName = document.getElementById('sale-customer').value.trim();
       const paymentMethod = document.getElementById('sale-payment-method').value;
@@ -1988,16 +2841,12 @@ document.getElementById('dash-net').innerText = `₦${netProfit.toLocaleString()
 
       const todayStr = new Date().toISOString().split('T')[0];
 
-      for (const cartItem of itemsToCheckout) {
+      itemsToCheckout.forEach(cartItem => {
         const stockItem = db.stock[cartItem.stockIndex];
         if (stockItem) {
-          const newQty = stockItem.qty - cartItem.qty;
-          if (stockItem.id) {
-            await updateStockInSupabase(stockItem.id, { qty: newQty });
-          }
-          stockItem.qty = newQty;
+          stockItem.qty -= cartItem.qty;
         }
-        const saleRecord = {
+        db.sales.push({
           date: todayStr,
           model: cartItem.model,
           quality: cartItem.quality,
@@ -2005,15 +2854,9 @@ document.getElementById('dash-net').innerText = `₦${netProfit.toLocaleString()
           paymentMethod: paymentMethod,
           qty: cartItem.qty,
           cost_price: cartItem.cost_price,
-          sell_price: cartItem.sell_price,
-          stock_id: stockItem ? stockItem.id : null,
-          category: stockItem ? stockItem.category : ''
-        };
-        // Save to Supabase SALES table
-        const savedSale = await saveSaleToSupabase(saleRecord);
-        if (savedSale) saleRecord.id = savedSale.id;
-        db.sales.push(saleRecord);
-      }
+          sell_price: cartItem.sell_price
+        });
+      });
 
       salesCart = [];
       renderSalesCart();
@@ -2500,7 +3343,7 @@ async function manualAppRefresh() {
       window.open(gmailUrl, '_blank');
     }
 
-    document.getElementById('stock-form').addEventListener('submit', async (e) => {
+    document.getElementById('stock-form').addEventListener('submit', (e) => {
       e.preventDefault();
       const model = document.getElementById('stk-model').value.trim();
       const category = document.getElementById('stk-cat').value.trim();
@@ -2514,17 +3357,10 @@ async function manualAppRefresh() {
         return alert("Please fill out all required stock fields correctly.");
       }
 
-      // Save to Supabase STOCK table
-      const newStockItem = { model, category, subcat, qty, cost_price, sell_price, supplier };
-      let saved = null;
-      try { saved = await saveStockToSupabase(newStockItem); } catch(err){ console.error(err); }
-      if (saved) {
-        newStockItem.id = saved.id;
-      }
-      db.stock.push(newStockItem);
+      db.stock.push({ model, category, subcat, qty, cost_price, sell_price, supplier });
       document.getElementById('stock-form').reset();
-      await saveDB();
-      alert("✅ Stock saved to STOCK table!");
+      saveDB();
+      alert("✅ Stock entry successfully added!");
     });
 
     function openEditModal(index) {
@@ -2543,7 +3379,7 @@ async function manualAppRefresh() {
       modal.show();
     }
 
-    document.getElementById('edit-stock-form').addEventListener('submit', async (e) => {
+    document.getElementById('edit-stock-form').addEventListener('submit', (e) => {
       e.preventDefault();
       const index = parseInt(document.getElementById('edit-stk-index').value);
       if (isNaN(index) || !db.stock[index]) return;
@@ -2566,14 +3402,10 @@ async function manualAppRefresh() {
       alert("✅ Stock item updated successfully!");
     });
 
-    async function deleteStock(index) {
+    function deleteStock(index) {
       if (confirm("Are you sure you want to delete this stock item?")) {
-        const item = db.stock[index];
-        if (item && item.id) {
-          await deleteStockFromSupabase(item.id);
-        }
         db.stock.splice(index, 1);
-        await saveDB();
+        saveDB();
       }
     }
              function populateSupplierReturnCategories() {
@@ -2728,10 +3560,12 @@ function updateThemeButton(theme) {
   renderMoniepointPayments();
 }
     
-  // Service Worker disabled to prevent ERR_FAILED on fonts.googleapis
   if ('serviceWorker' in navigator) {
-    // Uncomment to enable PWA after fixing sw.js
-     navigator.serviceWorker.register('/sw.js').catch(()=>{});
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js')
+        .then((reg) => console.log('Service Worker registered! Scope:', reg.scope))
+        .catch((err) => console.log('Service Worker registration failed:', err));
+    });
   }
 </script>
 </body>
