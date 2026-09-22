@@ -1,482 +1,126 @@
-const appState = {
-  currentPage: 'login',
-  authenticated: false,
-  stock: [
-    { id: 1, model: 'iPhone 13', category: 'Phones', subcat: 'Grade A', supplier: 'Sky Supplies', qty: 18, cost: 240000, sell: 360000 },
-    { id: 2, model: 'Samsung S24', category: 'Phones', subcat: 'Grade A', supplier: 'Adex Traders', qty: 6, cost: 290000, sell: 420000 },
-    { id: 3, model: 'Dell XPS 13', category: 'Laptops', subcat: 'New', supplier: 'TechNest', qty: 9, cost: 550000, sell: 760000 },
-    { id: 4, model: 'HP LaserJet Pro', category: 'Printers', subcat: 'Office', supplier: 'OfficeHub', qty: 12, cost: 180000, sell: 260000 }
-  ],
-  sales: [
-    { date: '2026-09-22', model: 'iPhone 13', quality: 'Grade A', customer: 'Aisha Bello', payment: 'Transfer', qty: 2, unitPrice: 360000, total: 720000 },
-    { date: '2026-09-21', model: 'Dell XPS 13', quality: 'New', customer: 'Tunde Yusuf', payment: 'Cash', qty: 1, unitPrice: 760000, total: 760000 },
-    { date: '2026-09-20', model: 'Samsung S24', quality: 'Grade A', customer: 'Jane Okafor', payment: 'Transfer', qty: 3, unitPrice: 420000, total: 1260000 }
-  ],
-  returns: [],
-  payments: [
-    { datetime: '2026-09-22T12:45:00', reference: 'MP-1023', sender_name: 'Aisha Bello', account_number: '203****223', amount: 720000, status: 'Successful' },
-    { datetime: '2026-09-22T09:12:00', reference: 'MP-1018', sender_name: 'Tunde Yusuf', account_number: '123****998', amount: 760000, status: 'Successful' }
-  ]
-};
+(() => {
+  'use strict';
 
-const money = (value) => `₦${Number(value || 0).toLocaleString()}`;
+  const STORAGE_KEY = 'sky-modernize-inventory-v2';
+  const AUTH_KEY = 'sky-modernize-auth-v2';
+  const DEFAULTS = { username: 'admin', password: '1234' };
+  const state = loadState();
+  state.cart ??= [];
+  state.requisitions ??= [];
 
-function showToast(message) {
-  const toast = document.getElementById('toast');
-  const msg = document.getElementById('toast-message');
-  if (!toast || !msg) return;
-  msg.textContent = message;
-  toast.classList.add('show');
-  setTimeout(() => toast.classList.remove('show'), 3000);
-}
+  const $ = (selector, root = document) => root.querySelector(selector);
+  const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
+  const money = (value) => `₦${Number(value || 0).toLocaleString()}`;
+  const today = () => new Date().toISOString().slice(0, 10);
+  const escapeHtml = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[char]));
 
-function navigateTo(page) {
-  document.querySelectorAll('.page').forEach((panel) => {
-    panel.classList.toggle('active', panel.id === `page-${page}`);
-  });
-  appState.currentPage = page;
-  const nav = document.getElementById('main-nav');
-  if (nav) nav.style.display = appState.authenticated ? 'block' : 'none';
-}
-
-function setAuthState(isAuth) {
-  appState.authenticated = isAuth;
-  const nav = document.getElementById('main-nav');
-  if (nav) nav.style.display = isAuth ? 'block' : 'none';
-  navigateTo(isAuth ? 'dashboard' : 'login');
-}
-
-function renderStockTable() {
-  const tableBody = document.getElementById('stock-table-body');
-  if (!tableBody) return;
-
-  tableBody.innerHTML = appState.stock.map((item) => `
-    <tr>
-      <td>${item.model}</td>
-      <td>${item.category}</td>
-      <td>${item.subcat || '—'}</td>
-      <td>${item.supplier || '—'}</td>
-      <td>${item.qty}</td>
-      <td>${money(item.cost)}</td>
-      <td>${money(item.sell)}</td>
-      <td class="no-print text-end">
-        <button class="btn btn-sm btn-outline-primary me-1 edit-stock-btn" data-id="${item.id}" type="button">Edit</button>
-        <button class="btn btn-sm btn-outline-danger delete-stock-btn" data-id="${item.id}" type="button">Delete</button>
-      </td>
-    </tr>
-  `).join('');
-
-  document.getElementById('total-stock-units').textContent = `${appState.stock.reduce((sum, item) => sum + Number(item.qty || 0), 0)} pcs`;
-  document.getElementById('total-stock-value').textContent = money(appState.stock.reduce((sum, item) => sum + (Number(item.qty || 0) * Number(item.cost || 0)), 0));
-}
-
-function renderSalesTable() {
-  const tableBody = document.getElementById('sales-table-body');
-  if (!tableBody) return;
-
-  tableBody.innerHTML = appState.sales.map((sale) => `
-    <tr>
-      <td>${sale.date}</td>
-      <td>${sale.model}</td>
-      <td>${sale.quality}</td>
-      <td>${sale.customer}</td>
-      <td>${sale.payment}</td>
-      <td>${sale.qty}</td>
-      <td>${money(sale.unitPrice)}</td>
-      <td>${money(sale.total)}</td>
-      <td class="no-print text-end"><button class="btn btn-sm btn-outline-danger delete-sale-btn" data-model="${sale.model}" type="button">Remove</button></td>
-    </tr>
-  `).join('');
-}
-
-function renderReturnsTable() {
-  const tableBody = document.getElementById('returns-table-body');
-  if (!tableBody) return;
-
-  tableBody.innerHTML = appState.returns.map((returnItem) => `
-    <tr>
-      <td>${returnItem.date}</td>
-      <td>${returnItem.model}</td>
-      <td>${returnItem.customer}</td>
-      <td>${returnItem.qty}</td>
-      <td>${returnItem.reason}</td>
-      <td>${returnItem.isExchanged ? 'Replacement Issued' : 'Refund'}</td>
-      <td class="no-print text-end"><button class="btn btn-sm btn-outline-danger delete-return-btn" data-id="${returnItem.id}" type="button">Delete</button></td>
-    </tr>
-  `).join('');
-}
-
-function renderPaymentsTable() {
-  const tableBody = document.getElementById('payment-table-body');
-  if (!tableBody) return;
-
-  tableBody.innerHTML = appState.payments.map((payment) => `
-    <tr>
-      <td>${new Date(payment.datetime).toLocaleString()}</td>
-      <td><code>${payment.reference}</code></td>
-      <td>${payment.sender_name}</td>
-      <td>${payment.account_number}</td>
-      <td>${money(payment.amount)}</td>
-      <td><span class="badge bg-success">${payment.status}</span></td>
-    </tr>
-  `).join('');
-}
-
-function renderDashboard() {
-  const salesTotal = appState.sales.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
-  const costTotal = appState.sales.reduce((sum, sale) => sum + (Number(sale.unitPrice || 0) * Number(sale.qty || 0)), 0);
-  const refundsTotal = appState.returns.reduce((sum, item) => sum + Number(item.amount || 0), 0);
-  const gross = salesTotal - costTotal;
-  const periodExpense = Number(document.getElementById('dash-period-expenses')?.value || 0);
-  const cac = salesTotal * 0.075;
-  const net = gross - periodExpense - cac - refundsTotal;
-
-  document.getElementById('dash-sales').textContent = money(salesTotal);
-  document.getElementById('dash-cost').textContent = money(costTotal);
-  document.getElementById('dash-returns').textContent = money(refundsTotal);
-  document.getElementById('dash-gross').textContent = money(gross);
-  document.getElementById('dash-cac').textContent = money(cac);
-  document.getElementById('dash-net').textContent = money(net);
-
-  const lowStock = appState.stock.filter((item) => Number(item.qty) <= 10);
-  const lowStockList = document.getElementById('low-stock-list');
-  if (lowStockList) {
-    if (!lowStock.length) {
-      lowStockList.innerHTML = '<p class="text-muted p-3 mb-0">No low stock items currently.</p>';
-      return;
-    }
-
-    lowStockList.innerHTML = `
-      <div class="table-responsive">
-        <table class="table table-sm mb-0">
-          <thead>
-            <tr><th>Model</th><th>Qty</th><th>Category</th><th>Supplier</th></tr>
-          </thead>
-          <tbody>
-            ${lowStock.map((item) => `
-              <tr>
-                <td>${item.model}</td>
-                <td class="text-danger fw-bold">${item.qty}</td>
-                <td>${item.category}</td>
-                <td>${item.supplier}</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      </div>
-    `;
-  }
-}
-
-function initSalesCart() {
-  const cartContainer = document.getElementById('sales-cart-container');
-  const cartRows = document.getElementById('sales-cart-tbody');
-  const cartTotal = document.getElementById('sales-cart-total');
-  const cartQty = document.getElementById('sales-cart-total-qty');
-
-  if (!cartContainer || !cartRows || !cartTotal || !cartQty) return;
-
-  const cart = [];
-  cartContainer.classList.add('d-none');
-  cartRows.innerHTML = '';
-  cartTotal.textContent = money(0);
-  cartQty.textContent = '0 pcs';
-
-  return { cart, cartContainer, cartRows, cartTotal, cartQty };
-}
-
-function bindEvents() {
-  const loginForm = document.getElementById('login-form');
-  if (loginForm) {
-    loginForm.addEventListener('submit', (event) => {
-      event.preventDefault();
-      const username = document.getElementById('login-username')?.value.trim();
-      const password = document.getElementById('login-password')?.value.trim();
-      if (!username || !password) {
-        showToast('Please enter username and password');
-        return;
-      }
-      setAuthState(true);
-      showToast('Welcome back!');
-    });
+  function loadState() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+      if (saved && Array.isArray(saved.stock)) return saved;
+    } catch (error) { console.warn('Could not load saved data', error); }
+    return { stock: [], sales: [], returns: [], requisitions: [] };
   }
 
-  const stockForm = document.getElementById('stock-form');
-  if (stockForm) {
-    stockForm.addEventListener('submit', (event) => {
-      event.preventDefault();
-      const item = {
-        id: Date.now(),
-        model: document.getElementById('stk-model').value.trim(),
-        category: document.getElementById('stk-cat').value.trim(),
-        subcat: document.getElementById('stk-subcat').value.trim(),
-        supplier: document.getElementById('stk-supplier').value.trim(),
-        qty: Number(document.getElementById('stk-qty').value || 0),
-        cost: Number(document.getElementById('stk-cost').value || 0),
-        sell: Number(document.getElementById('stk-sell').value || 0)
-      };
+  function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
 
-      if (!item.model || !item.category || item.qty <= 0 || item.cost < 0 || item.sell < 0) {
-        showToast('Please complete the stock form correctly.');
-        return;
-      }
-
-      appState.stock.push(item);
-      stockForm.reset();
-      renderStockTable();
-      renderDashboard();
-      showToast('Stock saved successfully');
-    });
+  function toast(message, type = 'success') {
+    const node = document.createElement('div');
+    node.className = `toast show app-toast ${type === 'error' ? 'bg-danger' : ''}`;
+    node.setAttribute('role', 'status');
+    node.innerHTML = `<div class="toast-body"><i class="fa-solid ${type === 'error' ? 'fa-circle-exclamation' : 'fa-circle-check'} me-2"></i>${escapeHtml(message)}</div>`;
+    $('#toast-container').append(node);
+    setTimeout(() => node.remove(), 3200);
   }
 
-  const salesForm = document.getElementById('sales-form');
-  if (salesForm) {
-    salesForm.addEventListener('submit', (event) => {
-      event.preventDefault();
-      const customer = document.getElementById('sale-customer')?.value.trim();
-      const payment = document.getElementById('sale-payment-method')?.value;
-      const cart = initSalesCart();
-      const cartValues = cart?.cart || [];
-      if (!customer || !cartValues.length) {
-        showToast('Add products to cart before completing the sale');
-        return;
-      }
+  function authenticated() { return sessionStorage.getItem(AUTH_KEY) === '1'; }
 
-      cartValues.forEach((entry) => {
-        appState.sales.push({
-          date: new Date().toISOString().split('T')[0],
-          model: entry.model,
-          quality: entry.quality,
-          customer,
-          payment,
-          qty: entry.qty,
-          unitPrice: entry.unitPrice,
-          total: entry.qty * entry.unitPrice
-        });
-      });
-
-      renderSalesTable();
-      renderDashboard();
-      showToast('Sale recorded successfully');
-      salesForm.reset();
-      document.getElementById('sales-cart-container').classList.add('d-none');
-    });
+  function navigate(page) {
+    if (!authenticated() && page !== 'login') page = 'login';
+    $$('.page').forEach((node) => node.classList.toggle('active', node.id === `page-${page}`));
+    $('#main-nav').hidden = page === 'login';
+    if (page === 'dashboard') renderDashboard();
   }
 
-  document.getElementById('logout-btn')?.addEventListener('click', () => {
-    setAuthState(false);
-    showToast('Logged out successfully');
-  });
+  function renderStock(filter = '') {
+    const query = filter.trim().toLowerCase();
+    const rows = state.stock.filter((item) => [item.model, item.category, item.quality, item.supplier].join(' ').toLowerCase().includes(query));
+    $('#stock-table').innerHTML = rows.length ? rows.map((item) => `<tr><td>${escapeHtml(item.model)}</td><td>${escapeHtml(item.category)}</td><td>${escapeHtml(item.quality || '—')}</td><td>${escapeHtml(item.supplier || '—')}</td><td>${item.qty}</td><td>${money(item.cost)}</td><td>${money(item.price)}</td><td class="no-print"><button class="btn btn-sm btn-outline-danger delete-stock" data-id="${item.id}">Delete</button></td></tr>`).join('') : '<tr><td colspan="8" class="text-center text-muted py-4">No inventory items found.</td></tr>';
+    $('#stat-stock').textContent = money(state.stock.reduce((sum, item) => sum + item.qty * item.cost, 0));
+    const models = [...new Set(state.stock.map((item) => item.model))];
+    $('#sale-models').innerHTML = models.map((model) => `<option value="${escapeHtml(model)}">`).join('');
+  }
 
-  document.getElementById('refresh-app-btn')?.addEventListener('click', () => {
-    renderStockTable();
-    renderSalesTable();
-    renderDashboard();
-    renderPaymentsTable();
-    showToast('Application refreshed');
-  });
+  function renderSales(filter = '') {
+    const query = filter.trim().toLowerCase();
+    const rows = state.sales.filter((sale) => [sale.model, sale.quality, sale.customer, sale.payment, sale.date].join(' ').toLowerCase().includes(query));
+    $('#sales-table').innerHTML = rows.length ? rows.map((sale) => `<tr><td>${sale.date}</td><td>${escapeHtml(sale.model)}</td><td>${escapeHtml(sale.quality || '—')}</td><td>${escapeHtml(sale.customer)}</td><td>${escapeHtml(sale.payment)}</td><td>${sale.qty}</td><td>${money(sale.total)}</td><td class="no-print"><button class="btn btn-sm btn-outline-danger delete-sale" data-id="${sale.id}">Delete</button></td></tr>`).join('') : '<tr><td colspan="8" class="text-center text-muted py-4">No sales found.</td></tr>';
+    const salesTotal = state.sales.reduce((sum, sale) => sum + sale.total, 0);
+    const cost = state.sales.reduce((sum, sale) => sum + sale.cost * sale.qty, 0);
+    $('#stat-revenue').textContent = money(salesTotal);
+    $('#stat-cost').textContent = money(cost);
+    $('#stat-profit').textContent = money(salesTotal - cost);
+  }
 
-  document.getElementById('reset-expenses-btn')?.addEventListener('click', () => {
-    const input = document.getElementById('dash-period-expenses');
-    if (input) input.value = 0;
-    renderDashboard();
-  });
+  function renderReturns() {
+    $('#returns-table').innerHTML = state.returns.length ? state.returns.map((item) => `<tr><td>${item.date}</td><td>${escapeHtml(item.model)}</td><td>${escapeHtml(item.customer)}</td><td>${item.qty}</td><td>${escapeHtml(item.reason)}</td><td class="no-print"><button class="btn btn-sm btn-outline-danger delete-return" data-id="${item.id}">Delete</button></td></tr>`).join('') : '<tr><td colspan="6" class="text-center text-muted py-4">No returns recorded.</td></tr>';
+    $('#return-sale').innerHTML = state.sales.length ? state.sales.map((sale) => `<option value="${sale.id}">${escapeHtml(sale.model)} — ${escapeHtml(sale.customer)} (${sale.qty} available)</option>`).join('') : '<option value="">No sales available</option>';
+  }
 
-  document.getElementById('add-to-cart-btn')?.addEventListener('click', () => {
-    const model = document.getElementById('sale-item')?.value.trim();
-    const quality = document.getElementById('sale-quality')?.value;
-    const qty = Number(document.getElementById('sale-qty')?.value || 0);
-    const unitPrice = Number(document.getElementById('sale-price')?.value || 0);
+  function renderRequisitions() {
+    $('#requisition-table').innerHTML = state.requisitions.length ? state.requisitions.map((item) => `<tr><td><code>${item.id}</code></td><td>${item.date}</td><td>${escapeHtml(item.item)}</td><td>${item.qty}</td><td>${escapeHtml(item.supplier || '—')}</td><td><span class="badge bg-warning text-dark">${escapeHtml(item.status)}</span></td></tr>`).join('') : '<tr><td colspan="6" class="text-center text-muted py-4">No requisitions recorded.</td></tr>';
+  }
 
-    if (!model || !quality || qty <= 0 || unitPrice <= 0) {
-      showToast('Select a valid model, quality, and quantity.');
-      return;
-    }
+  function renderDashboard() {
+    renderSales();
+    renderStock($('#stock-search')?.value || '');
+    renderReturns();
+    renderRequisitions();
+    const low = state.stock.filter((item) => item.qty <= 10).sort((a, b) => a.qty - b.qty);
+    $('#low-stock-list').innerHTML = low.length ? `<div class="table-responsive"><table class="table mb-0"><thead><tr><th>Model</th><th>Category</th><th>Qty</th><th>Supplier</th></tr></thead><tbody>${low.map((item) => `<tr><td>${escapeHtml(item.model)}</td><td>${escapeHtml(item.category)}</td><td class="text-danger fw-bold">${item.qty}</td><td>${escapeHtml(item.supplier || '—')}</td></tr>`).join('')}</tbody></table></div>` : '<p class="text-muted mb-0">No low stock items currently.</p>';
+  }
 
-    const cartContainer = document.getElementById('sales-cart-container');
-    const tbody = document.getElementById('sales-cart-tbody');
-    const totalBox = document.getElementById('sales-cart-total');
-    const qtyBox = document.getElementById('sales-cart-total-qty');
+  function resetCart() { state.cart = []; }
+  function renderCart() {
+    const body = $('#sales-cart');
+    if (!body) return;
+    body.innerHTML = state.cart.length ? state.cart.map((item, index) => `<tr><td>${escapeHtml(item.model)}</td><td>${escapeHtml(item.quality || '—')}</td><td>${item.qty}</td><td>${money(item.price)}</td><td>${money(item.qty * item.price)}</td><td><button class="btn btn-sm btn-outline-danger remove-cart" data-index="${index}">Remove</button></td></tr>`).join('') : '<tr><td colspan="6" class="text-center text-muted">Cart is empty.</td></tr>';
+  }
 
-    const row = document.createElement('tr');
-    row.innerHTML = `
-      <td>${model}</td>
-      <td>${quality}</td>
-      <td>${qty}</td>
-      <td>${money(unitPrice)}</td>
-      <td>${money(qty * unitPrice)}</td>
-      <td><button class="btn btn-sm btn-outline-danger remove-cart-item" type="button">Remove</button></td>
-    `;
+  function exportCsv(filename, headers, rows) {
+    const quote = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+    const csv = [headers, ...rows].map((row) => row.map(quote).join(',')).join('\n');
+    const link = document.createElement('a'); link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' })); link.download = filename; link.click(); URL.revokeObjectURL(link.href);
+  }
 
-    tbody.appendChild(row);
-    cartContainer.classList.remove('d-none');
+  function bindEvents() {
+    $('#login-form').addEventListener('submit', (event) => { event.preventDefault(); const user = $('#login-username').value.trim(); const password = $('#login-password').value; if (!user || !password) return toast('Enter your credentials.', 'error'); sessionStorage.setItem(AUTH_KEY, '1'); navigate('dashboard'); toast('Signed in successfully.'); });
+    $$('.nav-btn[data-page]').forEach((button) => button.addEventListener('click', () => navigate(button.dataset.page)));
+    $('#logout-btn').addEventListener('click', () => { sessionStorage.removeItem(AUTH_KEY); navigate('login'); toast('Signed out.'); });
+    $('#theme-toggle').addEventListener('click', () => { document.body.classList.toggle('dark-mode'); localStorage.setItem('sky-theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light'); });
+    $('#stock-search').addEventListener('input', (event) => renderStock(event.target.value));
 
-    const total = Array.from(tbody.querySelectorAll('tr')).reduce((sum, rowEl) => {
-      const cells = rowEl.children;
-      const value = Number(cells[4].textContent.replace(/[^\d]/g, '')) || 0;
-      return sum + value;
-    }, 0);
+    $('#stock-form').addEventListener('submit', (event) => { event.preventDefault(); const item = { id: crypto.randomUUID(), model: $('#stock-model').value.trim(), category: $('#stock-category').value.trim(), quality: $('#stock-quality').value.trim(), supplier: $('#stock-supplier').value.trim(), qty: Number($('#stock-qty').value), cost: Number($('#stock-cost').value), price: Number($('#stock-price').value) }; if (!item.model || !item.category || !Number.isInteger(item.qty) || item.qty < 1 || item.cost < 0 || item.price < 0) return toast('Complete the stock form correctly.', 'error'); state.stock.push(item); saveState(); event.target.reset(); renderDashboard(); toast('Inventory item saved.'); });
 
-    totalBox.textContent = money(total);
-    qtyBox.textContent = `${Array.from(tbody.querySelectorAll('tr')).reduce((sum, rowEl) => sum + Number(rowEl.children[2].textContent || 0), 0)} pcs`;
+    $('#sales-form').addEventListener('submit', (event) => { event.preventDefault(); const model = $('#sale-model').value.trim(); const stock = state.stock.find((item) => item.model.toLowerCase() === model.toLowerCase()); const qty = Number($('#sale-qty').value); const price = Number($('#sale-price').value); if (!stock || !Number.isInteger(qty) || qty < 1 || qty > stock.qty || price < 0) return toast('Check model, quantity, stock, and price.', 'error'); state.sales.push({ id: crypto.randomUUID(), date: today(), model: stock.model, quality: $('#sale-quality').value.trim() || stock.quality, customer: $('#sale-customer').value.trim(), payment: $('#sale-payment').value, qty, cost: stock.cost, price, total: qty * price }); stock.qty -= qty; saveState(); event.target.reset(); renderDashboard(); toast('Sale recorded and stock updated.'); });
 
-    showToast('Item added to cart');
-    document.getElementById('sale-item').value = '';
-    document.getElementById('sale-quality').value = '';
-    document.getElementById('sale-price').value = '';
-    document.getElementById('sale-qty').value = 1;
-  });
+    $('#sale-model').addEventListener('input', () => { const item = state.stock.find((stock) => stock.model.toLowerCase() === $('#sale-model').value.trim().toLowerCase()); if (item) { $('#sale-quality').value = item.quality || ''; $('#sale-price').value = item.price; } });
+    $('#returns-form').addEventListener('submit', (event) => { event.preventDefault(); const sale = state.sales.find((item) => item.id === $('#return-sale').value); const qty = Number($('#return-qty').value); if (!sale || !Number.isInteger(qty) || qty < 1 || qty > sale.qty) return toast('Select a valid sale and quantity.', 'error'); state.returns.push({ id: crypto.randomUUID(), date: today(), model: sale.model, customer: sale.customer, qty, reason: $('#return-reason').value.trim(), amount: qty * sale.price }); const stock = state.stock.find((item) => item.model.toLowerCase() === sale.model.toLowerCase()); if (stock) stock.qty += qty; saveState(); event.target.reset(); renderDashboard(); toast('Return recorded and stock restored.'); });
+    $('#requisition-form').addEventListener('submit', (event) => { event.preventDefault(); state.requisitions.push({ id: `REQ-${Date.now()}`, date: today(), item: $('#requisition-item').value.trim(), qty: Number($('#requisition-qty').value), supplier: $('#requisition-supplier').value.trim(), status: 'Pending' }); saveState(); event.target.reset(); renderRequisitions(); toast('Requisition submitted.'); });
+    $('#password-form').addEventListener('submit', (event) => { event.preventDefault(); if ($('#new-password').value !== $('#confirm-password').value) return toast('Passwords do not match.', 'error'); toast('Password updated locally. Configure server authentication for production.'); event.target.reset(); });
 
-  document.getElementById('clear-cart-btn')?.addEventListener('click', () => {
-    const tbody = document.getElementById('sales-cart-tbody');
-    const cartContainer = document.getElementById('sales-cart-container');
-    if (tbody) tbody.innerHTML = '';
-    if (cartContainer) cartContainer.classList.add('d-none');
-    document.getElementById('sales-cart-total').textContent = money(0);
-    document.getElementById('sales-cart-total-qty').textContent = '0 pcs';
-  });
+    document.body.addEventListener('click', (event) => { const button = event.target.closest('.delete-stock,.delete-sale,.delete-return,.remove-cart'); if (!button) return; if (button.classList.contains('delete-stock')) state.stock = state.stock.filter((item) => item.id !== button.dataset.id); if (button.classList.contains('delete-sale')) state.sales = state.sales.filter((item) => item.id !== button.dataset.id); if (button.classList.contains('delete-return')) state.returns = state.returns.filter((item) => item.id !== button.dataset.id); if (button.classList.contains('remove-cart')) state.cart.splice(Number(button.dataset.index), 1); saveState(); renderDashboard(); renderCart(); toast('Updated.'); });
+    $('#export-stock').addEventListener('click', () => exportCsv('stock.csv', ['Model','Category','Quality','Supplier','Qty','Cost','Price'], state.stock.map((x) => [x.model,x.category,x.quality,x.supplier,x.qty,x.cost,x.price])));
+    $('#export-sales').addEventListener('click', () => exportCsv('sales.csv', ['Date','Model','Quality','Customer','Payment','Qty','Cost','Price','Total'], state.sales.map((x) => [x.date,x.model,x.quality,x.customer,x.payment,x.qty,x.cost,x.price,x.total])));
+    $('#backup-stock').addEventListener('click', () => { const link = document.createElement('a'); link.href = URL.createObjectURL(new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' })); link.download = `sky-backup-${today()}.json`; link.click(); });
+    $('#restore-stock').addEventListener('click', () => $('#restore-input').click());
+    $('#restore-input').addEventListener('change', (event) => { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = () => { try { const imported = JSON.parse(reader.result); if (!Array.isArray(imported.stock)) throw new Error('Invalid backup'); Object.assign(state, imported); saveState(); renderDashboard(); toast('Backup restored.'); } catch { toast('Invalid backup file.', 'error'); } }; reader.readAsText(file); });
+    $('#print-dashboard').addEventListener('click', () => window.print()); $('#print-cash').addEventListener('click', () => window.print());
+  }
 
-  document.getElementById('cancel-password-btn')?.addEventListener('click', () => navigateTo('dashboard'));
-
-  document.querySelectorAll('.nav-btn').forEach((button) => {
-    button.addEventListener('click', () => {
-      const page = button.dataset.page;
-      if (page) navigateTo(page);
-    });
-  });
-
-  document.getElementById('theme-toggle-btn')?.addEventListener('click', () => {
-    document.body.classList.toggle('dark-mode');
-    showToast('Theme updated');
-  });
-
-  document.getElementById('password-form')?.addEventListener('submit', (event) => {
-    event.preventDefault();
-    showToast('Password updated');
-    navigateTo('dashboard');
-  });
-
-  document.getElementById('returns-form')?.addEventListener('submit', (event) => {
-    event.preventDefault();
-    const selected = document.getElementById('return-sale-idx').value;
-    const reason = document.getElementById('return-reason').value.trim();
-    const qty = Number(document.getElementById('return-qty').value || 0);
-    const isExchanged = document.getElementById('return-is-exchanged').checked;
-
-    if (!selected || !reason || qty <= 0) {
-      showToast('Complete all return fields correctly.');
-      return;
-    }
-
-    const sale = appState.sales.find((item) => item.model === selected) || appState.sales[0];
-    appState.returns.push({
-      id: Date.now(),
-      date: new Date().toISOString().split('T')[0],
-      model: sale.model,
-      customer: sale.customer,
-      qty,
-      reason,
-      isExchanged,
-      amount: qty * sale.unitPrice
-    });
-
-    renderReturnsTable();
-    renderDashboard();
-    showToast('Return processed successfully');
-    event.target.reset();
-  });
-
-  document.getElementById('stock-search-input')?.addEventListener('input', () => {
-    const query = document.getElementById('stock-search-input').value.trim().toLowerCase();
-    const filtered = appState.stock.filter((item) => [item.model, item.category, item.subcat, item.supplier].join(' ').toLowerCase().includes(query));
-    const tableBody = document.getElementById('stock-table-body');
-    tableBody.innerHTML = filtered.map((item) => `
-      <tr>
-        <td>${item.model}</td>
-        <td>${item.category}</td>
-        <td>${item.subcat || '—'}</td>
-        <td>${item.supplier || '—'}</td>
-        <td>${item.qty}</td>
-        <td>${money(item.cost)}</td>
-        <td>${money(item.sell)}</td>
-        <td class="no-print text-end"><button class="btn btn-sm btn-outline-primary me-1 edit-stock-btn" data-id="${item.id}" type="button">Edit</button><button class="btn btn-sm btn-outline-danger delete-stock-btn" data-id="${item.id}" type="button">Delete</button></td>
-      </tr>
-    `).join('');
-  });
-
-  document.body.addEventListener('click', (event) => {
-    const editButton = event.target.closest('.edit-stock-btn');
-    if (editButton) {
-      const id = Number(editButton.dataset.id);
-      const item = appState.stock.find((stockItem) => stockItem.id === id);
-      if (!item) return;
-      const model = prompt('Edit model name', item.model);
-      if (model) item.model = model;
-      renderStockTable();
-      renderDashboard();
-      showToast('Stock updated');
-    }
-
-    const deleteButton = event.target.closest('.delete-stock-btn');
-    if (deleteButton) {
-      const id = Number(deleteButton.dataset.id);
-      appState.stock = appState.stock.filter((stockItem) => stockItem.id !== id);
-      renderStockTable();
-      renderDashboard();
-      showToast('Stock deleted');
-    }
-
-    const removeCart = event.target.closest('.remove-cart-item');
-    if (removeCart) {
-      removeCart.closest('tr').remove();
-      const tbody = document.getElementById('sales-cart-tbody');
-      const totalBox = document.getElementById('sales-cart-total');
-      const qtyBox = document.getElementById('sales-cart-total-qty');
-      const total = Array.from(tbody.querySelectorAll('tr')).reduce((sum, rowEl) => {
-        const cells = rowEl.children;
-        const value = Number(cells[4].textContent.replace(/[^\d]/g, '')) || 0;
-        return sum + value;
-      }, 0);
-      totalBox.textContent = money(total);
-      qtyBox.textContent = `${Array.from(tbody.querySelectorAll('tr')).reduce((sum, rowEl) => sum + Number(rowEl.children[2].textContent || 0), 0)} pcs`;
-    }
-  });
-}
-
-function populateReturnOptions() {
-  const select = document.getElementById('return-sale-idx');
-  if (!select) return;
-  select.innerHTML = appState.sales.map((sale) => `<option value="${sale.model}">${sale.model} — ${sale.customer}</option>`).join('');
-}
-
-function seedData() {
-  renderStockTable();
-  renderSalesTable();
-  renderReturnsTable();
-  renderPaymentsTable();
-  renderDashboard();
-  populateReturnOptions();
-  setAuthState(false);
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  seedData();
-  bindEvents();
-  document.getElementById('dash-period-expenses').addEventListener('input', renderDashboard);
-  document.getElementById('sales-period-filter')?.addEventListener('change', () => {
-    document.getElementById('sales-badge-period').textContent = document.getElementById('sales-period-filter').value;
-  });
-
-  document.getElementById('sale-item')?.addEventListener('input', () => {
-    const modelName = document.getElementById('sale-item').value.trim();
-    const match = appState.stock.find((item) => item.model.toLowerCase() === modelName.toLowerCase());
-    if (!match) return;
-    const drop = document.getElementById('sale-quality');
-    drop.innerHTML = `<option value="${match.subcat || 'Regular'}">${match.subcat || 'Regular'}</option>`;
-    document.getElementById('sale-price').value = match.sell;
-  });
-});
-
-window.addEventListener('beforeunload', () => {
-  document.body.classList.remove('dark-mode');
-});
+  function init() {
+    if (localStorage.getItem('sky-theme') === 'dark') document.body.classList.add('dark-mode');
+    bindEvents(); renderDashboard(); renderCart(); navigate(authenticated() ? 'dashboard' : 'login');
+  }
+  document.addEventListener('DOMContentLoaded', init);
+})();
