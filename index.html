@@ -1293,52 +1293,35 @@
 
     // --- TRIPLE SAVING METHOD IMPLEMENTATION ---
     async function saveDB() {
-      localStorage.setItem(DB_KEY, JSON.stringify(db));
-
-      if (supabaseClient) {
-        try {
-          const { error } = await supabaseClient
-            .from('inventory')
-            .upsert({ id: 1, payload: db, updated_at: new Date().toISOString() });
-          
-          if (error) {
-            console.error('Supabase sync error:', error.message);
-          }
-        } catch (err) {
-          console.error('Network error during Supabase triple saving sync:', err);
-        }
-      }
-
-      renderAll();
+  localStorage.setItem(DB_KEY, JSON.stringify(db));
+  
+  if (supabaseClient) {
+    try {
+      // Save stock
+      await supabaseClient.from('stock').upsert(db.stock);
+      
+      // Save sales
+      await supabaseClient.from('sales').upsert(db.sales);
+      
+      // Save returns
+      await supabaseClient.from('returns').upsert(db.returns);
+      
+      // Save supplier returns
+      await supabaseClient.from('supplier_returns').upsert(db.supplierReturns);
+      
+      // Save requisitions
+      await supabaseClient.from('requisitions').upsert(db.requisitions);
+      
+      // Save payments
+      await supabaseClient.from('payments').upsert(db.moniepointPayments);
+      
+      console.log('Data synced to Supabase tables');
+    } catch (err) {
+      console.error('Sync error:', err);
     }
-
-    async function initTripleSavingSync() {
-      if (supabaseClient) {
-        try {
-          const { data, error } = await supabaseClient
-            .from('inventory')
-            .select('payload')
-            .eq('id', 1)
-            .single();
-          
-          if (data && data.payload && !error) {
-            db = data.payload;
-            if (!db.supplierReturns) db.supplierReturns = [];
-            if (!db.requisitions) db.requisitions = [];
-            if (!db.moniepointPayments) db.moniepointPayments = [];
-            localStorage.setItem(DB_KEY, JSON.stringify(db));
-          }
-        } catch (e) {
-          console.log('Using local backup storage fallback.');
-        }
-      }
-      renderAll();
-    }
-
-    window.addEventListener('DOMContentLoaded', () => {
-      initTripleSavingSync();
-    });
-
+  }
+  renderAll();
+}
 let allMoniepointPayments = [];
 
 async function fetchPaymentHistory() {
