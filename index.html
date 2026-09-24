@@ -28,6 +28,42 @@
   background-color: #121212 !important;
   color: #f8f9fa !important;
 }
+     [data-bs-theme="dark"] .card {
+      background-color: #1e293b !important;
+      color: #e2e8f0 !important;
+      border: 1px solid #334155 !important;
+    }
+    [data-bs-theme="dark"] .card-header {
+      border-bottom-color: #334155 !important;
+      color: #f1f5f9 !important;
+    }
+    [data-bs-theme="dark"] .table {
+      color: #cbd5e1 !important;
+    }
+    [data-bs-theme="dark"] .table th {
+      background-color: #1e293b !important;
+      color: #94a3b8 !important;
+      border-bottom-color: #334155 !important;
+    }
+    [data-bs-theme="dark"] .table td {
+      border-color: #334155 !important;
+    }
+    [data-bs-theme="dark"] .form-control,
+    [data-bs-theme="dark"] .form-select {
+      background-color: #1e293b !important;
+      border-color: #334155 !important;
+      color: #e2e8f0 !important;
+    }
+    [data-bs-theme="dark"] .form-control::placeholder {
+      color: #64748b !important;
+    }
+    [data-bs-theme="dark"] .modal-content {
+      background-color: #1e293b !important;
+      color: #e2e8f0 !important;
+    }
+    [data-bs-theme="dark"] .navbar {
+      background: linear-gradient(135deg, #020617 0%, #0f172a 100%) !important;
+    }
     :root {
       --primary-color: #0f172a;
       --accent-color: #2563eb;
@@ -1237,7 +1273,6 @@
 
 // Run it right alongside your startup sync
 window.addEventListener('DOMContentLoaded', async () => {
-  await triggerCloudTransactionSync();
   initTripleSavingSync();
 });
     
@@ -1693,7 +1728,6 @@ let netProfit = taxableProfit - cacFee;
         alertBox.classList.add('d-none');
         e.target.reset();
         navigateTo('dashboard');
-      fetchPaymentHistory();
       
       } else {
         alertBox.innerText = "Invalid credentials";
