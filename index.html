@@ -763,7 +763,7 @@
               <input id="sale-customer" class="form-control" placeholder="Enter customer full name" required>
             </div>
             <div class="col-md-3">
-              <label class="form-label small fw-bold text-muted">PAYMENT METHOD</label>
+              <label class="form-label small fw-bold text-muted"> METHOD</label>
               <select id="sale-payment-method" class="form-select" required>
                 <option value="Cash">Cash 💵</option>
                 <option value="Transfer">Transfer 💳 </option>
@@ -1226,7 +1226,6 @@
 
 // Run it right alongside your startup sync
 window.addEventListener('DOMContentLoaded', async () => {
-  await triggerCloudTransactionSync();
   initTripleSavingSync();
 });
     
@@ -1682,7 +1681,6 @@ let netProfit = taxableProfit - cacFee;
         alertBox.classList.add('d-none');
         e.target.reset();
         navigateTo('dashboard');
-      fetchPaymentHistory();
       
       } else {
         alertBox.innerText = "Invalid credentials";
