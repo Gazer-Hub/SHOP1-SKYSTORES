@@ -1293,55 +1293,52 @@
 
     // --- TRIPLE SAVING METHOD IMPLEMENTATION ---
     async function saveDB() {
-  localStorage.setItem(DB_KEY, JSON.stringify(db));
-  
-async function syncToSupabase() {
-  if (!supabaseClient) return;
+      localStorage.setItem(DB_KEY, JSON.stringify(db));
 
-  console.log('Syncing...', {
-    stock: db.stock?.length,
-    sales: db.sales?.length,
-    returns: db.returns?.length,
-    supplierReturns: db.supplierReturns?.length,
-    requisitions: db.requisitions?.length,
-    payments: db.moniepointPayments?.length,
-  });
-
-  // Helper to sync one table and log the real error
-  const syncTable = async (tableName, data, conflictKey = 'id') => {
-    if (!data || data.length === 0) {
-      console.warn(`Skipping ${tableName}: empty array`);
-      return;
-    }
-    
-    // Supabase has a 1000 row limit per upsert, chunk it
-    const chunkSize = 500;
-    for (let i = 0; i < data.length; i += chunkSize) {
-      const chunk = data.slice(i, i + chunkSize);
-      const { data: res, error } = await supabaseClient
-        .from(tableName)
-        .upsert(chunk, { onConflict: conflictKey });
-
-      if (error) {
-        console.error(`❌ ${tableName} failed:`, error.message, error.details, error.hint);
-      } else {
-        console.log(`✅ ${tableName} synced: ${chunk.length} rows`);
+      if (supabaseClient) {
+        try {
+          const { error } = await supabaseClient
+            .from('inventory')
+            .upsert({ id: 1, payload: db, updated_at: new Date().toISOString() });
+          
+          if (error) {
+            console.error('Supabase sync error:', error.message);
+          }
+        } catch (err) {
+          console.error('Network error during Supabase triple saving sync:', err);
+        }
       }
+
+      renderAll();
     }
-  };
 
-  await syncTable('stock', db.stock);
-  await syncTable('sales', db.sales);
-  await syncTable('returns', db.returns);
-  await syncTable('supplier_returns', db.supplierReturns);
-  await syncTable('requisitions', db.requisitions);
-  await syncTable('payments', db.moniepointPayments);
+    async function initTripleSavingSync() {
+      if (supabaseClient) {
+        try {
+          const { data, error } = await supabaseClient
+            .from('inventory')
+            .select('payload')
+            .eq('id', 1)
+            .single();
+          
+          if (data && data.payload && !error) {
+            db = data.payload;
+            if (!db.supplierReturns) db.supplierReturns = [];
+            if (!db.requisitions) db.requisitions = [];
+            if (!db.moniepointPayments) db.moniepointPayments = [];
+            localStorage.setItem(DB_KEY, JSON.stringify(db));
+          }
+        } catch (e) {
+          console.log('Using local backup storage fallback.');
+        }
+      }
+      renderAll();
+    }
 
-  renderAll();
-}
+    window.addEventListener('DOMContentLoaded', () => {
+      initTripleSavingSync();
+    });
 
-// then call it
-syncToSupabase();
 let allMoniepointPayments = [];
 
 async function fetchPaymentHistory() {
@@ -3570,7 +3567,6 @@ function updateThemeButton(theme) {
         .catch((err) => console.log('Service Worker registration failed:', err));
     });
   }
-    }
 </script>
 </body>
 </html>
