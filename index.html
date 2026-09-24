@@ -1956,6 +1956,8 @@ filteredSales.forEach(sale => {
 let netSales = totalSales - returnedSales;
 let netCost = totalCost - returnedCost;
 let grossProfit = netSales - netCost;
+let cacFee = totalCacFee;
+let netProfit = taxableProfit - cacFee;
     
 // Safely update DOM elements
 document.getElementById('dash-sales').innerText = `₦${netSales.toLocaleString()}`;
