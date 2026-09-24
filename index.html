@@ -1952,7 +1952,11 @@ filteredSales.forEach(sale => {
   }
 });
 
-  let netSales = 0;    
+  // Adjusted Net Metrics
+let netSales = totalSales - returnedSales;
+let netCost = totalCost - returnedCost;
+let grossProfit = netSales - netCost;
+    
 // Safely update DOM elements
 document.getElementById('dash-sales').innerText = `₦${netSales.toLocaleString()}`;
 document.getElementById('dash-cost').innerText = `₦${netCost.toLocaleString()}`;
