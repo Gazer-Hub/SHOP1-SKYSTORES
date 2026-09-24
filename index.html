@@ -21,49 +21,13 @@
   
   <style>
   
-    .page { display: none; opacity: 0; transition: opacity 0.25s ease-in-out; }
-    .page.active { display: block; opacity: 1; }
+    .page { display: none; }
+    .page.active { display: block; }
 
     [data-bs-theme="dark"] body {
-      background-color: #0f172a !important;
-      color: #e2e8f0 !important;
-    }
-    [data-bs-theme="dark"] .card {
-      background-color: #1e293b !important;
-      color: #e2e8f0 !important;
-      border: 1px solid #334155 !important;
-    }
-    [data-bs-theme="dark"] .card-header {
-      border-bottom-color: #334155 !important;
-      color: #f1f5f9 !important;
-    }
-    [data-bs-theme="dark"] .table {
-      color: #cbd5e1 !important;
-    }
-    [data-bs-theme="dark"] .table th {
-      background-color: #1e293b !important;
-      color: #94a3b8 !important;
-      border-bottom-color: #334155 !important;
-    }
-    [data-bs-theme="dark"] .table td {
-      border-color: #334155 !important;
-    }
-    [data-bs-theme="dark"] .form-control,
-    [data-bs-theme="dark"] .form-select {
-      background-color: #1e293b !important;
-      border-color: #334155 !important;
-      color: #e2e8f0 !important;
-    }
-    [data-bs-theme="dark"] .form-control::placeholder {
-      color: #64748b !important;
-    }
-    [data-bs-theme="dark"] .modal-content {
-      background-color: #1e293b !important;
-      color: #e2e8f0 !important;
-    }
-    [data-bs-theme="dark"] .navbar {
-      background: linear-gradient(135deg, #020617 0%, #0f172a 100%) !important;
-    }
+  background-color: #121212 !important;
+  color: #f8f9fa !important;
+}
     :root {
       --primary-color: #0f172a;
       --accent-color: #2563eb;
@@ -76,7 +40,6 @@
       background-color: #f8fafc;
       color: #334155;
       overflow-x: hidden;
-      transition: background-color 0.25s ease, color 0.25s ease;
     }
 
     .page { display: none; opacity: 0; transition: opacity 0.25s ease-in-out; }
@@ -161,7 +124,7 @@
 
     /* Styling for the Sales Interface Refresh Button */
 #refresh-btn {
-  background-color: var(--accent-color);
+  background-color: blue;
   border: 1px solid rgba(255, 255, 255, 0.4);
   color: #fff;
   transition: all 0.2s ease-in-out;
@@ -3191,10 +3154,8 @@ function clearDashboardGoodsSearch() {
   try {
     // Call your existing data-loading functions here 
     // (e.g., the functions that fetch from Supabase and update your dashboard cards)
-    // Corrected to use existing render functions
-    if (typeof renderDashboard === 'function') renderDashboard();
-    if (typeof renderStock === 'function') renderStock();
-    if (typeof renderSales === 'function') renderSales();
+    if (typeof loadDashboardSummary === 'function') await loadDashboardSummary();
+    if (typeof loadStockData === 'function') await loadStockData();
     
     console.log("Dashboard refreshed successfully!");
   } catch (error) {
@@ -3224,13 +3185,11 @@ function updateThemeButton(theme) {
   if (!btn) return;
   
   if (theme === 'dark') {
-    btn.innerHTML = '<i class="fa-solid fa-sun me-1"></i> Light Mode';
-    btn.classList.remove('btn-outline-secondary', 'btn-outline-warning');
-    btn.classList.add('btn-outline-warning');
+    btn.innerHTML = '☀️ Light Mode';
+    btn.classList.replace('btn-outline-secondary', 'btn-outline-warning');
   } else {
-    btn.innerHTML = '<i class="fa-solid fa-moon me-1"></i> Dark Mode';
-    btn.classList.remove('btn-outline-warning', 'btn-outline-secondary');
-    btn.classList.add('btn-outline-secondary');
+    btn.innerHTML = '🌙 Dark Mode';
+    btn.classList.replace('btn-outline-warning', 'btn-outline-secondary');
   }
 }
 
