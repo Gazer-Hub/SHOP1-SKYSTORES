@@ -1233,13 +1233,6 @@
     window.addEventListener('DOMContentLoaded', () => {
       initTripleSavingSync();
     });
-
-
-// Run it right alongside your startup sync
-window.addEventListener('DOMContentLoaded', async () => {
-  await triggerCloudTransactionSync();
-  initTripleSavingSync();
-});
     
 
     // --- CSV EXPORT UTILITY ---
@@ -1693,7 +1686,6 @@ let netProfit = taxableProfit - cacFee;
         alertBox.classList.add('d-none');
         e.target.reset();
         navigateTo('dashboard');
-      fetchPaymentHistory();
       
       } else {
         alertBox.innerText = "Invalid credentials";
