@@ -1295,33 +1295,53 @@
     async function saveDB() {
   localStorage.setItem(DB_KEY, JSON.stringify(db));
   
-  if (supabaseClient) {
-    try {
-      // Save stock
-      await supabaseClient.from('stock').upsert(db.stock);
-      
-      // Save sales
-      await supabaseClient.from('sales').upsert(db.sales);
-      
-      // Save returns
-      await supabaseClient.from('returns').upsert(db.returns);
-      
-      // Save supplier returns
-      await supabaseClient.from('supplier_returns').upsert(db.supplierReturns);
-      
-      // Save requisitions
-      await supabaseClient.from('requisitions').upsert(db.requisitions);
-      
-      // Save payments
-      await supabaseClient.from('payments').upsert(db.moniepointPayments);
-      
-      console.log('Data synced to Supabase tables');
-    } catch (err) {
-      console.error('Sync error:', err);
+async function syncToSupabase() {
+  if (!supabaseClient) return;
+
+  console.log('Syncing...', {
+    stock: db.stock?.length,
+    sales: db.sales?.length,
+    returns: db.returns?.length,
+    supplierReturns: db.supplierReturns?.length,
+    requisitions: db.requisitions?.length,
+    payments: db.moniepointPayments?.length,
+  });
+
+  // Helper to sync one table and log the real error
+  const syncTable = async (tableName, data, conflictKey = 'id') => {
+    if (!data || data.length === 0) {
+      console.warn(`Skipping ${tableName}: empty array`);
+      return;
     }
-  }
+    
+    // Supabase has a 1000 row limit per upsert, chunk it
+    const chunkSize = 500;
+    for (let i = 0; i < data.length; i += chunkSize) {
+      const chunk = data.slice(i, i + chunkSize);
+      const { data: res, error } = await supabaseClient
+        .from(tableName)
+        .upsert(chunk, { onConflict: conflictKey });
+
+      if (error) {
+        console.error(`❌ ${tableName} failed:`, error.message, error.details, error.hint);
+      } else {
+        console.log(`✅ ${tableName} synced: ${chunk.length} rows`);
+      }
+    }
+  };
+
+  await syncTable('stock', db.stock);
+  await syncTable('sales', db.sales);
+  await syncTable('returns', db.returns);
+  await syncTable('supplier_returns', db.supplierReturns);
+  await syncTable('requisitions', db.requisitions);
+  await syncTable('payments', db.moniepointPayments);
+
   renderAll();
 }
+
+// then call it
+syncToSupabase();
 let allMoniepointPayments = [];
 
 async function fetchPaymentHistory() {
