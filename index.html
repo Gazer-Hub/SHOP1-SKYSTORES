@@ -1952,9 +1952,6 @@ filteredSales.forEach(sale => {
   }
 });
 
-let cacFee = totalCacFee;
-let netProfit = taxableProfit - cacFee;
-      
 // Safely update DOM elements
 document.getElementById('dash-sales').innerText = `₦${netSales.toLocaleString()}`;
 document.getElementById('dash-cost').innerText = `₦${netCost.toLocaleString()}`;
