@@ -412,6 +412,16 @@
           </div>
         </div>
         
+        <div class="row mb-4 no-print">
+          <div class="col-md-4 offset-md-8">
+            <div class="input-group input-group-sm shadow-sm">
+              <span class="input-group-text bg-warning text-dark fw-bold">Operating Expenses (₦)</span>
+              <input type="number" id="dash-period-expenses" class="form-control" min="0" value="0" placeholder="Enter expenses" oninput="renderDashboard()">
+              <button class="btn btn-outline-secondary" type="button" onclick="document.getElementById('dash-period-expenses').value=0; renderDashboard();">Reset</button>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div class="cac-print-section mb-4">
         <h3 class="text-center">SKY MODERNIZE SAVE TECHNOLOGY LTD </h3>
@@ -424,6 +434,7 @@
             <tr><td><b>Total Cost Price:</b></td><td id="print-val-cost">₦0</td></tr>
             <tr><td><b>Total Customer Refunds:</b></td><td id="print-val-returns">₦0</td></tr>
             <tr><td><b>Gross Profit:</b></td><td id="print-val-gross">₦0</td></tr>
+            <tr><td><b>Period Operating Expenses:</b></td><td id="print-val-expenses">₦0</td></tr>
             <tr class="table-danger"><td><b>CAC Tax Deduction Amount (7.5%):</b></td><td id="print-val-cac">₦0</td></tr>
             <tr class="table-success"><td><b>Final Net Profit:</b></td><td id="print-val-net">₦0</td></tr>
           </table>
@@ -763,7 +774,7 @@
               <input id="sale-customer" class="form-control" placeholder="Enter customer full name" required>
             </div>
             <div class="col-md-3">
-              <label class="form-label small fw-bold text-muted"> METHOD</label>
+              <label class="form-label small fw-bold text-muted">PAYMENT METHOD</label>
               <select id="sale-payment-method" class="form-select" required>
                 <option value="Cash">Cash 💵</option>
                 <option value="Transfer">Transfer 💳 </option>
@@ -1226,6 +1237,7 @@
 
 // Run it right alongside your startup sync
 window.addEventListener('DOMContentLoaded', async () => {
+  await triggerCloudTransactionSync();
   initTripleSavingSync();
 });
     
@@ -1681,6 +1693,7 @@ let netProfit = taxableProfit - cacFee;
         alertBox.classList.add('d-none');
         e.target.reset();
         navigateTo('dashboard');
+      fetchPaymentHistory();
       
       } else {
         alertBox.innerText = "Invalid credentials";
