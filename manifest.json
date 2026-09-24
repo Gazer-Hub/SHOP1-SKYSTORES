@@ -1,9 +1,9 @@
 {
-  "name": "SKY MODERNIZE SAVE TECHNOLOGY LTD",
-  "short_name": "SKY Inventory",
+  "name": "Sky Modernize Inventory",
+  "short_name": "SkyInventory",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0f172a",
+  "background_color": "#ffffff",
   "theme_color": "#000000",
   "icons": [
     {
