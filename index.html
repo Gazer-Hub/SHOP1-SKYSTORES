@@ -1195,6 +1195,23 @@
       : null;
 
     // --- SUPABASE TABLE MAPPING: EACH DATA IN ITS OWN TABLE ---
+
+    // --- DATE HELPER: Lagos local date to avoid UTC bug ---
+    function getLocalDateStr(dateObj = new Date()) {
+      try {
+        return dateObj.toLocaleDateString('en-CA', { timeZone: 'Africa/Lagos' });
+      } catch(e) {
+        const y = dateObj.getFullYear();
+        const m = String(dateObj.getMonth()+1).padStart(2,'0');
+        const d = String(dateObj.getDate()).padStart(2,'0');
+        return `${y}-${m}-${d}`;
+      }
+    }
+    function normalizeDateStr(d) {
+      if (!d) return getLocalDateStr();
+      return String(d).split('T')[0];
+    }
+
     const TABLES = {
       stock: 'stock_items',
       sales: 'sales',
@@ -1319,10 +1336,11 @@
             created_at: row.created_at
           }));
         }
-        if (salesData && salesData.length > 0) {
+        if (salesData && salesData.length >= 0) {
+          if (salesData.length > 0) {
           db.sales = salesData.map(row => ({
             supabase_id: row.id,
-            date: row.date ? row.date.split('T')[0] : new Date().toISOString().split('T')[0],
+            date: normalizeDateStr(row.date),
             model: row.model,
             quality: row.quality,
             customer: row.customer_name,
@@ -1332,11 +1350,12 @@
             sell_price: row.sell_price,
             total: row.total
           }));
+          }
         }
         if (returnsData && returnsData.length > 0) {
           db.returns = returnsData.map(row => ({
             supabase_id: row.id,
-            date: row.date ? row.date.split('T')[0] : new Date().toISOString().split('T')[0],
+            date: normalizeDateStr(row.date),
             model: row.model,
             customer: row.customer_name,
             qty: row.qty,
@@ -1349,7 +1368,7 @@
         if (supplierReturnsData && supplierReturnsData.length > 0) {
           db.supplierReturns = supplierReturnsData.map(row => ({
             supabase_id: row.id,
-            date: row.date ? row.date.split('T')[0] : new Date().toISOString().split('T')[0],
+            date: normalizeDateStr(row.date),
             model: row.model,
             supplier: row.supplier,
             qty: row.qty,
@@ -1368,7 +1387,7 @@
             supplier: row.supplier,
             notes: row.notes,
             status: row.status,
-            date: row.date ? row.date.split('T')[0] : new Date().toISOString().split('T')[0]
+            date: normalizeDateStr(row.date)
           }));
         }
 
@@ -1397,7 +1416,7 @@
 
     async function addSaleToSupabase(sale) {
       const record = {
-        date: sale.date || new Date().toISOString(),
+        date: normalizeDateStr(sale.date || getLocalDateStr()),
         model: sale.model,
         quality: sale.quality || null,
         customer_name: sale.customer || null,
@@ -1413,7 +1432,7 @@
 
     async function addCustomerReturnToSupabase(ret) {
       const record = {
-        date: ret.date || new Date().toISOString(),
+        date: normalizeDateStr(ret.date || getLocalDateStr()),
         model: ret.model,
         customer_name: ret.customer || null,
         qty: ret.qty,
@@ -1428,7 +1447,7 @@
 
     async function addSupplierReturnToSupabase(ret) {
       const record = {
-        date: ret.date || new Date().toISOString(),
+        date: normalizeDateStr(ret.date || getLocalDateStr()),
         model: ret.model,
         supplier: ret.supplier,
         qty: ret.qty,
@@ -1449,7 +1468,7 @@
         supplier: req.supplier || null,
         notes: req.notes || null,
         status: req.status || 'Pending',
-        date: req.date || new Date().toISOString()
+        date: normalizeDateStr(req.date || getLocalDateStr())
       };
       const { data } = await supabaseInsert(TABLES.requisitions, record);
       if (data) req.supabase_id = data.id;
@@ -1486,7 +1505,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       db.stock.forEach(s => {
         csv += `"${s.model}","${s.category}","${s.subcat || ''}","${s.supplier || ''}",${s.qty},${s.cost_price},${s.sell_price}\n`;
       });
-      downloadCSV(csv, `Stock_Inventory_${new Date().toISOString().split('T')[0]}.csv`);
+      downloadCSV(csv, `Stock_Inventory_${getLocalDateStr()}.csv`);
     }
     
     function exportSalesToCSV() {
@@ -1525,7 +1544,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       db.requisitions.forEach(r => {
         csv += `"${r.id}","${r.date}","${r.item}","${r.category}",${r.qty},${r.cost || 0},${(r.cost || 0) * r.qty},"${r.supplier || ''}","${r.status}","${r.notes || ''}"\n`;
       });
-      downloadCSV(csv, `Purchase_Requisitions_${new Date().toISOString().split('T')[0]}.csv`);
+      downloadCSV(csv, `Purchase_Requisitions_${getLocalDateStr()}.csv`);
     }
 
     function exportRequisitionsPDF() {
@@ -1533,7 +1552,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       const element = document.getElementById('requisition-printable-area');
       const opt = {
         margin:       0.5,
-        filename:     `Purchase_Requisitions_${new Date().toISOString().split('T')[0]}.pdf`,
+        filename:     `Purchase_Requisitions_${getLocalDateStr()}.pdf`,
         image:        { type: 'jpeg', quality: 0.98 },
         html2canvas:  { scale: 2 },
         jsPDF:        { unit: 'in', format: 'letter', orientation: 'landscape' }
@@ -1559,7 +1578,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db, null, 2));
       const downloadAnchor = document.createElement('a');
       downloadAnchor.setAttribute("href", dataStr);
-      downloadAnchor.setAttribute("download", `SKY_MODERNIZE_BACKUP_${new Date().toISOString().split('T')[0]}.json`);
+      downloadAnchor.setAttribute("download", `SKY_MODERNIZE_BACKUP_${getLocalDateStr()}.json`);
       document.body.appendChild(downloadAnchor);
       downloadAnchor.click();
       downloadAnchor.remove();
@@ -1630,7 +1649,7 @@ window.addEventListener('DOMContentLoaded', async () => {
             supplier: item.supplier || '',
             notes: `Bulk Low Stock Requisition: Only ${item.qty} pcs remaining in stock.`,
             status: "Pending",
-            date: new Date().toISOString().split('T')[0]
+            date: getLocalDateStr()
           };
           db.requisitions.push(newReq);
           addRequisitionToSupabase(newReq);
@@ -1824,8 +1843,8 @@ let netProfit = taxableProfit - cacFee;
       const totalCountedEl = document.getElementById('drawer-total-counted');
       if (totalCountedEl) totalCountedEl.innerText = `₦${totalCounted.toLocaleString()}`;
 
-      const todayStr = new Date().toISOString().split('T')[0];
-      const todayCashSales = db.sales.filter(s => s.date === todayStr && (!s.paymentMethod || s.paymentMethod === 'Cash'));
+      const todayStr = getLocalDateStr();
+      const todayCashSales = db.sales.filter(s => normalizeDateStr(s.date) === todayStr && (!s.paymentMethod || s.paymentMethod === 'Cash'));
       const expectedSales = todayCashSales.reduce((sum, s) => sum + (s.sell_price * s.qty), 0);
       
       const expectedSalesEl = document.getElementById('drawer-expected-sales');
@@ -1873,7 +1892,7 @@ let netProfit = taxableProfit - cacFee;
             <div class="center">
               <h3>SKY MODERNIZE SAVE TECHNOLOGY LTD</h3>
               <p>Cash Drawer Reconciliation Slip</p>
-              <p>${new Date().toISOString().split('T')[0]}</p>
+              <p>${getLocalDateStr()}</p>
             </div>
             <hr>
             <p><b>Expected Cash Sales:</b> ${expectedSales}</p>
@@ -2109,40 +2128,40 @@ let netProfit = taxableProfit - cacFee;
 
       if (filterType === 'today') {
         periodLabel = `Today (${todayStr})`;
-        filteredSales = db.sales.filter(s => s.date === todayStr);
-        filteredReturns = db.returns.filter(r => r.date === todayStr);
+        filteredSales = db.sales.filter(s => normalizeDateStr(s.date) === todayStr);
+        filteredReturns = db.returns.filter(r => normalizeDateStr(r.date) === todayStr);
       } else if (filterType === 'yesterday') {
         const yest = new Date(now);
         yest.setDate(yest.getDate() - 1);
         const yestStr = yest.toISOString().split('T')[0];
         periodLabel = `Yesterday (${yestStr})`;
-        filteredSales = db.sales.filter(s => s.date === yestStr);
-        filteredReturns = db.returns.filter(r => r.date === yestStr);
+        filteredSales = db.sales.filter(s => normalizeDateStr(s.date) === yestStr);
+        filteredReturns = db.returns.filter(r => normalizeDateStr(r.date) === yestStr);
       } else if (filterType === 'this-week') {
         const current = new Date(now);
         const firstDay = current.getDate() - current.getDay();
         const startOfWeek = new Date(current.setDate(firstDay)).toISOString().split('T')[0];
         periodLabel = `This Week (Weekly Report: ${startOfWeek} to ${todayStr})`;
-        filteredSales = db.sales.filter(s => s.date && s.date >= startOfWeek && s.date <= todayStr);
-        filteredReturns = db.returns.filter(r => r.date && r.date >= startOfWeek && r.date <= todayStr);
+        filteredSales = db.sales.filter(s => normalizeDateStr(s.date) && normalizeDateStr(s.date) >= startOfWeek && s.date <= todayStr);
+        filteredReturns = db.returns.filter(r => normalizeDateStr(r.date) && normalizeDateStr(r.date) >= startOfWeek && r.date <= todayStr);
       } else if (filterType === 'this-month') {
         const currentYearMonth = todayStr.substring(0, 7);
         periodLabel = `This Month (${currentYearMonth})`;
-        filteredSales = db.sales.filter(s => s.date && s.date.startsWith(currentYearMonth));
-        filteredReturns = db.returns.filter(r => r.date && r.date.startsWith(currentYearMonth));
+        filteredSales = db.sales.filter(s => normalizeDateStr(s.date).startsWith(currentYearMonth));
+        filteredReturns = db.returns.filter(r => normalizeDateStr(r.date).startsWith(currentYearMonth));
       } else if (filterType === 'last-month') {
         const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
         const lastMonthYear = lastMonthDate.getFullYear();
         const lastMonthNum = String(lastMonthDate.getMonth() + 1).padStart(2, '0');
         const lastMonthStr = `${lastMonthYear}-${lastMonthNum}`;
         periodLabel = `Last Month (${lastMonthStr})`;
-        filteredSales = db.sales.filter(s => s.date && s.date.startsWith(lastMonthStr));
-        filteredReturns = db.returns.filter(r => r.date && r.date.startsWith(lastMonthStr));
+        filteredSales = db.sales.filter(s => normalizeDateStr(s.date).startsWith(lastMonthStr));
+        filteredReturns = db.returns.filter(r => normalizeDateStr(r.date).startsWith(lastMonthStr));
       } else if (filterType === 'this-year') {
         const currentYear = now.getFullYear().toString();
         periodLabel = `Yearly Report (Grouped by Month - ${currentYear})`;
-        filteredSales = db.sales.filter(s => s.date && s.date.startsWith(currentYear));
-        filteredReturns = db.returns.filter(r => r.date && r.date.startsWith(currentYear));
+        filteredSales = db.sales.filter(s => normalizeDateStr(s.date).startsWith(currentYear));
+        filteredReturns = db.returns.filter(r => normalizeDateStr(r.date).startsWith(currentYear));
       } else if (filterType === 'all-time') {
         periodLabel = "All Time History";
         filteredSales = db.sales;
@@ -2151,8 +2170,8 @@ let netProfit = taxableProfit - cacFee;
         const customDate = document.getElementById('dash-custom-date').value;
         if (customDate) {
           periodLabel = `Date: ${customDate}`;
-          filteredSales = db.sales.filter(s => s.date === customDate);
-          filteredReturns = db.returns.filter(r => r.date === customDate);
+          filteredSales = db.sales.filter(s => normalizeDateStr(s.date) === customDate);
+          filteredReturns = db.returns.filter(r => normalizeDateStr(r.date) === customDate);
         } else {
           periodLabel = "Select Date...";
           filteredSales = [];
@@ -2541,23 +2560,23 @@ document.getElementById('dash-net').innerText = `₦${netProfit.toLocaleString()
 
       if (filterType === 'today') {
         periodLabel = `Today (${todayStr})`;
-        salesData = db.sales.filter(s => s.date === todayStr);
+        salesData = db.sales.filter(s => normalizeDateStr(s.date) === todayStr);
       } else if (filterType === 'yesterday') {
         const yest = new Date(now);
         yest.setDate(yest.getDate() - 1);
         const yestStr = yest.toISOString().split('T')[0];
         periodLabel = `Yesterday (${yestStr})`;
-        salesData = db.sales.filter(s => s.date === yestStr);
+        salesData = db.sales.filter(s => normalizeDateStr(s.date) === yestStr);
       } else if (filterType === 'this-week') {
         const current = new Date(now);
         const firstDay = current.getDate() - current.getDay();
         const startOfWeek = new Date(current.setDate(firstDay)).toISOString().split('T')[0];
         periodLabel = `This Week (${startOfWeek} to ${todayStr})`;
-        salesData = db.sales.filter(s => s.date && s.date >= startOfWeek && s.date <= todayStr);
+        salesData = db.sales.filter(s => normalizeDateStr(s.date) && normalizeDateStr(s.date) >= startOfWeek && s.date <= todayStr);
       } else if (filterType === 'this-month') {
         const currentYearMonth = todayStr.substring(0, 7);
         periodLabel = `This Month (${currentYearMonth})`;
-        salesData = db.sales.filter(s => s.date && s.date.startsWith(currentYearMonth));
+        salesData = db.sales.filter(s => normalizeDateStr(s.date).startsWith(currentYearMonth));
       } else if (filterType === 'all-time') {
         periodLabel = "All Time History";
         salesData = db.sales;
@@ -2565,7 +2584,7 @@ document.getElementById('dash-net').innerText = `₦${netProfit.toLocaleString()
         const customDate = document.getElementById('sales-custom-date').value;
         if (customDate) {
           periodLabel = `Date: ${customDate}`;
-          salesData = db.sales.filter(s => s.date === customDate);
+          salesData = db.sales.filter(s => normalizeDateStr(s.date) === customDate);
         } else {
           periodLabel = "Select Date...";
           salesData = [];
@@ -2689,7 +2708,7 @@ document.getElementById('dash-net').innerText = `₦${netProfit.toLocaleString()
       receiptWindow.document.close();
     }
 
-    document.getElementById('sales-form').addEventListener('submit', (e) => {
+    document.getElementById('sales-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const customerName = document.getElementById('sale-customer').value.trim();
       const paymentMethod = document.getElementById('sale-payment-method').value;
@@ -2724,9 +2743,9 @@ document.getElementById('dash-net').innerText = `₦${netProfit.toLocaleString()
         return alert("Please add items to cart or fill out the sale entry form!");
       }
 
-      const todayStr = new Date().toISOString().split('T')[0];
+      const todayStr = getLocalDateStr();
 
-      itemsToCheckout.forEach(cartItem => {
+      for (const cartItem of itemsToCheckout) {
         const stockItem = db.stock[cartItem.stockIndex];
         if (stockItem) {
           stockItem.qty -= cartItem.qty;
@@ -2745,8 +2764,8 @@ document.getElementById('dash-net').innerText = `₦${netProfit.toLocaleString()
         addSaleToSupabase(newSale);
         // update stock qty in Supabase too
         const stockItemForSale = db.stock[cartItem.stockIndex];
-        if(stockItemForSale && stockItemForSale.supabase_id){ supabaseUpdate(TABLES.stock, stockItemForSale.supabase_id, { qty: stockItemForSale.qty }); }
-      });
+        if(stockItemForSale && stockItemForSale.supabase_id){ await supabaseUpdate(TABLES.stock, stockItemForSale.supabase_id, { qty: stockItemForSale.qty }); }
+      }
 
       salesCart = [];
       renderSalesCart();
@@ -2838,7 +2857,7 @@ async function manualAppRefresh() {
         return alert(`Invalid return quantity! Max returnable qty for this sale is ${originalSale.qty}.`);
       }
 
-      const todayStr = new Date().toISOString().split('T')[0];
+      const todayStr = getLocalDateStr();
 
       const newReturn = {
         date: todayStr,
@@ -2888,23 +2907,23 @@ async function manualAppRefresh() {
 
       if (filterType === 'today') {
         periodLabel = `Today (${todayStr})`;
-        returnsData = db.returns.filter(r => r.date === todayStr);
+        returnsData = db.returns.filter(r => normalizeDateStr(r.date) === todayStr);
       } else if (filterType === 'yesterday') {
         const yest = new Date(now);
         yest.setDate(yest.getDate() - 1);
         const yestStr = yest.toISOString().split('T')[0];
         periodLabel = `Yesterday (${yestStr})`;
-        returnsData = db.returns.filter(r => r.date === yestStr);
+        returnsData = db.returns.filter(r => normalizeDateStr(r.date) === yestStr);
       } else if (filterType === 'this-week') {
         const current = new Date(now);
         const firstDay = current.getDate() - current.getDay();
         const startOfWeek = new Date(current.setDate(firstDay)).toISOString().split('T')[0];
         periodLabel = `This Week (${startOfWeek} to ${todayStr})`;
-        returnsData = db.returns.filter(r => r.date && r.date >= startOfWeek && r.date <= todayStr);
+        returnsData = db.returns.filter(r => normalizeDateStr(r.date) && normalizeDateStr(r.date) >= startOfWeek && r.date <= todayStr);
       } else if (filterType === 'this-month') {
         const currentYearMonth = todayStr.substring(0, 7);
         periodLabel = `This Month (${currentYearMonth})`;
-        returnsData = db.returns.filter(r => r.date && r.date.startsWith(currentYearMonth));
+        returnsData = db.returns.filter(r => normalizeDateStr(r.date).startsWith(currentYearMonth));
       } else if (filterType === 'all-time') {
         periodLabel = "All Time History";
         returnsData = db.returns;
@@ -2912,7 +2931,7 @@ async function manualAppRefresh() {
         const customDate = document.getElementById('returns-custom-date').value;
         if (customDate) {
           periodLabel = `Date: ${customDate}`;
-          returnsData = db.returns.filter(r => r.date === customDate);
+          returnsData = db.returns.filter(r => normalizeDateStr(r.date) === customDate);
         } else {
           periodLabel = "Select Date...";
           returnsData = [];
@@ -3000,7 +3019,7 @@ async function manualAppRefresh() {
 
       if (!model || !supplier || isNaN(qty) || qty <= 0) return alert("Please fill out all required supplier return fields correctly.");
 
-      const todayStr = new Date().toISOString().split('T')[0];
+      const todayStr = getLocalDateStr();
 
       const newSupReturn = {
         date: todayStr,
@@ -3045,23 +3064,23 @@ async function manualAppRefresh() {
 
       if (filterType === 'today') {
         periodLabel = `Today (${todayStr})`;
-        supReturnsData = db.supplierReturns.filter(r => r.date === todayStr);
+        supReturnsData = db.supplierReturns.filter(r => normalizeDateStr(r.date) === todayStr);
       } else if (filterType === 'yesterday') {
         const yest = new Date(now);
         yest.setDate(yest.getDate() - 1);
         const yestStr = yest.toISOString().split('T')[0];
         periodLabel = `Yesterday (${yestStr})`;
-        supReturnsData = db.supplierReturns.filter(r => r.date === yestStr);
+        supReturnsData = db.supplierReturns.filter(r => normalizeDateStr(r.date) === yestStr);
       } else if (filterType === 'this-week') {
         const current = new Date(now);
         const firstDay = current.getDate() - current.getDay();
         const startOfWeek = new Date(current.setDate(firstDay)).toISOString().split('T')[0];
         periodLabel = `This Week (${startOfWeek} to ${todayStr})`;
-        supReturnsData = db.supplierReturns.filter(r => r.date && r.date >= startOfWeek && r.date <= todayStr);
+        supReturnsData = db.supplierReturns.filter(r => normalizeDateStr(r.date) && normalizeDateStr(r.date) >= startOfWeek && r.date <= todayStr);
       } else if (filterType === 'this-month') {
         const currentYearMonth = todayStr.substring(0, 7);
         periodLabel = `This Month (${currentYearMonth})`;
-        supReturnsData = db.supplierReturns.filter(r => r.date && r.date.startsWith(currentYearMonth));
+        supReturnsData = db.supplierReturns.filter(r => normalizeDateStr(r.date).startsWith(currentYearMonth));
       } else if (filterType === 'all-time') {
         periodLabel = "All Time History";
         supReturnsData = db.supplierReturns;
@@ -3159,7 +3178,7 @@ async function manualAppRefresh() {
       if (!item || !category || isNaN(qty) || qty <= 0) return alert("Please fill out all required requisition fields.");
 
       const reqId = "REQ-" + Math.floor(1000 + Math.random() * 9000);
-      const todayStr = new Date().toISOString().split('T')[0];
+      const todayStr = getLocalDateStr();
 
       db.requisitions.push({
         id: reqId,
