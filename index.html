@@ -28,6 +28,42 @@
   background-color: #121212 !important;
   color: #f8f9fa !important;
 }
+     [data-bs-theme="dark"] .card {
+      background-color: #1e293b !important;
+      color: #e2e8f0 !important;
+      border: 1px solid #334155 !important;
+    }
+    [data-bs-theme="dark"] .card-header {
+      border-bottom-color: #334155 !important;
+      color: #f1f5f9 !important;
+    }
+    [data-bs-theme="dark"] .table {
+      color: #cbd5e1 !important;
+    }
+    [data-bs-theme="dark"] .table th {
+      background-color: #1e293b !important;
+      color: #94a3b8 !important;
+      border-bottom-color: #334155 !important;
+    }
+    [data-bs-theme="dark"] .table td {
+      border-color: #334155 !important;
+    }
+    [data-bs-theme="dark"] .form-control,
+    [data-bs-theme="dark"] .form-select {
+      background-color: #1e293b !important;
+      border-color: #334155 !important;
+      color: #e2e8f0 !important;
+    }
+    [data-bs-theme="dark"] .form-control::placeholder {
+      color: #64748b !important;
+    }
+    [data-bs-theme="dark"] .modal-content {
+      background-color: #1e293b !important;
+      color: #e2e8f0 !important;
+    }
+    [data-bs-theme="dark"] .navbar {
+      background: linear-gradient(135deg, #020617 0%, #0f172a 100%) !important;
+    }
     :root {
       --primary-color: #0f172a;
       --accent-color: #2563eb;
@@ -1188,48 +1224,66 @@
     if (!db.requisitions) db.requisitions = [];
 
     // --- TRIPLE SAVING METHOD IMPLEMENTATION ---
-    async function saveDB() {
+async function saveDB() {
+  // Retain the local storage backup
+  localStorage.setItem(DB_KEY, JSON.stringify(db));
+
+  if (supabaseClient) {
+    try {
+      // Upsert each array into its respective Supabase table
+      const syncPromises = [
+        supabaseClient.from('stock').upsert(db.stock),
+        supabaseClient.from('sales').upsert(db.sales),
+        supabaseClient.from('returns').upsert(db.returns),
+        supabaseClient.from('supplier_returns').upsert(db.supplierReturns),
+        supabaseClient.from('requisitions').upsert(db.requisitions)
+      ];
+      
+      const results = await Promise.all(syncPromises);
+      
+      // Log any potential errors from individual table inserts
+      results.forEach((res, index) => {
+        if (res.error) console.error(`Sync error on table index ${index}:`, res.error.message);
+      });
+      
+    } catch (err) {
+      console.error('Network error during Supabase triple saving sync:', err);
+    }
+  }
+
+  renderAll();
+}
+async function initTripleSavingSync() {
+  if (supabaseClient) {
+    try {
+      // Fetch all tables concurrently
+      const [stockRes, salesRes, returnsRes, supReturnsRes, reqRes] = await Promise.all([
+        supabaseClient.from('stock').select('*'),
+        supabaseClient.from('sales').select('*'),
+        supabaseClient.from('returns').select('*'),
+        supabaseClient.from('supplier_returns').select('*'),
+        supabaseClient.from('requisitions').select('*')
+      ]);
+
+      // Reconstruct the local db object
+      if (stockRes.data) db.stock = stockRes.data;
+      if (salesRes.data) db.sales = salesRes.data;
+      if (returnsRes.data) db.returns = returnsRes.data;
+      if (supReturnsRes.data) db.supplierReturns = supReturnsRes.data;
+      if (reqRes.data) db.requisitions = reqRes.data;
+
+      // Initialize any arrays that might be missing
+      if (!db.supplierReturns) db.supplierReturns = [];
+      if (!db.requisitions) db.requisitions = [];
+      
+
       localStorage.setItem(DB_KEY, JSON.stringify(db));
-
-      if (supabaseClient) {
-        try {
-          const { error } = await supabaseClient
-            .from('inventory')
-            .upsert({ id: 1, payload: db, updated_at: new Date().toISOString() });
-          
-          if (error) {
-            console.error('Supabase sync error:', error.message);
-          }
-        } catch (err) {
-          console.error('Network error during Supabase triple saving sync:', err);
-        }
-      }
-
-      renderAll();
+    } catch (e) {
+      console.log('Using local backup storage fallback.');
     }
-
-    async function initTripleSavingSync() {
-      if (supabaseClient) {
-        try {
-          const { data, error } = await supabaseClient
-            .from('inventory')
-            .select('payload')
-            .eq('id', 1)
-            .single();
-          
-          if (data && data.payload && !error) {
-            db = data.payload;
-            if (!db.supplierReturns) db.supplierReturns = [];
-            if (!db.requisitions) db.requisitions = [];
-            localStorage.setItem(DB_KEY, JSON.stringify(db));
-          }
-        } catch (e) {
-          console.log('Using local backup storage fallback.');
-        }
-      }
-      renderAll();
-    }
-
+  }
+  renderAll();
+}
     window.addEventListener('DOMContentLoaded', () => {
       initTripleSavingSync();
     });
