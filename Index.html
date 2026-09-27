@@ -1354,23 +1354,36 @@
     async function fetchSales() {
       if (!supabaseClient) return;
       try {
-        const { data, error } = await supabaseClient.from('sales').select('*').order('id', { ascending: true });
+        const { data, error } = await supabaseClient.from('sales').select('*').order('id', { ascending: false }).limit(5000);
         if (error) throw error;
+        console.log('Supabase sales fetched:', data?.length);
         if (data) {
-          db.sales = data.map(r => ({
-            id: r.id,
-            date: r.date || r.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
-            model: r.model || r.item,
-            quality: r.quality || r.subcat || 'Standard',
-            customer: r.customer || r.customer_name,
-            paymentMethod: r.payment_method || r.paymentMethod,
-            qty: r.qty || r.quantity,
-            cost_price: r.cost_price,
-            sell_price: r.sell_price,
-            _raw: r
-          }));
+          db.sales = data.map(r => {
+            // Normalize date: Supabase may return timestamp, we need YYYY-MM-DD
+            let d = r.date || r.created_at || new Date().toISOString();
+            if (typeof d === 'string') d = d.split('T')[0];
+            else d = new Date().toISOString().split('T')[0];
+            return {
+              id: r.id,
+              date: d,
+              model: r.model || r.item || 'Unknown',
+              quality: r.quality || r.subcat || 'Standard',
+              customer: r.customer || r.customer_name || 'Walk-in',
+              paymentMethod: r.payment_method || r.paymentMethod || r.payment_method || 'Cash',
+              qty: parseInt(r.qty || r.quantity) || 0,
+              cost_price: parseInt(r.cost_price) || 0,
+              sell_price: parseInt(r.sell_price) || 0,
+              _raw: r
+            };
+          });
         }
-      } catch (err) { console.error('fetch sales failed:', err.message || err); }
+      } catch (err) { 
+        console.error('fetch sales failed:', err.message || err);
+        // If RLS blocks SELECT, show warning
+        if (err.message && err.message.toLowerCase().includes('policy')) {
+          alert('⚠️ Sales SELECT blocked by RLS policy. Go to Supabase -> sales table -> RLS -> Add policy: Allow all for SELECT using true');
+        }
+      }
     }
 
     async function fetchCustomerReturns() {
@@ -1443,25 +1456,33 @@
     }
 
     async function saveDB() {
-      // Now only used for local backup + re-render. Main data lives in Supabase tables.
       try { localStorage.setItem(DB_KEY, JSON.stringify(db)); } catch(e){}
       renderAll();
     }
+    async function saveDBAndRefreshSales() {
+      saveDB();
+      // Re-fetch to ensure inserted sale appears after refresh logic
+      await fetchSales();
+      renderSales();
+    }
 
     async function initTripleSavingSync() {
-      // Load everything from Supabase tables - this replaces inventory payload
+      console.log('🔄 Loading from Supabase tables...');
       if (supabaseClient) {
-        await Promise.all([
-          fetchStockItems(),
-          fetchSales(),
-          fetchCustomerReturns(),
-          fetchSupplierReturns(),
-          fetchRequisitions()
-        ]);
-        // backup locally
-        try { localStorage.setItem(DB_KEY, JSON.stringify(db)); } catch(e){}
+        try {
+          await Promise.all([
+            fetchStockItems(),
+            fetchSales(),
+            fetchCustomerReturns(),
+            fetchSupplierReturns(),
+            fetchRequisitions()
+          ]);
+          console.log(`Loaded: stock=${db.stock.length}, sales=${db.sales.length}, returns=${db.returns.length}, supReturns=${db.supplierReturns.length}, reqs=${db.requisitions.length}`);
+          try { localStorage.setItem(DB_KEY, JSON.stringify(db)); } catch(e){}
+        } catch (e) {
+          console.error('Init sync error:', e);
+        }
       } else {
-        // fallback to localStorage
         try {
           const saved = JSON.parse(localStorage.getItem(DB_KEY)) || null;
           if (saved) {
@@ -1474,6 +1495,9 @@
         } catch(e){}
       }
       renderAll();
+      // Force sales filter to all-time so new sale is visible after refresh
+      const salesFilter = document.getElementById('sales-period-filter');
+      if (salesFilter && !salesFilter.value) salesFilter.value = 'all-time';
     }
 
     // --- HELPERS TO INSERT INTO OTHER TABLES ---
