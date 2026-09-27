@@ -1505,58 +1505,6 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   
 
-
-  async function manualAppRefresh() {
-  const btn = document.getElementById('refresh-btn');
-  const originalHtml = btn.innerHTML;
-  
-  // Show loading state on button
-  btn.disabled = true;
-  btn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Refreshing...`;
-
-  try {
-    // 1. Pull latest cloud data from Supabase
-    if (typeof initTripleSavingSync === 'function') {
-      await initTripleSavingSync();
-    }
-    
-    // 2. If you added the automated payment history sync function, call it too
-    if (typeof triggerCloudTransactionSync === 'function') {
-      await triggerCloudTransactionSync();
-    }
-
-    // 3. Re-render all dashboard views, sales panels, and OPay histories
-    if (typeof renderAll === 'function') {
-      renderAll();
-    }
-
-    console.log("App data successfully refreshed from cloud.");
-  } catch (err) {
-    console.error("Refresh failed:", err);
-  } finally {
-    // Restore button back to normal state
-    setTimeout(() => {
-      btn.disabled = false;
-      btn.innerHTML = originalHtml;
-    }, 500); // Small half-second delay for smooth visual feedback
-  }
-}
-  
-    // Optional: Add a loading class or disable button to prevent spamming
-    refreshBtn.disabled = true;
-    refreshBtn.textContent = 'Refreshing...';
-
-    try {
-        // Call your existing function that fetches data from the payments table
-        await fetchPaymentHistory(); 
-    } catch (error) {
-        console.error('Failed to refresh payment history:', error);
-    } finally {
-        // Reset button state
-        refreshBtn.disabled = false;
-        refreshBtn.textContent = 'Refresh';
-    }
-});
     
     function exportSalesToCSV() {
       const { salesData, periodLabel } = getFilteredSalesData();
