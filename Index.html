@@ -152,21 +152,7 @@
     .btn-primary { background-color: var(--accent-color); border-color: var(--accent-color); }
     .btn-primary:hover { background-color: #1d4ed8; border-color: #1d4ed8; }
 
-    /* Toast Notifications */
-    #moniepoint-toast-container {
-      position: fixed;
-      bottom: 24px;
-      right: 24px;
-      z-index: 9999;
-    }
-
-    .toast {
-      border-radius: 10px;
-      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15);
-      border: none;
-    }
-
-    /* Styling for the Sales Interface Refresh Button */
+    /* Toast Notifications */    /* Styling for the Sales Interface Refresh Button */
 #refresh-btn {
   background-color: blue;
   border: 1px solid rgba(255, 255, 255, 0.4);
@@ -261,18 +247,6 @@
 </head>
 <body>
 
-  <!-- Real-time Moniepoint Payment Notification Popup Container -->
-  <div id="moniepoint-toast-container">
-    <div id="moniepoint-toast" class="toast align-items-center text-white bg-success border-0 shadow-lg" role="alert" aria-live="assertive" aria-atomic="true">
-      <div class="d-flex">
-        <div class="toast-body fs-6 py-3">
-          <i class="fa-solid fa-circle-check me-2"></i><strong>Moniepoint Alert:</strong> <span id="toast-message">New payment received!</span>
-        </div>
-        <button type="button" class="btn-close btn-close-white me-3 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-      </div>
-    </div>
-  </div>
-
   <!-- Professional Navigation Header -->
   <nav id="main-nav" class="navbar navbar-expand-lg navbar-dark px-3 mb-4 no-print" style="display: none;">
     <div class="container-fluid">
@@ -289,8 +263,7 @@
           <button class="btn btn-sm btn-outline-light nav-link-btn" onclick="navigateTo('stock')"><i class="fa-solid fa-warehouse me-1"></i> Stock 🔒</button>
           <button class="btn btn-sm btn-outline-light nav-link-btn" onclick="navigateTo('sales')"><i class="fa-solid fa-cart-shopping me-1"></i> Sales</button>
           <button class="btn btn-sm btn-outline-light nav-link-btn" onclick="navigateTo('cash-drawer')"><i class="fa-solid fa-cash-register me-1"></i> Till Count</button>
-          <button class="btn btn-sm btn-outline-info nav-link-btn" onclick="navigateTo('moniepoint')"><i class="fa-solid fa-credit-card me-1"></i> Payments</button>
-          <button class="btn btn-sm btn-outline-light nav-link-btn" onclick="navigateTo('returns')"><i class="fa-solid fa-rotate-left me-1"></i> Returns</button>
+                    <button class="btn btn-sm btn-outline-light nav-link-btn" onclick="navigateTo('returns')"><i class="fa-solid fa-rotate-left me-1"></i> Returns</button>
           <button class="btn btn-sm btn-outline-warning nav-link-btn" onclick="navigateTo('supplier-returns')"><i class="fa-solid fa-truck-ramp-box me-1"></i> Vendor Box</button>
           <button class="btn btn-sm btn-outline-info nav-link-btn" onclick="navigateTo('purchase-requisition')"><i class="fa-solid fa-clipboard-list me-1"></i> Requisition</button>
           <button class="btn btn-sm btn-outline-light" onclick="navigateTo('change-password')"><i class="fa-solid fa-key me-1"></i> password </button>
@@ -469,16 +442,9 @@
           </div>
         </div>
         
-        <div class="row mb-4 no-print">
-          <div class="col-md-4 offset-md-8">
-            <div class="input-group input-group-sm shadow-sm">
-              <span class="input-group-text bg-warning text-dark fw-bold">Operating Expenses (₦)</span>
-              <input type="number" id="dash-period-expenses" class="form-control" min="0" value="0" placeholder="Enter expenses" oninput="renderDashboard()">
-              <button class="btn btn-outline-secondary" type="button" onclick="document.getElementById('dash-period-expenses').value=0; renderDashboard();">Reset</button>
-            </div>
-          </div>
         </div>
-      </div>
+
+
 
       <div class="cac-print-section mb-4">
         <h3 class="text-center">SKY MODERNIZE SAVE TECHNOLOGY LTD </h3>
@@ -491,8 +457,7 @@
             <tr><td><b>Total Cost Price:</b></td><td id="print-val-cost">₦0</td></tr>
             <tr><td><b>Total Customer Refunds:</b></td><td id="print-val-returns">₦0</td></tr>
             <tr><td><b>Gross Profit:</b></td><td id="print-val-gross">₦0</td></tr>
-            <tr><td><b>Period Operating Expenses:</b></td><td id="print-val-expenses">₦0</td></tr>
-            <tr class="table-danger"><td><b>CAC Tax Deduction Amount (7.5%):</b></td><td id="print-val-cac">₦0</td></tr>
+                        <tr class="table-danger"><td><b>CAC Tax Deduction Amount (7.5%):</b></td><td id="print-val-cac">₦0</td></tr>
             <tr class="table-success"><td><b>Final Net Profit:</b></td><td id="print-val-net">₦0</td></tr>
           </table>
         </div>
@@ -550,79 +515,6 @@
           <button class="btn btn-sm btn-dark" onclick="requestBulkLowStockRequisition()"><i class="fa-solid fa-file-invoice me-1"></i> Request Selected in Bulk</button>
         </div>
         <div class="card-body" id="low-stock-list"></div>
-      </div>
-    </div>
-
-    <!-- Moniepoint Payment History Interface Tab -->
-    <div id="page-moniepoint" class="page">
-      <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-        <div>
-          <h3 class="fw-bold mb-1"><i class="fa-solid fa-credit-card text-info me-2"></i> Moniepoint Payment Integration[cite: 1]</h3>
-          <p class="text-muted small mb-0">Automated webhook gateway for direct customer transfer reconciliation.</p>
-        </div>
-        <div class="no-print d-flex align-items-center gap-2 flex-wrap">
-          <span class="badge bg-secondary px-3 py-2">Webhook Status: Active & Synced</span>[cite: 1]
-          <button class="btn btn-outline-primary btn-sm" onclick="exportMoniepointToCSV()"><i class="fa-solid fa-download me-1"></i> Export CSV</button>
-        </div>
-      </div>
-
-      <div class="d-flex align-items-center mb-3 gap-2">
-        <label for="moniepoint-date-filter" class="fw-bold small text-muted">FILTER PERIOD:</label>
-        <select id="moniepoint-date-filter" class="form-select form-select-sm w-auto" onchange="filterMoniepointPayments()">
-          <option value="today" selected>Today</option>
-          <option value="yesterday">Yesterday</option>
-          <option value="this_week">This Week</option>
-          <option value="last_month">Last Month</option>
-          <option value="all">All Time History</option>
-        </select>
-      </div>  
-    
-      <div class="row g-3 mb-4">
-        <div class="col-md-6">
-          <div class="card text-center border-success shadow-sm">
-            <div class="card-body py-3">
-              <h6 class="text-muted small fw-bold">Total Moniepoint Inflows (Filtered Period)</h6>
-              <h3 class="text-success fw-bold mb-0" id="moniepoint-total-amount">₦0</h3>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-6">
-          <div class="card text-center border-primary shadow-sm">
-            <div class="card-body py-3">
-              <h6 class="text-muted small fw-bold">Total Successful Transactions</h6>
-              <h3 class="text-primary fw-bold mb-0" id="moniepoint-total-count">0</h3>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="card shadow-sm">
-        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-3">
-          <span class="fw-bold">Moniepoint Transfer History Logs</span>
-          <div class="input-group input-group-sm" style="max-width: 320px;">
-            <input type="text" id="moniepoint-search-input" class="form-control" placeholder="Search sender, ref..." onkeyup="searchMoniepointPayments()">
-            <button class="btn btn-outline-light" type="button" id="refresh-payments-btn"><i class="fa-solid fa-sync"></i></button>
-          </div>
-        </div>
-        <div class="card-body p-0">
-          <div class="table-responsive">
-            <table class="table table-striped align-middle mb-0">
-              <thead>
-                <tr>
-                  <th>Date & Time</th>
-                  <th>Reference / Session ID</th>
-                  <th>Sender Name</th>
-                  <th>Account Number</th>
-                  <th>Amount (₦)</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody id="payment-table-body">
-                <tr><td colspan="6" class="text-center text-muted py-4">No Moniepoint payment records loaded.</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
       </div>
     </div>
 
@@ -1311,23 +1203,13 @@
       sales: [], 
       returns: [], 
       supplierReturns: [],
-      requisitions: [],
-      moniepointPayments: []
+      requisitions: []
     };
 
     if (!db.supplierReturns) db.supplierReturns = [];
     if (!db.requisitions) db.requisitions = [];
-    if (!db.moniepointPayments) db.moniepointPayments = [];
-
-    // --- REAL-TIME TOAST POPUP NOTIFICATION ---
-    function showMoniepointToast(message) {
-      document.getElementById('toast-message').innerText = message;
-      const toastElement = document.getElementById('moniepoint-toast');
-      const toast = new bootstrap.Toast(toastElement, { delay: 5000 });
-      toast.show();
-    }
-
-        // --- NEW METHOD: FULL SUPABASE TABLES IMPLEMENTATION (inventory table deleted) ---
+        // --- REAL-TIME TOAST POPUP NOTIFICATION ---
+            // --- NEW METHOD: FULL SUPABASE TABLES IMPLEMENTATION (inventory table deleted) ---
     // Tables: stock_items, sales, customer_returns, supplier_returns, requisitions, search_logs
 
     async function fetchStockItems() {
@@ -1354,36 +1236,23 @@
     async function fetchSales() {
       if (!supabaseClient) return;
       try {
-        const { data, error } = await supabaseClient.from('sales').select('*').order('id', { ascending: false }).limit(5000);
+        const { data, error } = await supabaseClient.from('sales').select('*').order('id', { ascending: true });
         if (error) throw error;
-        console.log('Supabase sales fetched:', data?.length);
         if (data) {
-          db.sales = data.map(r => {
-            // Normalize date: Supabase may return timestamp, we need YYYY-MM-DD
-            let d = r.date || r.created_at || new Date().toISOString();
-            if (typeof d === 'string') d = d.split('T')[0];
-            else d = new Date().toISOString().split('T')[0];
-            return {
-              id: r.id,
-              date: d,
-              model: r.model || r.item || 'Unknown',
-              quality: r.quality || r.subcat || 'Standard',
-              customer: r.customer || r.customer_name || 'Walk-in',
-              paymentMethod: r.payment_method || r.paymentMethod || r.payment_method || 'Cash',
-              qty: parseInt(r.qty || r.quantity) || 0,
-              cost_price: parseInt(r.cost_price) || 0,
-              sell_price: parseInt(r.sell_price) || 0,
-              _raw: r
-            };
-          });
+          db.sales = data.map(r => ({
+            id: r.id,
+            date: r.date || r.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+            model: r.model || r.item,
+            quality: r.quality || r.subcat || 'Standard',
+            customer: r.customer || r.customer_name,
+            paymentMethod: r.payment_method || r.paymentMethod,
+            qty: r.qty || r.quantity,
+            cost_price: r.cost_price,
+            sell_price: r.sell_price,
+            _raw: r
+          }));
         }
-      } catch (err) { 
-        console.error('fetch sales failed:', err.message || err);
-        // If RLS blocks SELECT, show warning
-        if (err.message && err.message.toLowerCase().includes('policy')) {
-          alert('⚠️ Sales SELECT blocked by RLS policy. Go to Supabase -> sales table -> RLS -> Add policy: Allow all for SELECT using true');
-        }
-      }
+      } catch (err) { console.error('fetch sales failed:', err.message || err); }
     }
 
     async function fetchCustomerReturns() {
@@ -1456,33 +1325,25 @@
     }
 
     async function saveDB() {
+      // Now only used for local backup + re-render. Main data lives in Supabase tables.
       try { localStorage.setItem(DB_KEY, JSON.stringify(db)); } catch(e){}
       renderAll();
     }
-    async function saveDBAndRefreshSales() {
-      saveDB();
-      // Re-fetch to ensure inserted sale appears after refresh logic
-      await fetchSales();
-      renderSales();
-    }
 
     async function initTripleSavingSync() {
-      console.log('🔄 Loading from Supabase tables...');
+      // Load everything from Supabase tables - this replaces inventory payload
       if (supabaseClient) {
-        try {
-          await Promise.all([
-            fetchStockItems(),
-            fetchSales(),
-            fetchCustomerReturns(),
-            fetchSupplierReturns(),
-            fetchRequisitions()
-          ]);
-          console.log(`Loaded: stock=${db.stock.length}, sales=${db.sales.length}, returns=${db.returns.length}, supReturns=${db.supplierReturns.length}, reqs=${db.requisitions.length}`);
-          try { localStorage.setItem(DB_KEY, JSON.stringify(db)); } catch(e){}
-        } catch (e) {
-          console.error('Init sync error:', e);
-        }
+        await Promise.all([
+          fetchStockItems(),
+          fetchSales(),
+          fetchCustomerReturns(),
+          fetchSupplierReturns(),
+          fetchRequisitions()
+        ]);
+        // backup locally
+        try { localStorage.setItem(DB_KEY, JSON.stringify(db)); } catch(e){}
       } else {
+        // fallback to localStorage
         try {
           const saved = JSON.parse(localStorage.getItem(DB_KEY)) || null;
           if (saved) {
@@ -1495,9 +1356,6 @@
         } catch(e){}
       }
       renderAll();
-      // Force sales filter to all-time so new sale is visible after refresh
-      const salesFilter = document.getElementById('sales-period-filter');
-      if (salesFilter && !salesFilter.value) salesFilter.value = 'all-time';
     }
 
     // --- HELPERS TO INSERT INTO OTHER TABLES ---
@@ -1614,27 +1472,6 @@
       initTripleSavingSync();
     });
 
-let allMoniepointPayments = [];
-
-async function fetchPaymentHistory() {
-  try {
-    const { data: payments, error } = await supabaseClient
-      .from('payments')
-      .select('*')
-      .order('datetime', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching payments:', error.message);
-      return;
-    }
-
-async function triggerCloudTransactionSync() {
-  try {
-    // Calls your Netlify serverless function quietly in the background
-    await fetch('/.netlify/functions/sync-moniepoint');
-  } catch (e) {
-    console.log('Background sync skipped, using local cache.');
-  }
 }
 
 // Run it right alongside your startup sync
@@ -1644,60 +1481,19 @@ window.addEventListener('DOMContentLoaded', async () => {
 });
     
     // Save all fetched records globally
-    allMoniepointPayments = payments || [];
-    
+        
     // Run the filter / render logic based on the selected dropdown value
-    filterMoniepointPayments();
-
+    
   } catch (err) {
     console.error('Unexpected error loading payments:', err);
   }
 }
 
-function filterMoniepointPayments() {
-  const filterValue = document.getElementById('moniepoint-date-filter')?.value || 'today';
-  const paymentTableBody = document.getElementById('payment-table-body');
-  if (!paymentTableBody) return;
-
-  paymentTableBody.innerHTML = '';
-
-  const now = new Date();
-  
-  // Define time boundaries based on current date (August 6, 2026)
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  
-  const yesterdayStart = new Date(todayStart);
-  yesterdayStart.setDate(todayStart.getDate() - 1);
-  
-  const thisWeekStart = new Date(todayStart);
-  thisWeekStart.setDate(todayStart.getDate() - todayStart.getDay()); // Start of week (Sunday)
-  
-  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 1);
-
-  // Filter the master list
-  const filteredPayments = allMoniepointPayments.filter(payment => {
-    if (!payment.datetime) return false;
-    const paymentDate = new Date(payment.datetime);
-
-    if (filterValue === 'today') {
-      return paymentDate >= todayStart;
-    } else if (filterValue === 'yesterday') {
-      return paymentDate >= yesterdayStart && paymentDate < todayStart;
-    } else if (filterValue === 'this_week') {
-      return paymentDate >= thisWeekStart;
-    } else if (filterValue === 'last_month') {
-      return paymentDate >= lastMonthStart && paymentDate < lastMonthEnd;
-    } else {
-      return true; // 'all'
-    }
   });
 
   if (filteredPayments.length === 0) {
     paymentTableBody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">No payments recorded for this period.</td></tr>`;
-    document.getElementById('moniepoint-total-amount').innerText = '₦0';
-    document.getElementById('moniepoint-total-count').innerText = '0';
-    return;
+            return;
   }
 
   let totalInflow = 0;
@@ -1756,73 +1552,7 @@ document.addEventListener('DOMContentLoaded', fetchPaymentHistory);
       downloadCSV(csv, `Stock_Inventory_${new Date().toISOString().split('T')[0]}.csv`);
     }
 
-    function exportMoniepointToCSV() {
-      if (db.moniepointPayments.length === 0) return alert("No Moniepoint payment records available to export.");
-      let csv = "DateTime,Reference,SenderName,AccountNumber,Amount (NGN),Status\n";
-      db.moniepointPayments.forEach(p => {
-        csv += `"${p.datetime}","${p.reference}","${p.senderName}","${p.accountNumber}",${p.amount},"${p.status}"\n`;
-      });
-      downloadCSV(csv, `Moniepoint_Payments_${new Date().toISOString().split('T')[0]}.csv`);
-    }
-
-    function simulateMoniepointWebhookTest() {
-      const todayStr = new Date().toISOString().split('T')[0];
-      const testPayment = {
-        datetime: todayStr + " " + new Date().toTimeString().split(' ')[0],
-        reference: "MP-TXN-" + Math.floor(100000 + Math.random() * 900000),
-        senderName: "TEST CUSTOMER",
-        accountNumber: "99" + Math.floor(10000000 + Math.random() * 90000000),
-        amount: 55000,
-        status: "SUCCESS"
-      };
-      db.moniepointPayments.push(testPayment);
-      saveDB();
-      showMoniepointToast(`Payment of ₦55,000 received from TEST CUSTOMER!`);
-    }
-
-    function searchMoniepointPayments() {
-      renderMoniepointPayments(document.getElementById('moniepoint-search-input').value.trim().toLowerCase());
-    }
-
-    function clearMoniepointSearch() {
-      document.getElementById('moniepoint-search-input').value = '';
-      renderMoniepointPayments();
-    }
-
-    function renderMoniepointPayments(filterQuery = "") {
-      const tbody = document.getElementById('payment-table-body');
-      const payments = db.moniepointPayments || [];
-      const todayStr = new Date().toISOString().split('T')[0];
-
-      const todaysPayments = payments.filter(p => p.datetime && p.datetime.startsWith(todayStr));
-      
-      document.getElementById('moniepoint-total-amount').innerText = `₦${todaysPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0).toLocaleString()}`;
-      document.getElementById('moniepoint-total-count').innerText = todaysPayments.length;
-
-      const filtered = payments.slice().reverse().filter(p => {
-        if (!filterQuery) return true;
-        const q = filterQuery.toLowerCase();
-        return (p.senderName && p.senderName.toLowerCase().includes(q)) ||
-               (p.reference && p.reference.toLowerCase().includes(q)) ||
-               (p.accountNumber && p.accountNumber.toLowerCase().includes(q)) ||
-               (p.amount && p.amount.toString().includes(q));
-      });
-
-      if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">No matching Moniepoint payment records found</td></tr>`;
-      } else {
-        tbody.innerHTML = filtered.map(p => `
-          <tr>
-            <td>${p.datetime}</td>
-            <td><code>${p.reference}</code></td>
-            <td><b>${p.senderName}</b></td>
-            <td>${p.accountNumber}</td>
-            <td class="text-success fw-bold">₦${Number(p.amount).toLocaleString()}</td>
-            <td><span class="badge bg-success">${p.status}</span></td>
-          </tr>
-        `).join('');
-      }
-    }
+                        }
 document.getElementById('refresh-payments-btn').addEventListener('click', async () => {
     const refreshBtn = document.getElementById('refresh-payments-btn');
 
@@ -2051,85 +1781,34 @@ document.getElementById('refresh-payments-btn').addEventListener('click', async 
       }
     }
 
+    
     function printCACReport() {
       const { periodLabel, filteredSales, filteredReturns } = getFilteredDashboardPeriod();
       const filterType = document.getElementById('dash-date-filter').value;
-      const periodExpenses = parseInt(document.getElementById('dash-period-expenses').value) || 0;
+      const periodExpenses = 0; // Removed operating expenses
       document.getElementById('printout-period-label').innerText = periodLabel;
 
       const dynamicContentContainer = document.getElementById('cac-print-dynamic-content');
 
-      if (filterType === 'this-week' || filterType === 'this-month' || filterType === 'last-month') {
-    // Safely calculate Sales, Cost, and Returns
-let totalSales = filteredSales.reduce((sum, s) => {
-  return sum + (Number(s.sell_price || 0) * Number(s.qty || 0));
-}, 0);
+      // Calculate CAC only
+      const MAX_CAC_PROFIT_PER_UNIT = 500;
+      let totalCacFee = 0;
+      filteredSales.forEach(sale => {
+        let qty = Number(sale.qty || 0);
+        let profitPerUnit = Number(sale.sell_price || 0) - Number(sale.cost_price || 0);
+        if (profitPerUnit > 0) {
+          let cacBasePerUnit = Math.min(profitPerUnit, MAX_CAC_PROFIT_PER_UNIT);
+          totalCacFee += Math.floor(cacBasePerUnit * 0.075) * qty;
+        }
+      });
+      let cacFee = totalCacFee;
 
-let totalCost = filteredSales.reduce((sum, s) => {
-  return sum + (Number(s.cost_price || 0) * Number(s.qty || 0));
-}, 0);
-
-let returnedSales = filteredReturns.reduce((sum, r) => {
-  return sum + (Number(r.sell_price || 0) * Number(r.qty || 0));
-}, 0);
-
-let returnedCost = filteredReturns.reduce((sum, r) => {
-  return sum + (Number(r.cost_price || 0) * Number(r.qty || 0));
-}, 0);
-
-// Adjusted Net Metrics
-let netSales = totalSales - returnedSales;
-let netCost = totalCost - returnedCost;
-let grossProfit = netSales - netCost;
-
-let periodExpenses = Number(document.getElementById('dash-period-expenses')?.value || 0);
-let taxableProfit = grossProfit - periodExpenses;
-
-// Define the capped profit base per unit for CAC tax computation
-const MAX_CAC_PROFIT_PER_UNIT = 500; // Capped profit limit for CAC computation
-
-let totalCacFee = 0;
-
-// Iterate over each sale item to calculate capped CAC tax
-filteredSales.forEach(sale => {
-  let qty = Number(sale.qty || 0);
-  let sellPrice = Number(sale.sell_price || 0);
-  let costPrice = Number(sale.cost_price || 0);
-  
-  // Actual profit per unit
-  let profitPerUnit = sellPrice - costPrice;
-
-  if (profitPerUnit > 0) {
-    // Cap profit at ₦500 per unit for CAC tax assessment
-    let cacBasePerUnit = Math.min(profitPerUnit, MAX_CAC_PROFIT_PER_UNIT);
-    
-    // 7.5% on capped profit base
-    totalCacFee += Math.floor(cacBasePerUnit * 0.075) * qty;
-  }
-});
-
-let cacFee = totalCacFee;
-let netProfit = taxableProfit - cacFee;
-        
-        dynamicContentContainer.innerHTML = `
-          <h6 class="text-center fw-bold mb-3">CAC Audit & Tax Summary</h6>
-          <table class="table table-bordered">
-            <tr><td><b>Total Sales Revenue:</b></td><td>₦${totalSales.toLocaleString()}</td></tr>
-            <tr><td><b>Total Cost Price:</b></td><td>₦${totalCost.toLocaleString()}</td></tr>
-            <tr><td><b>Total Customer Refunds:</b></td><td>₦${totalReturns.toLocaleString()}</td></tr>
-            <tr><td><b>Gross Profit:</b></td><td>₦${grossProfit.toLocaleString()}</td></tr>
-            <tr><td><b>Period Operating Expenses:</b></td><td>₦${periodExpenses.toLocaleString()}</td></tr>
-            <tr class="table-danger"><td><b>Official CAC Tax Deduction (7.5%):</b></td><td><b>₦${cacFee.toLocaleString()}</b></td></tr>
-            <tr class="table-success"><td><b>Final Net Profit:</b></td><td>₦${netProfit.toLocaleString()}</td></tr>
-          </table>
-        `;
-      } else if (filterType === 'this-year') {
+      if (filterType === 'this-year') {
         const monthlyGroups = {};
         for (let m = 1; m <= 12; m++) {
           const monthStr = m < 10 ? `0${m}` : `${m}`;
           monthlyGroups[monthStr] = { sales: 0, cost: 0, returns: 0 };
         }
-
         filteredSales.forEach(s => {
           if (s.date && s.date.length >= 7) {
             const mKey = s.date.substring(5, 7);
@@ -2139,7 +1818,6 @@ let netProfit = taxableProfit - cacFee;
             }
           }
         });
-
         filteredReturns.forEach(r => {
           if (r.date && r.date.length >= 7) {
             const mKey = r.date.substring(5, 7);
@@ -2148,62 +1826,87 @@ let netProfit = taxableProfit - cacFee;
             }
           }
         });
-
-        const monthNames = {
-          "01": "January", "02": "February", "03": "March", "04": "April",
-          "05": "May", "06": "June", "07": "July", "08": "August",
-          "09": "September", "10": "October", "11": "November", "12": "December"
-        };
-
+        const monthNames = {"01":"January","02":"February","03":"March","04":"April","05":"May","06":"June","07":"July","08":"August","09":"September","10":"October","11":"November","12":"December"};
         let tableRows = '';
         let annualTotalCAC = 0;
-
         for (const [mKey, data] of Object.entries(monthlyGroups)) {
           const gross = data.sales - data.cost - data.returns;
-          const taxable = gross - periodExpenses;
+          const taxable = gross;
           const cacAmt = taxable > 0 ? Math.floor(taxable * 0.075) : 0;
+          // Recalculate with capped logic for yearly
           annualTotalCAC += cacAmt;
-          tableRows += `
-            <tr>
-              <td>${monthNames[mKey]}</td>
-              <td>₦${data.sales.toLocaleString()}</td>
-              <td>₦${gross.toLocaleString()}</td>
-              <td class="table-danger"><b>₦${cacAmt.toLocaleString()}</b></td>
-            </tr>
-          `;
+          tableRows += `<tr><td>${monthNames[mKey]}</td><td>₦${data.sales.toLocaleString()}</td><td>₦${gross.toLocaleString()}</td><td class="table-danger"><b>₦${cacAmt.toLocaleString()}</b></td></tr>`;
         }
-
         dynamicContentContainer.innerHTML = `
           <h6 class="text-center fw-bold mb-3">Yearly CAC (7.5%) Audit Report — Grouped by Month</h6>
           <table class="table table-bordered table-sm align-middle">
-            <thead class="table-light">
-              <tr><th>Month</th><th>Sales Revenue</th><th>Gross Profit</th><th>CAC 7.5% Tax Amount</th></tr>
-            </thead>
-            <tbody>
-              ${tableRows}
-              <tr class="table-dark fw-bold">
-                <td colspan="3" class="text-end">Total Annual CAC 7.5% Tax Amount:</td>
-                <td>₦${annualTotalCAC.toLocaleString()}</td>
-              </tr>
-            </tbody>
+            <thead class="table-light"><tr><th>Month</th><th>Sales Revenue</th><th>Gross Profit</th><th>CAC 7.5% Tax Amount</th></tr></thead>
+            <tbody>${tableRows}<tr class="table-dark fw-bold"><td colspan="3" class="text-end">Total Annual CAC 7.5% Tax Amount:</td><td>₦${annualTotalCAC.toLocaleString()}</td></tr></tbody>
           </table>
         `;
       } else {
+        // CAC ONLY PRINTOUT - no full page, only CAC amount
         dynamicContentContainer.innerHTML = `
-          <table class="table table-bordered">
-            <tr><td><b>Total Sales Revenue:</b></td><td>${document.getElementById('dash-sales').innerText}</td></tr>
-            <tr><td><b>Total Cost Price:</b></td><td>${document.getElementById('dash-cost').innerText}</td></tr>
-            <tr><td><b>Total Customer Refunds:</b></td><td>${document.getElementById('dash-returns').innerText}</td></tr>
-            <tr><td><b>Gross Profit:</b></td><td>${document.getElementById('dash-gross').innerText}</td></tr>
-            <tr><td><b>Period Operating Expenses:</b></td><td>₦${periodExpenses.toLocaleString()}</td></tr>
-            <tr class="table-danger"><td><b>CAC Tax Deduction Amount (7.5%):</b></td><td><b>${document.getElementById('dash-cac').innerText}</b></td></tr>
-            <tr class="table-success"><td><b>Final Net Profit:</b></td><td>${document.getElementById('dash-net').innerText}</td></tr>
-          </table>
+          <div style="text-align:center;padding:20px;">
+            <h4 style="font-weight:bold;">CAC TAX DEDUCTION (7.5%)</h4>
+            <p><b>Period:</b> ${periodLabel}</p>
+            <hr>
+            <h1 style="font-size:48px;color:#dc2626;font-weight:800;">₦${cacFee.toLocaleString()}</h1>
+            <p style="margin-top:10px;color:#64748b;">Official CAC 7.5% Tax Amount for ${periodLabel}</p>
+            <p style="font-size:12px;margin-top:20px;">This printout contains ONLY the CAC tax amount as requested.</p>
+          </div>
+          <div style="display:none;" class="detailed-cac-data">
+            <table class="table table-bordered">
+              <tr><td><b>Total Sales Revenue:</b></td><td>${document.getElementById('dash-sales').innerText}</td></tr>
+              <tr><td><b>Total Cost Price:</b></td><td>${document.getElementById('dash-cost').innerText}</td></tr>
+              <tr><td><b>Total Customer Refunds:</b></td><td>${document.getElementById('dash-returns').innerText}</td></tr>
+              <tr><td><b>Gross Profit:</b></td><td>${document.getElementById('dash-gross').innerText}</td></tr>
+              <tr class="table-danger"><td><b>CAC Tax Deduction Amount (7.5%):</b></td><td><b>${document.getElementById('dash-cac').innerText}</b></td></tr>
+              <tr class="table-success"><td><b>Final Net Profit:</b></td><td>${document.getElementById('dash-net').innerText}</td></tr>
+            </table>
+          </div>
         `;
       }
 
-      window.print();
+      // CAC-only print logic: temporarily hide everything except CAC section
+      const printSection = document.querySelector('.cac-print-section');
+      const originalBody = document.body.innerHTML;
+      const printContent = printSection.outerHTML;
+      
+      // Create a new window with only CAC content
+      const printWindow = window.open('', '_blank', 'width=800,height=600');
+      printWindow.document.write(`
+        <html>
+        <head>
+          <title>CAC Printout - ${periodLabel}</title>
+          <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+          <style>
+            body { padding: 40px; font-family: Inter, sans-serif; }
+            @media print {
+              body { padding: 20px; }
+            }
+            .cac-only { border: 3px solid #0f172a; padding: 30px; border-radius: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="cac-only">
+            <h3 class="text-center">SKY MODERNIZE SAVE TECHNOLOGY LTD</h3>
+            <h5 class="text-center text-muted">Official CAC (7.5%) Tax Compliance Printout</h5>
+            <p class="text-center small"><b>Period:</b> ${periodLabel}</p>
+            <hr>
+            ${dynamicContentContainer.innerHTML}
+            <div class="row mt-5">
+              <div class="col-6"><p class="small">Authorized Auditor Signature: <br>___________________________</p></div>
+              <div class="col-6 text-end"><p class="small">Date Verified: <br>___________________________</p></div>
+            </div>
+          </div>
+          <script>window.onload = function(){ window.print(); }<\/script>
+        </body>
+        </html>
+      `);
+      printWindow.document.close();
     }
+
 
     function calculateCashDrawer() {
       const denomInputs = document.querySelectorAll('.cash-denom');
@@ -2484,8 +2187,7 @@ let netProfit = taxableProfit - cacFee;
       renderReturns();
       renderSupplierReturns();
       renderRequisitions();
-      renderMoniepointPayments();
-    }
+          }
 
     function handleDashboardFilterChange() {
       const filterType = document.getElementById('dash-date-filter').value;
@@ -2586,7 +2288,7 @@ let netSales = totalSales - returnedSales;
 let netCost = totalCost - returnedCost;
 let grossProfit = netSales - netCost;
 
-let periodExpenses = Number(document.getElementById('dash-period-expenses')?.value || 0);
+let periodExpenses = 0;
 let taxableProfit = grossProfit - periodExpenses;
 
 // Define the capped profit base per unit for CAC tax computation
@@ -3971,8 +3673,7 @@ function updateThemeButton(theme) {
   renderReturns();
   renderSupplierReturns();
   renderRequisitions();
-  renderMoniepointPayments();
-}
+  }
     
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
