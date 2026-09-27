@@ -1479,56 +1479,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   initTripleSavingSync();
 });
     
-    // Save all fetched records globally
-        
-    // Run the filter / render logic based on the selected dropdown value
-    
-  } catch (err) {
-    console.error('Unexpected error loading payments:', err);
-  }
-}
 
-  });
 
-  if (filteredPayments.length === 0) {
-    paymentTableBody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">No payments recorded for this period.</td></tr>`;
-            return;
-  }
-
-  let totalInflow = 0;
-  let successfulCount = 0;
-
-  filteredPayments.forEach((payment) => {
-    const amount = Number(payment.amount || 0);
-    const status = (payment.status || '').toUpperCase();
-
-    if (status === 'SUCCESSFUL') {
-      totalInflow += amount;
-      successfulCount += 1;
-    }
-
-    const row = document.createElement('tr');
-    row.innerHTML = `
-      <td>${payment.datetime ? new Date(payment.datetime).toLocaleString() : ''}</td>
-      <td>${payment.reference || ''}</td>
-      <td>${payment.sender_name || 'unknown'}</td>
-      <td>${payment.account_number || 'unknown'}</td>
-      <td>₦${amount.toLocaleString()}</td>
-      <td>${payment.status || ''}</td>
-    `;
-    paymentTableBody.appendChild(row);
-  });
-
-  // Update summary cards dynamically
-  const inflowEl = document.getElementById('moniepoint-total-amount');
-  const countEl = document.getElementById('moniepoint-total-count');
-  
-  if (inflowEl) inflowEl.innerText = `₦${totalInflow.toLocaleString()}`;
-  if (countEl) countEl.innerText = successfulCount;
-}
-
-// Run on page load
-document.addEventListener('DOMContentLoaded', fetchPaymentHistory);
     // --- CSV EXPORT UTILITY ---
     function downloadCSV(csvContent, filename) {
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
